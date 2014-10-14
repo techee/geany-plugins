@@ -72,9 +72,9 @@ static void deferred_op_queue_clean(void)
 }
 
 
-static void workspace_add_tag(gchar *filename, TagObject *obj, gpointer foo)
+static void workspace_add_tag(gchar *filename, TagObject *obj, gboolean refresh)
 {
-	TMWorkObject *tm_obj = NULL;
+	TMSourceFile *tm_obj = NULL;
 
 	if (!document_find_by_filename(filename))
 	{
@@ -86,15 +86,21 @@ static void workspace_add_tag(gchar *filename, TagObject *obj, gpointer foo)
 
 		if (tm_obj)
 		{
-			tm_workspace_add_object(tm_obj);
-			tm_source_file_update(tm_obj, TRUE, FALSE, TRUE);
+			tm_workspace_add_source_file(tm_obj);
+			tm_source_file_update(tm_obj, refresh);
 		}
 	}
 
 	if (obj->tag)
-		tm_workspace_remove_object(obj->tag, TRUE, TRUE);
+		tm_workspace_remove_source_file(obj->tag, TRUE, FALSE);
 
 	obj->tag = tm_obj;
+}
+
+
+static void workspace_add_tag_cb(gchar *filename, TagObject *obj, gpointer foo)
+{
+	workspace_add_tag(filename, obj, FALSE);
 }
 
 
@@ -104,17 +110,23 @@ static void workspace_add_file_tag(gchar *filename)
 
 	obj = g_hash_table_lookup(g_prj->file_tag_table, filename);
 	if (obj)
-		workspace_add_tag(filename, obj, NULL);
+		workspace_add_tag(filename, obj, TRUE);
 }
 
 
-static void workspace_remove_tag(gchar *filename, TagObject *obj, gpointer foo)
+static void workspace_remove_tag(gchar *filename, TagObject *obj, gboolean refresh)
 {
 	if (obj->tag)
 	{
-		tm_workspace_remove_object(obj->tag, TRUE, TRUE);
+		tm_workspace_remove_source_file(obj->tag, TRUE, refresh);
 		obj->tag = NULL;
 	}
+}
+
+
+static void workspace_remove_tag_cb(gchar *filename, TagObject *obj, gpointer foo)
+{
+	workspace_remove_tag(filename, obj, FALSE);
 }
 
 
@@ -123,8 +135,8 @@ static void workspace_remove_file_tag(gchar *filename)
 	TagObject *obj;
 
 	obj = g_hash_table_lookup(g_prj->file_tag_table, filename);
-	if (obj)
-		workspace_remove_tag(filename, obj, NULL);
+	if (obj) 
+		workspace_remove_tag(filename, obj, TRUE);
 }
 
 
@@ -228,7 +240,7 @@ void gprj_project_rescan(void)
 		return;
 
 	if (g_prj->generate_tags)
-		g_hash_table_foreach(g_prj->file_tag_table, (GHFunc)workspace_remove_tag, NULL);
+		g_hash_table_foreach(g_prj->file_tag_table, (GHFunc)workspace_remove_tag_cb, NULL);
 	g_hash_table_destroy(g_prj->file_tag_table);
 	g_prj->file_tag_table = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
 
@@ -257,7 +269,8 @@ void gprj_project_rescan(void)
 	}
 
 	if (g_prj->generate_tags)
-		g_hash_table_foreach(g_prj->file_tag_table, (GHFunc)workspace_add_tag, NULL);
+		g_hash_table_foreach(g_prj->file_tag_table, (GHFunc)workspace_add_tag_cb, NULL);
+	tm_workspace_update();
 
 	g_slist_foreach(lst, (GFunc) g_free, NULL);
 	g_slist_free(lst);
@@ -470,7 +483,8 @@ void gprj_project_close(void)
 		return;  /* can happen on plugin reload */
 
 	if (g_prj->generate_tags)
-		g_hash_table_foreach(g_prj->file_tag_table, (GHFunc)workspace_remove_tag, NULL);
+		g_hash_table_foreach(g_prj->file_tag_table, (GHFunc)workspace_remove_tag_cb, NULL);
+	tm_workspace_update();
 
 	deferred_op_queue_clean();
 

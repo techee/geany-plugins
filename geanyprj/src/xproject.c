@@ -38,14 +38,14 @@ static GPtrArray *g_projects = NULL;
 static void add_tag(G_GNUC_UNUSED gpointer key, gpointer value, G_GNUC_UNUSED gpointer user_data)
 {
 	debug("%s file=%s\n", __FUNCTION__, (const gchar *)key);
-	tm_workspace_add_object((TMWorkObject *)value);
+	tm_workspace_add_source_file((TMSourceFile *)value);
 }
 
 
 static void remove_tag(G_GNUC_UNUSED gpointer key, gpointer value, G_GNUC_UNUSED gpointer user_data)
 {
 	debug("%s file=%s\n", __FUNCTION__, (const gchar *)key);
-	tm_workspace_remove_object((TMWorkObject *)value, FALSE, FALSE);
+	tm_workspace_remove_source_file((TMSourceFile *)value, FALSE, FALSE);
 }
 
 
@@ -60,6 +60,7 @@ void xproject_close(gboolean cache)
 	if (cache)
 	{
 		g_hash_table_foreach(g_current_project->tags, remove_tag, NULL);
+		tm_workspace_update();
 		g_ptr_array_add(g_projects, g_current_project);
 	}
 	else
@@ -104,23 +105,23 @@ void xproject_open(const gchar *path)
 void xproject_update_tag(const gchar *filename)
 {
 	guint i;
-	TMWorkObject *tm_obj;
+	TMSourceFile *tm_obj;
 
 	if (g_current_project)
 	{
 		tm_obj = g_hash_table_lookup(g_current_project->tags, filename);
 		if (tm_obj)
 		{
-			tm_source_file_update(tm_obj, TRUE, FALSE, TRUE);
+			tm_source_file_update(tm_obj, TRUE);
 		}
 	}
 
 	for (i = 0; i < g_projects->len; i++)
 	{
-		tm_obj = (TMWorkObject *)g_hash_table_lookup(((struct GeanyPrj *)(g_projects->pdata[i]))->tags, filename);
+		tm_obj = (TMSourceFile *)g_hash_table_lookup(((struct GeanyPrj *)(g_projects->pdata[i]))->tags, filename);
 		if (tm_obj)
 		{
-			tm_source_file_update(tm_obj, TRUE, FALSE, TRUE);
+			tm_source_file_update(tm_obj, TRUE);
 		}
 	}
 }
@@ -128,7 +129,7 @@ void xproject_update_tag(const gchar *filename)
 
 gboolean xproject_add_file(const gchar *path)
 {
-	TMWorkObject *tm_obj;
+	TMSourceFile *tm_obj;
 
 	debug("%s path=%s\n", __FUNCTION__, path);
 
@@ -137,10 +138,10 @@ gboolean xproject_add_file(const gchar *path)
 
 	if (geany_project_add_file(g_current_project, path))
 	{
-		tm_obj = (TMWorkObject *) g_hash_table_lookup(g_current_project->tags, path);
+		tm_obj = (TMSourceFile *) g_hash_table_lookup(g_current_project->tags, path);
 		if (tm_obj)
 		{
-			tm_workspace_add_object((TMWorkObject *) tm_obj);
+			tm_workspace_add_source_file((TMSourceFile *) tm_obj);
 		}
 		sidebar_refresh();
 		return TRUE;
@@ -151,17 +152,17 @@ gboolean xproject_add_file(const gchar *path)
 
 gboolean xproject_remove_file(const gchar *path)
 {
-	TMWorkObject *tm_obj;
+	TMSourceFile *tm_obj;
 
 	debug("%s path=%s\n", __FUNCTION__, path);
 
 	if (!g_current_project)
 		return FALSE;
 
-	tm_obj = (TMWorkObject *) g_hash_table_lookup(g_current_project->tags, path);
+	tm_obj = (TMSourceFile *) g_hash_table_lookup(g_current_project->tags, path);
 	if (tm_obj)
 	{
-		tm_workspace_remove_object(tm_obj, FALSE, FALSE);
+		tm_workspace_remove_source_file(tm_obj, FALSE, FALSE);
 	}
 
 	if (geany_project_remove_file(g_current_project, path))

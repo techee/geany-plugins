@@ -32,7 +32,7 @@ static gchar *relpath(const gchar *origin_dir, const gchar *dest_dir)
 	gchar **originv, **destv;
 	gchar *ret = NULL;
 	guint i, j;
-
+	
 	origin = tm_get_real_path(origin_dir);
 	dest = tm_get_real_path(dest_dir);
 

@@ -83,7 +83,7 @@ gboolean (*project_type_filter[NEW_PROJECT_TYPE_SIZE]) (const gchar *) = {
 
 static void free_tag_object(gpointer obj)
 {
-	tm_workspace_remove_object((TMWorkObject *) obj, TRUE, FALSE);
+	tm_workspace_remove_source_file((TMSourceFile *) obj, TRUE, FALSE);
 }
 
 
@@ -101,7 +101,7 @@ struct GeanyPrj *geany_project_new(void)
 struct GeanyPrj *geany_project_load(const gchar *path)
 {
 	struct GeanyPrj *ret;
-	TMWorkObject *tm_obj = NULL;
+	TMSourceFile *tm_obj = NULL;
 	GKeyFile *config;
 	gint i = 0;
 	gchar *file;
@@ -166,7 +166,7 @@ struct GeanyPrj *geany_project_load(const gchar *path)
 			if (tm_obj)
 			{
 				g_hash_table_insert(ret->tags, filename, tm_obj);
-				tm_source_file_update(tm_obj, TRUE, FALSE, TRUE);
+				tm_source_file_update(tm_obj, FALSE);
 			}
 			else
 				g_free(filename);
@@ -175,6 +175,7 @@ struct GeanyPrj *geany_project_load(const gchar *path)
 			g_free(file);
 			key = g_strdup_printf("file%d", i);
 		}
+		tm_workspace_update();
 		g_free(key);
 	}
 	g_key_file_free(config);
@@ -298,7 +299,7 @@ void geany_project_set_tags_from_list(struct GeanyPrj *prj, GSList *files)
 {
 	GSList *tmp;
 	gchar *locale_filename;
-	TMWorkObject *tm_obj = NULL;
+	TMSourceFile *tm_obj = NULL;
 
 	if (prj->tags)
 		g_hash_table_destroy(prj->tags);
@@ -313,9 +314,10 @@ void geany_project_set_tags_from_list(struct GeanyPrj *prj, GSList *files)
 		if (tm_obj)
 		{
 			g_hash_table_insert(prj->tags, g_strdup(tmp->data), tm_obj);
-			tm_source_file_update(tm_obj, TRUE, FALSE, TRUE);
+			tm_source_file_update(tm_obj, FALSE);
 		}
 	}
+	tm_workspace_update();
 }
 
 
@@ -344,7 +346,7 @@ void geany_project_free(struct GeanyPrj *prj)
 gboolean geany_project_add_file(struct GeanyPrj *prj, const gchar *path)
 {
 	gchar *filename;
-	TMWorkObject *tm_obj = NULL;
+	TMSourceFile *tm_obj = NULL;
 
 	GKeyFile *config;
 
@@ -368,7 +370,7 @@ gboolean geany_project_add_file(struct GeanyPrj *prj, const gchar *path)
 	if (tm_obj)
 	{
 		g_hash_table_insert(prj->tags, g_strdup(path), tm_obj);
-		tm_source_file_update(tm_obj, TRUE, FALSE, TRUE);
+		tm_source_file_update(tm_obj, TRUE);
 	}
 	geany_project_save(prj);
 	return TRUE;

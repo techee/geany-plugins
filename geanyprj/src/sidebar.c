@@ -133,6 +133,7 @@ static void remove_selected_files(GList *list)
 		xproject_remove_file(fname);
 		g_free(fname);
 	}
+	tm_workspace_update();
 }
 
 
