@@ -83,7 +83,8 @@ gboolean (*project_type_filter[NEW_PROJECT_TYPE_SIZE]) (const gchar *) = {
 
 static void free_tag_object(gpointer obj)
 {
-	tm_workspace_remove_source_file((TMSourceFile *) obj, TRUE, FALSE);
+	tm_workspace_remove_source_file((TMSourceFile *) obj, FALSE);
+	tm_source_file_free((TMSourceFile *) obj);
 }
 
 
@@ -160,13 +161,13 @@ struct GeanyPrj *geany_project_load(const gchar *path)
 			filename = get_full_path(path, file);
 
 			locale_filename = utils_get_locale_from_utf8(filename);
-			tm_obj = tm_source_file_new(locale_filename, FALSE,
+			tm_obj = tm_source_file_new(locale_filename,
 						    filetypes_detect_from_file(filename)->name);
 			g_free(locale_filename);
 			if (tm_obj)
 			{
 				g_hash_table_insert(ret->tags, filename, tm_obj);
-				tm_source_file_update(tm_obj, FALSE);
+				tm_workspace_update_source_file(tm_obj, FALSE);
 			}
 			else
 				g_free(filename);
@@ -308,13 +309,13 @@ void geany_project_set_tags_from_list(struct GeanyPrj *prj, GSList *files)
 	for (tmp = files; tmp != NULL; tmp = g_slist_next(tmp))
 	{
 		locale_filename = utils_get_locale_from_utf8(tmp->data);
-		tm_obj = tm_source_file_new(locale_filename, FALSE,
+		tm_obj = tm_source_file_new(locale_filename,
 					    filetypes_detect_from_file(tmp->data)->name);
 		g_free(locale_filename);
 		if (tm_obj)
 		{
 			g_hash_table_insert(prj->tags, g_strdup(tmp->data), tm_obj);
-			tm_source_file_update(tm_obj, FALSE);
+			tm_workspace_update_source_file(tm_obj, FALSE);
 		}
 	}
 	tm_workspace_update();
@@ -365,12 +366,12 @@ gboolean geany_project_add_file(struct GeanyPrj *prj, const gchar *path)
 	g_key_file_free(config);
 
 	filename = utils_get_locale_from_utf8(path);
-	tm_obj = tm_source_file_new(filename, FALSE, filetypes_detect_from_file(path)->name);
+	tm_obj = tm_source_file_new(filename, filetypes_detect_from_file(path)->name);
 	g_free(filename);
 	if (tm_obj)
 	{
 		g_hash_table_insert(prj->tags, g_strdup(path), tm_obj);
-		tm_source_file_update(tm_obj, TRUE);
+		tm_workspace_update_source_file(tm_obj, TRUE);
 	}
 	geany_project_save(prj);
 	return TRUE;

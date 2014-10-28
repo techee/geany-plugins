@@ -81,18 +81,21 @@ static void workspace_add_tag(gchar *filename, TagObject *obj, gboolean refresh)
 		gchar *locale_filename;
 
 		locale_filename = utils_get_locale_from_utf8(filename);
-		tm_obj = tm_source_file_new(locale_filename, FALSE, filetypes_detect_from_file(filename)->name);
+		tm_obj = tm_source_file_new(locale_filename, filetypes_detect_from_file(filename)->name);
 		g_free(locale_filename);
 
 		if (tm_obj)
 		{
 			tm_workspace_add_source_file(tm_obj);
-			tm_source_file_update(tm_obj, refresh);
+			tm_workspace_update_source_file(tm_obj, refresh);
 		}
 	}
 
 	if (obj->tag)
-		tm_workspace_remove_source_file(obj->tag, TRUE, FALSE);
+	{
+		tm_workspace_remove_source_file(obj->tag, refresh);
+		tm_source_file_free(obj->tag);
+	}
 
 	obj->tag = tm_obj;
 }
@@ -118,7 +121,8 @@ static void workspace_remove_tag(gchar *filename, TagObject *obj, gboolean refre
 {
 	if (obj->tag)
 	{
-		tm_workspace_remove_source_file(obj->tag, TRUE, refresh);
+		tm_workspace_remove_source_file(obj->tag, refresh);
+		tm_source_file_free(obj->tag);
 		obj->tag = NULL;
 	}
 }

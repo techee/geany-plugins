@@ -45,7 +45,7 @@ static void add_tag(G_GNUC_UNUSED gpointer key, gpointer value, G_GNUC_UNUSED gp
 static void remove_tag(G_GNUC_UNUSED gpointer key, gpointer value, G_GNUC_UNUSED gpointer user_data)
 {
 	debug("%s file=%s\n", __FUNCTION__, (const gchar *)key);
-	tm_workspace_remove_source_file((TMSourceFile *)value, FALSE, FALSE);
+	tm_workspace_remove_source_file((TMSourceFile *)value, FALSE);
 }
 
 
@@ -112,7 +112,7 @@ void xproject_update_tag(const gchar *filename)
 		tm_obj = g_hash_table_lookup(g_current_project->tags, filename);
 		if (tm_obj)
 		{
-			tm_source_file_update(tm_obj, TRUE);
+			tm_workspace_update_source_file(tm_obj, TRUE);
 		}
 	}
 
@@ -121,7 +121,7 @@ void xproject_update_tag(const gchar *filename)
 		tm_obj = (TMSourceFile *)g_hash_table_lookup(((struct GeanyPrj *)(g_projects->pdata[i]))->tags, filename);
 		if (tm_obj)
 		{
-			tm_source_file_update(tm_obj, TRUE);
+			tm_workspace_update_source_file(tm_obj, TRUE);
 		}
 	}
 }
@@ -162,7 +162,7 @@ gboolean xproject_remove_file(const gchar *path)
 	tm_obj = (TMSourceFile *) g_hash_table_lookup(g_current_project->tags, path);
 	if (tm_obj)
 	{
-		tm_workspace_remove_source_file(tm_obj, FALSE, FALSE);
+		tm_workspace_remove_source_file(tm_obj, FALSE);
 	}
 
 	if (geany_project_remove_file(g_current_project, path))
