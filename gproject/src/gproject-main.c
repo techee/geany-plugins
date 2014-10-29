@@ -33,7 +33,7 @@
 #include "gproject-menu.h"
 
 PLUGIN_VERSION_CHECK(214)
-PLUGIN_SET_INFO(_("GProject"),
+PLUGIN_SET_INFO("GProject",
 	_("Glob-pattern-based project management plugin for Geany."),
 	VERSION,
 	"Jiri Techet <techet@gmail.com>")
@@ -55,9 +55,8 @@ static void on_doc_open(G_GNUC_UNUSED GObject * obj, G_GNUC_UNUSED GeanyDocument
 {
 	g_return_if_fail(doc != NULL && doc->file_name != NULL);
 
-	/* tags of open files managed by geany*/
 	if (gprj_project_is_in_project(doc->file_name))
-		gprj_project_remove_file_tag(doc->file_name);
+		gprj_project_remove_single_tm_file(doc->file_name);
 
 	gprj_sidebar_update(FALSE);
 }
@@ -81,7 +80,7 @@ static void on_doc_close(G_GNUC_UNUSED GObject * obj, GeanyDocument * doc,
 	/* tags of open files managed by geany - when the file gets closed, 
 	 * we should take care of it */
 	if (gprj_project_is_in_project(doc->file_name))
-		gprj_project_add_file_tag(doc->file_name);
+		gprj_project_add_single_tm_file(doc->file_name);
 
 	gprj_sidebar_update(FALSE);
 }
