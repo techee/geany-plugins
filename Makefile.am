@@ -71,6 +71,10 @@ if ENABLE_GEANYMINISCRIPT
 SUBDIRS += geanyminiscript
 endif
 
+if ENABLE_GEANYSCRIPT
+SUBDIRS += geanyscript
+endif
+
 if ENABLE_GEANYNUMBEREDBOOKMARKS
 SUBDIRS += geanynumberedbookmarks
 endif
