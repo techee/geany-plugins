@@ -91,6 +91,56 @@ static GSList *get_file_list(const gchar *locale_path, GHashTable *visited_paths
 }
 
 
+typedef struct
+{
+	gchar *name;
+	gchar *script_path;
+} GeanyScript;
+
+
+static void free_script(GeanyScript *script)
+{
+	g_free(script->name);
+	script->name = NULL;
+	g_free(script->script_path);
+	script->script_path = NULL;
+}
+
+GSList *g_scripts = NULL;
+
+#define GEANYSCRIPT_KEY_FILE_GROUP "GeanyScript"
+
+
+static GeanyScript *load_script(gchar *path)
+{
+	GeanyScript *script = NULL;
+	GKeyFile *key_file = g_key_file_new();
+	gchar *dirname = g_path_get_dirname(path);
+
+	if (g_key_file_load_from_file(key_file, path, G_KEY_FILE_KEEP_COMMENTS, NULL))
+	{
+		gboolean success = TRUE;
+		script = g_new0(GeanyScript, 1);
+
+		script->name = g_key_file_get_string (key_file, GEANYSCRIPT_KEY_FILE_GROUP, "name", NULL);
+		success = success && script->name;
+		script->script_path = g_key_file_get_string (key_file, GEANYSCRIPT_KEY_FILE_GROUP, "script", NULL);
+		SETPTR(script->script_path, g_strconcat(dirname, G_DIR_SEPARATOR_S, script->script_path, NULL));
+		success = success && script->script_path &&
+			g_file_test(script->script_path, G_FILE_TEST_EXISTS) &&
+			g_file_test(script->script_path, G_FILE_TEST_IS_EXECUTABLE);
+		if (!success)
+		{
+			free_script(script);
+			script = NULL;
+		}
+	}
+	g_key_file_free(key_file);
+
+	return script;
+}
+
+
 void plugin_init(G_GNUC_UNUSED GeanyData * data)
 {
 	GHashTable *visited_paths;
@@ -102,16 +152,23 @@ void plugin_init(G_GNUC_UNUSED GeanyData * data)
 
 	foreach_slist(node, files)
 	{
-		printf("%s\n", (char *)node->data);
+		GeanyScript *script = load_script((gchar *)node->data);
+		if (script != NULL)
+		{
+			g_scripts = g_slist_prepend(g_scripts, script);
+			printf("%s   %s\n", script->name, script->script_path);
+		}
 	}
 
-	
 	g_slist_free(files);
 }
 
 
 void plugin_cleanup(void)
 {
+	GSList *node;
+	foreach_slist(node, g_scripts)
+		free_script((GeanyScript *)node->data);
 }
 
 
