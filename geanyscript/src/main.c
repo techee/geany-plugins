@@ -125,8 +125,19 @@ static GeanyScript *load_script(gchar *path)
 		script->name = g_key_file_get_string (key_file, GEANYSCRIPT_KEY_FILE_GROUP, "name", NULL);
 		success = success && script->name;
 		script->script_path = g_key_file_get_string (key_file, GEANYSCRIPT_KEY_FILE_GROUP, "script", NULL);
+		success = success && script->script_path;
+		if (success)
+		{
+			gchar *keyfile_name = utils_remove_ext_from_filename(path);
+			gchar *script_name = utils_remove_ext_from_filename(script->script_path);
+
+			SETPTR(keyfile_name, g_path_get_basename(keyfile_name));
+			success = success && (g_strcmp0(keyfile_name, script_name) == 0);
+			g_free(keyfile_name);
+			g_free(script_name);
+		}
 		SETPTR(script->script_path, g_strconcat(dirname, G_DIR_SEPARATOR_S, script->script_path, NULL));
-		success = success && script->script_path &&
+		success = success &&
 			g_file_test(script->script_path, G_FILE_TEST_EXISTS) &&
 			g_file_test(script->script_path, G_FILE_TEST_IS_EXECUTABLE);
 		if (!success)
