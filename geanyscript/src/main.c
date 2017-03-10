@@ -42,8 +42,71 @@ PluginCallback plugin_callbacks[] = {
 };
 
 
+static GSList *get_file_list(const gchar *locale_path, GHashTable *visited_paths)
+{
+	GSList *list = NULL;
+	GDir *dir;
+	gchar *real_path = tm_get_real_path(locale_path);
+
+	dir = g_dir_open(locale_path, 0, NULL);
+	if (!dir || !real_path || g_hash_table_lookup(visited_paths, real_path))
+	{
+		g_free(real_path);
+		return NULL;
+	}
+
+	g_hash_table_insert(visited_paths, real_path, GINT_TO_POINTER(1));
+
+	while (TRUE)
+	{
+		const gchar *locale_name;
+		gchar *locale_filename;
+
+		locale_name = g_dir_read_name(dir);
+		if (!locale_name)
+			break;
+
+		locale_filename = g_build_filename(locale_path, locale_name, NULL);
+
+		if (g_file_test(locale_filename, G_FILE_TEST_IS_DIR))
+		{
+			GSList *lst;
+
+			lst = get_file_list(locale_filename, visited_paths);
+			if (lst)
+				list = g_slist_concat(list, lst);
+		}
+		else if (g_file_test(locale_filename, G_FILE_TEST_IS_REGULAR) &&
+				 g_str_has_suffix(locale_filename, ".conf"))
+		{
+			list = g_slist_prepend(list, g_strdup(locale_filename));
+		}
+
+		g_free(locale_filename);
+	}
+
+	g_dir_close(dir);
+
+	return list;
+}
+
+
 void plugin_init(G_GNUC_UNUSED GeanyData * data)
 {
+	GHashTable *visited_paths;
+	GSList *files, *node;
+	
+	visited_paths = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
+	files = get_file_list("/home/techet/scripts", visited_paths);
+	g_hash_table_destroy(visited_paths);
+
+	foreach_slist(node, files)
+	{
+		printf("%s\n", (char *)node->data);
+	}
+
+	
+	g_slist_free(files);
 }
 
 
