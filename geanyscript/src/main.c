@@ -42,6 +42,9 @@ PluginCallback plugin_callbacks[] = {
 };
 
 
+static void reload(void);
+
+
 static GSList *get_file_list(const gchar *locale_path, GHashTable *visited_paths)
 {
 	GSList *list = NULL;
@@ -280,38 +283,7 @@ static gint sort_scripts(GeanyScript *a, GeanyScript *b)
 }
 
 
-void plugin_init(G_GNUC_UNUSED GeanyData * data)
-{
-	GHashTable *visited_paths;
-	GSList *files, *node;
-
-	visited_paths = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
-	files = get_file_list(SCRIPT_DIR, visited_paths);
-	g_hash_table_destroy(visited_paths);
-
-	g_menu_item = create_item_with_submenu("GeanyScript");
-	gtk_container_add(GTK_CONTAINER(geany->main_widgets->tools_menu), g_menu_item);
-
-	foreach_slist(node, files)
-	{
-		GeanyScript *script = load_script((gchar *)node->data);
-		if (script != NULL)
-			g_scripts = g_slist_prepend(g_scripts, script);
-	}
-
-	g_scripts = g_slist_sort(g_scripts, (GCompareFunc)sort_scripts);
-
-	foreach_slist(node, g_scripts)
-	{
-		GeanyScript *script = node->data;
-		create_menu_entry(script, gtk_menu_item_get_submenu(GTK_MENU_ITEM(g_menu_item)));
-	}
-
-	g_slist_free(files);
-}
-
-
-void plugin_cleanup(void)
+static void clean(void)
 {
 	GSList *node;
 
@@ -325,6 +297,68 @@ void plugin_cleanup(void)
 		gtk_widget_destroy(g_menu_item);
 		g_menu_item = NULL;
 	}
+}
+
+
+static void reload_cb(G_GNUC_UNUSED GtkMenuItem *menuitem, G_GNUC_UNUSED gpointer user_data)
+{
+	reload();
+}
+
+
+static void reload(void)
+{
+	GHashTable *visited_paths;
+	GSList *files, *node;
+	GtkWidget *item, *main_menu;
+
+	clean();
+
+	visited_paths = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
+	files = get_file_list(SCRIPT_DIR, visited_paths);
+	g_hash_table_destroy(visited_paths);
+
+	foreach_slist(node, files)
+	{
+		GeanyScript *script = load_script((gchar *)node->data);
+		if (script != NULL)
+			g_scripts = g_slist_prepend(g_scripts, script);
+	}
+
+	g_scripts = g_slist_sort(g_scripts, (GCompareFunc)sort_scripts);
+
+	g_menu_item = create_item_with_submenu("GeanyScript");
+	main_menu = gtk_menu_item_get_submenu(GTK_MENU_ITEM(g_menu_item));
+	gtk_container_add(GTK_CONTAINER(geany->main_widgets->tools_menu), g_menu_item);
+
+	item = gtk_menu_item_new_with_mnemonic(_("Reload"));
+	gtk_widget_show(item);
+	gtk_container_add(GTK_CONTAINER(main_menu), item);
+	g_signal_connect(item, "activate", G_CALLBACK(reload_cb), NULL);
+
+	item = gtk_separator_menu_item_new();
+	gtk_widget_show(item);
+	gtk_container_add(GTK_CONTAINER(main_menu), item);
+
+	foreach_slist(node, g_scripts)
+	{
+		GeanyScript *script = node->data;
+		create_menu_entry(script, main_menu);
+	}
+
+	g_slist_free(files);
+}
+
+
+void plugin_init(G_GNUC_UNUSED GeanyData * data)
+{
+	reload();
+}
+
+
+void plugin_cleanup(void)
+{
+	clean();
 }
 
 
