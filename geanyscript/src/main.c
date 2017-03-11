@@ -106,9 +106,11 @@ static void free_script(GeanyScript *script)
 	script->script_path = NULL;
 }
 
-GSList *g_scripts = NULL;
+static GSList *g_scripts = NULL;
+static GtkWidget *g_menu_item = NULL;
 
 #define GEANYSCRIPT_KEY_FILE_GROUP "GeanyScript"
+#define SCRIPT_DIR "/home/techet/scripts"
 
 
 static GeanyScript *load_script(gchar *path)
@@ -152,23 +154,157 @@ static GeanyScript *load_script(gchar *path)
 }
 
 
+static gchar *get_relative_path(const gchar *locale_parent, const gchar *locale_descendant)
+{
+	GFile *gf_parent, *gf_descendant;
+	gchar *locale_ret;
+
+	gf_parent = g_file_new_for_path(locale_parent);
+	gf_descendant = g_file_new_for_path(locale_descendant);
+
+	locale_ret = g_file_get_relative_path(gf_parent, gf_descendant);
+
+	g_object_unref(gf_parent);
+	g_object_unref(gf_descendant);
+
+	return locale_ret;
+}
+
+
+static GtkWidget *find_submenu(GtkWidget *menu, gchar *name)
+{
+	GtkWidget *submenu = NULL;
+	GList *list, *node;
+
+	list = gtk_container_get_children(GTK_CONTAINER(menu));
+
+	foreach_list(node, list)
+	{
+		GtkMenuItem *item = node->data;
+		const gchar *label;
+
+		label = gtk_menu_item_get_label(item);
+		if (g_strcmp0(label, name) == 0)
+		{
+			submenu = gtk_menu_item_get_submenu(item);
+			if (submenu != NULL)
+				break;
+		}
+	}
+
+	g_list_free(list);
+
+	return submenu;
+}
+
+
+static GtkWidget *create_item_with_submenu(const gchar *name)
+{
+	GtkWidget *item, *submenu;
+
+	submenu = gtk_menu_new();
+	gtk_widget_show(submenu);
+
+	item = gtk_menu_item_new_with_mnemonic(name);
+	gtk_widget_show(item);
+	gtk_menu_item_set_submenu(GTK_MENU_ITEM(item), submenu);
+
+	return item;
+}
+
+
+static void create_entry(GeanyScript *script, GtkWidget *menu, gchar **dirs)
+{
+	if (g_strv_length(dirs) == 0)
+		return;
+	else if (g_strv_length(dirs) == 1)
+	{
+		GtkWidget *item;
+
+		item = gtk_menu_item_new_with_mnemonic(script->name);
+		gtk_widget_show(item);
+		gtk_container_add(GTK_CONTAINER(menu), item);
+	}
+	else
+	{
+		gchar *name;
+		GtkWidget *submenu;
+
+		name = utils_get_utf8_from_locale(dirs[0]);
+		submenu = find_submenu(menu, name);
+		if (!submenu)
+		{
+			GtkWidget *item;
+
+			item = create_item_with_submenu(name);
+			gtk_container_add(GTK_CONTAINER(menu), item);
+			submenu = gtk_menu_item_get_submenu(GTK_MENU_ITEM(item));
+		}
+		create_entry(script, submenu, dirs + 1);
+		g_free(name);
+	}
+}
+
+
+static void create_menu_entry(GeanyScript *script, GtkWidget *menu)
+{
+	gchar *rel_path;
+	gchar **dirs;
+
+	rel_path = get_relative_path(SCRIPT_DIR, script->script_path);
+	dirs = g_strsplit(rel_path, G_DIR_SEPARATOR_S, -1);
+
+	create_entry(script, menu, dirs);
+
+	g_strfreev(dirs);
+	g_free(rel_path);
+}
+
+
+static gint sort_scripts(GeanyScript *a, GeanyScript *b)
+{
+	gint res;
+	gchar *a_dir, *b_dir;
+	
+	a_dir = g_path_get_dirname(a->script_path);
+	b_dir = g_path_get_dirname(b->script_path);
+
+	res = g_strcmp0(a_dir, b_dir);
+
+	g_free(a_dir);
+	g_free(b_dir);
+
+	if (res != 0)
+		return res;
+	return g_strcmp0(a->name, b->name);
+}
+
+
 void plugin_init(G_GNUC_UNUSED GeanyData * data)
 {
 	GHashTable *visited_paths;
 	GSList *files, *node;
-	
+
 	visited_paths = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
-	files = get_file_list("/home/techet/scripts", visited_paths);
+	files = get_file_list(SCRIPT_DIR, visited_paths);
 	g_hash_table_destroy(visited_paths);
+
+	g_menu_item = create_item_with_submenu("GeanyScript");
+	gtk_container_add(GTK_CONTAINER(geany->main_widgets->tools_menu), g_menu_item);
 
 	foreach_slist(node, files)
 	{
 		GeanyScript *script = load_script((gchar *)node->data);
 		if (script != NULL)
-		{
 			g_scripts = g_slist_prepend(g_scripts, script);
-			printf("%s   %s\n", script->name, script->script_path);
-		}
+	}
+
+	g_scripts = g_slist_sort(g_scripts, (GCompareFunc)sort_scripts);
+
+	foreach_slist(node, g_scripts)
+	{
+		GeanyScript *script = node->data;
+		create_menu_entry(script, gtk_menu_item_get_submenu(GTK_MENU_ITEM(g_menu_item)));
 	}
 
 	g_slist_free(files);
@@ -178,8 +314,17 @@ void plugin_init(G_GNUC_UNUSED GeanyData * data)
 void plugin_cleanup(void)
 {
 	GSList *node;
+
 	foreach_slist(node, g_scripts)
 		free_script((GeanyScript *)node->data);
+	g_slist_free(g_scripts);
+	g_scripts = NULL;
+
+	if (g_menu_item)
+	{
+		gtk_widget_destroy(g_menu_item);
+		g_menu_item = NULL;
+	}
 }
 
 
