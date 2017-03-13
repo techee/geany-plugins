@@ -216,17 +216,47 @@ static GtkWidget *create_item_with_submenu(const gchar *name)
 }
 
 
-static void create_entry(GeanyScript *script, GtkWidget *menu, gchar **dirs)
+static gchar *get_keybinding_name(GeanyScript *script)
+{
+	gchar *path;
+
+	path = get_relative_path(SCRIPT_DIR, script->script_path);
+	SETPTR(path, g_path_get_dirname(path));
+
+	if (g_strcmp0(path, ".") != 0)
+	{
+		gchar **comps = g_strsplit(path, G_DIR_SEPARATOR_S, -1);
+		SETPTR(path, g_strjoinv("->", comps));
+		SETPTR(path, g_strconcat(path, "->", script->name, NULL));
+		g_strfreev(comps);
+	}
+	else
+		SETPTR(path, g_strdup(script->name));
+
+	return path;
+}
+
+
+static void create_entry(GeanyScript *script, GtkWidget *menu, gchar **dirs, gint i,
+	GeanyKeyGroup *key_group)
 {
 	if (g_strv_length(dirs) == 0)
 		return;
 	else if (g_strv_length(dirs) == 1)
 	{
 		GtkWidget *item;
+		gchar *label, *path;
+
+		path = get_relative_path(SCRIPT_DIR, script->script_path);
+		label = get_keybinding_name(script);
 
 		item = gtk_menu_item_new_with_mnemonic(script->name);
 		gtk_widget_show(item);
 		gtk_container_add(GTK_CONTAINER(menu), item);
+
+		keybindings_set_item(key_group, i, NULL, 0, 0, path, label, item);
+		g_free(label);
+		g_free(path);
 	}
 	else
 	{
@@ -243,13 +273,13 @@ static void create_entry(GeanyScript *script, GtkWidget *menu, gchar **dirs)
 			gtk_container_add(GTK_CONTAINER(menu), item);
 			submenu = gtk_menu_item_get_submenu(GTK_MENU_ITEM(item));
 		}
-		create_entry(script, submenu, dirs + 1);
+		create_entry(script, submenu, dirs + 1, i, key_group);
 		g_free(name);
 	}
 }
 
 
-static void create_menu_entry(GeanyScript *script, GtkWidget *menu)
+static void create_menu_entry(GeanyScript *script, GtkWidget *menu, gint i, GeanyKeyGroup *key_group)
 {
 	gchar *rel_path;
 	gchar **dirs;
@@ -257,7 +287,7 @@ static void create_menu_entry(GeanyScript *script, GtkWidget *menu)
 	rel_path = get_relative_path(SCRIPT_DIR, script->script_path);
 	dirs = g_strsplit(rel_path, G_DIR_SEPARATOR_S, -1);
 
-	create_entry(script, menu, dirs);
+	create_entry(script, menu, dirs, i, key_group);
 
 	g_strfreev(dirs);
 	g_free(rel_path);
@@ -311,6 +341,8 @@ static void reload(void)
 	GHashTable *visited_paths;
 	GSList *files, *node;
 	GtkWidget *item, *main_menu;
+	GeanyKeyGroup *key_group;
+	gint i = 0;
 
 	clean();
 
@@ -340,11 +372,17 @@ static void reload(void)
 	gtk_widget_show(item);
 	gtk_container_add(GTK_CONTAINER(main_menu), item);
 
+	key_group = plugin_set_key_group(geany_plugin,
+		"GeanyScript", g_slist_length(g_scripts), NULL);
+
 	foreach_slist(node, g_scripts)
 	{
 		GeanyScript *script = node->data;
-		create_menu_entry(script, main_menu);
+		create_menu_entry(script, main_menu, i, key_group);
+		i++;
 	}
+
+	keybindings_load_keyfile();
 
 	g_slist_free(files);
 }
