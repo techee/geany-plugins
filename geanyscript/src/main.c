@@ -237,7 +237,27 @@ static gchar *get_keybinding_name(GeanyScript *script)
 }
 
 
-static void create_entry(GeanyScript *script, GtkWidget *menu, gchar **dirs, gint i,
+static gboolean script_activated_cb(guint key_id)
+{
+	GSList *elem = g_slist_nth(g_scripts, key_id);
+	GeanyScript *script;
+
+	g_return_val_if_fail(elem != NULL, FALSE);
+
+	script = elem->data;
+	ui_set_statusbar(FALSE, "%s", script->script_path);
+
+	return TRUE;
+}
+
+
+static void item_activated_cb(G_GNUC_UNUSED GtkMenuItem *menuitem, gpointer user_data)
+{
+	script_activated_cb(GPOINTER_TO_UINT(user_data));
+}
+
+
+static void create_entry(GeanyScript *script, GtkWidget *menu, gchar **dirs, guint i,
 	GeanyKeyGroup *key_group)
 {
 	if (g_strv_length(dirs) == 0)
@@ -253,6 +273,7 @@ static void create_entry(GeanyScript *script, GtkWidget *menu, gchar **dirs, gin
 		item = gtk_menu_item_new_with_mnemonic(script->name);
 		gtk_widget_show(item);
 		gtk_container_add(GTK_CONTAINER(menu), item);
+		g_signal_connect(item, "activate", G_CALLBACK(item_activated_cb), GUINT_TO_POINTER(i));
 
 		keybindings_set_item(key_group, i, NULL, 0, 0, path, label, item);
 		g_free(label);
@@ -279,7 +300,7 @@ static void create_entry(GeanyScript *script, GtkWidget *menu, gchar **dirs, gin
 }
 
 
-static void create_menu_entry(GeanyScript *script, GtkWidget *menu, gint i, GeanyKeyGroup *key_group)
+static void create_menu_entry(GeanyScript *script, GtkWidget *menu, guint i, GeanyKeyGroup *key_group)
 {
 	gchar *rel_path;
 	gchar **dirs;
@@ -342,7 +363,7 @@ static void reload(void)
 	GSList *files, *node;
 	GtkWidget *item, *main_menu;
 	GeanyKeyGroup *key_group;
-	gint i = 0;
+	guint i = 0;
 
 	clean();
 
@@ -373,7 +394,7 @@ static void reload(void)
 	gtk_container_add(GTK_CONTAINER(main_menu), item);
 
 	key_group = plugin_set_key_group(geany_plugin,
-		"GeanyScript", g_slist_length(g_scripts), NULL);
+		"GeanyScript", g_slist_length(g_scripts), script_activated_cb);
 
 	foreach_slist(node, g_scripts)
 	{
