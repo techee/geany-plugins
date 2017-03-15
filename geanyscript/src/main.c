@@ -184,14 +184,16 @@ static GtkWidget *find_submenu(GtkWidget *menu, gchar *name)
 	foreach_list(node, list)
 	{
 		GtkMenuItem *item = node->data;
-		const gchar *label;
 
-		label = gtk_menu_item_get_label(item);
-		if (g_strcmp0(label, name) == 0)
+		if (!GTK_IS_SEPARATOR_MENU_ITEM(item))
 		{
-			submenu = gtk_menu_item_get_submenu(item);
-			if (submenu != NULL)
-				break;
+			const gchar *label = gtk_menu_item_get_label(item);
+			if (g_strcmp0(label, name) == 0)
+			{
+				submenu = gtk_menu_item_get_submenu(item);
+				if (submenu != NULL)
+					break;
+			}
 		}
 	}
 
@@ -380,9 +382,22 @@ static void reload(void)
 
 	g_scripts = g_slist_sort(g_scripts, (GCompareFunc)sort_scripts);
 
-	g_menu_item = create_item_with_submenu("GeanyScript");
-	main_menu = gtk_menu_item_get_submenu(GTK_MENU_ITEM(g_menu_item));
-	gtk_container_add(GTK_CONTAINER(geany->main_widgets->tools_menu), g_menu_item);
+	if (!g_menu_item)
+	{
+		GtkMenuShell *menubar;
+		GList *menubar_children;
+
+		g_menu_item = gtk_menu_item_new_with_mnemonic(_("Scripts"));
+		gtk_widget_show(g_menu_item);
+
+		menubar = GTK_MENU_SHELL(ui_lookup_widget(geany->main_widgets->window, "menubar1"));
+		menubar_children = gtk_container_get_children(GTK_CONTAINER(menubar));
+		gtk_menu_shell_insert(menubar, g_menu_item, g_list_length(menubar_children)-1);
+	}
+
+	main_menu = gtk_menu_new();
+	gtk_widget_show(main_menu);
+	gtk_menu_item_set_submenu(GTK_MENU_ITEM(g_menu_item), main_menu);
 
 	item = gtk_menu_item_new_with_mnemonic(_("Reload"));
 	gtk_widget_show(item);
