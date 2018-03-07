@@ -179,6 +179,7 @@ Section Uninstall
 	; Keep for geanysendmail propper deleting old dll some time
 	Delete "$INSTDIR\lib\geany\geanysendmail.dll"
 	Delete "$INSTDIR\lib\geany\geanyvc.dll"
+	Delete "$INSTDIR\lib\geany\geanyvim.dll"
 	Delete "$INSTDIR\lib\geany\geniuspaste.dll"
 	Delete "$INSTDIR\lib\geany\git-changebar.dll"
 	Delete "$INSTDIR\lib\geany\keyrecord.dll"
