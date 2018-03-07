@@ -174,6 +174,12 @@ static void prepare_vi_mode(GeanyDocument *doc)
 	}
 	else
 		scintilla_send_message(sci, SCI_SETCARETSTYLE, plugin_data.default_caret_style, 0);
+
+	if (plugin_data.vi_mode)
+	{
+		const gchar *mode = plugin_data.insert_mode ? "INSERT" : "COMMAND";
+		ui_set_statusbar(FALSE, "Vim Mode: -- %s --", mode);
+	}
 }
 
 
@@ -183,6 +189,8 @@ static void on_toggle_vim_mode(void)
 	plugin_data.onetime_vi_mode = FALSE;
 	plugin_data.insert_mode = FALSE;
 	prepare_vi_mode(document_get_current());
+	if (!plugin_data.vi_mode)
+		ui_set_statusbar(FALSE, "Vim Mode Disabled");
 	save_config();
 }
 
@@ -207,20 +215,98 @@ static gboolean on_perform_vim_command(GeanyKeyBinding *kb, guint key_id, gpoint
 	return TRUE;
 }
 
+static void clamp_cursor_pos(ScintillaObject *sci)
+{
+	gint pos = sci_get_current_position(sci);
+	gint start_pos = sci_get_position_from_line(sci, sci_get_current_line(sci));
+	gint end_pos = sci_get_line_end_position(sci, sci_get_current_line(sci));
+	if (pos == end_pos && pos != start_pos)
+		sci_send_command(sci, SCI_CHARLEFT);
+}
+
 static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer user_data)
 {
+	GeanyDocument *doc = document_get_current();
+	ScintillaObject *sci;
+
+	if (!doc)
+		return FALSE;
+
+	sci = doc->editor->sci;
+
 	if (plugin_data.vi_mode)
 	{
-		if (event->keyval == GDK_KEY_colon || event->keyval == GDK_KEY_slash)
+		gboolean consumed = !plugin_data.insert_mode;
+
+		if (plugin_data.insert_mode)
 		{
-			const gchar *val = event->keyval == GDK_KEY_colon ? ":" : "/";
-			gtk_widget_show(plugin_data.prompt);
-			gtk_entry_set_text(GTK_ENTRY(plugin_data.entry), val);
-			gtk_editable_set_position(GTK_EDITABLE(plugin_data.entry), 1);
+			if (event->keyval == GDK_KEY_Escape)
+			{
+				plugin_data.insert_mode = FALSE;
+				prepare_vi_mode(document_get_current());
+			}
 		}
-		return TRUE;
+		else
+		{
+			switch (event->keyval)
+			{
+				case GDK_KEY_Page_Up:
+					sci_send_command(sci, SCI_PAGEUP);
+					break;
+				case GDK_KEY_Page_Down:
+					sci_send_command(sci, SCI_PAGEDOWN);
+					break;
+				case GDK_KEY_Left:
+				case GDK_KEY_leftarrow:
+				case GDK_KEY_h:
+				{
+					gint pos = sci_get_current_position(sci);
+					gint start_pos = sci_get_position_from_line(sci, sci_get_current_line(sci));
+					if (pos > start_pos)
+						sci_send_command(sci, SCI_CHARLEFT);
+					break;
+				}
+				case GDK_KEY_Right:
+				case GDK_KEY_rightarrow:
+				case GDK_KEY_l:
+				{
+					gint pos = sci_get_current_position(sci);
+					gint end_pos = sci_get_line_end_position(sci, sci_get_current_line(sci));
+					if (pos < end_pos - 1)
+						sci_send_command(sci, SCI_CHARRIGHT);
+					break;
+				}
+				case GDK_KEY_Down:
+				case GDK_KEY_downarrow:
+				case GDK_KEY_j:
+					sci_send_command(sci, SCI_LINEDOWN);
+					break;
+				case GDK_KEY_Up:
+				case GDK_KEY_uparrow:
+				case GDK_KEY_k:
+					sci_send_command(sci, SCI_LINEUP);
+					break;
+				case GDK_KEY_colon:
+				case GDK_KEY_slash:
+				{
+					const gchar *val = event->keyval == GDK_KEY_colon ? ":" : "/";
+					gtk_widget_show(plugin_data.prompt);
+					gtk_entry_set_text(GTK_ENTRY(plugin_data.entry), val);
+					gtk_editable_set_position(GTK_EDITABLE(plugin_data.entry), 1);
+					break;
+				}
+				case GDK_KEY_i:
+					plugin_data.insert_mode = TRUE;
+					prepare_vi_mode(document_get_current());
+					break;
+			}
+
+			clamp_cursor_pos(sci);
+		}
+
+		return consumed;
 	}
-	printf("now\n");
+
 	return FALSE;
 }
 
@@ -245,7 +331,7 @@ static void on_doc_activate(G_GNUC_UNUSED GObject *obj, GeanyDocument *doc,
 
 PluginCallback plugin_callbacks[] = {
 	{"document-open", (GCallback) &on_doc_open, TRUE, NULL},
-	{"document-activate", (GCallback) &on_doc_activate, TRUE, NULL },
+	{"document-activate", (GCallback) &on_doc_activate, TRUE, NULL},
 	{NULL, NULL, FALSE, NULL}
 };
 
