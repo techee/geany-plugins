@@ -66,7 +66,7 @@ struct
 	 * after performing it */
 	gboolean onetime_vi_mode;
 	/* if we are in the insert mode or command mode of vi */
-	gboolean insert_mode; 
+	gboolean insert_mode;
 } plugin_data =
 {
 	NULL, NULL, NULL, NULL, NULL, -1, TRUE, FALSE, FALSE
@@ -153,6 +153,16 @@ static void save_config(void)
 }
 
 
+static void clamp_cursor_pos(ScintillaObject *sci)
+{
+	gint pos = sci_get_current_position(sci);
+	gint start_pos = sci_get_position_from_line(sci, sci_get_current_line(sci));
+	gint end_pos = sci_get_line_end_position(sci, sci_get_current_line(sci));
+	if (pos == end_pos && pos != start_pos)
+		sci_send_command(sci, SCI_CHARLEFT);
+}
+
+
 static void prepare_vi_mode(GeanyDocument *doc)
 {
 	ScintillaObject *sci;
@@ -180,6 +190,9 @@ static void prepare_vi_mode(GeanyDocument *doc)
 		const gchar *mode = plugin_data.insert_mode ? "INSERT" : "COMMAND";
 		ui_set_statusbar(FALSE, "Vim Mode: -- %s --", mode);
 	}
+
+	if (!plugin_data.insert_mode)
+		clamp_cursor_pos(sci);
 }
 
 
@@ -215,15 +228,6 @@ static gboolean on_perform_vim_command(GeanyKeyBinding *kb, guint key_id, gpoint
 	return TRUE;
 }
 
-static void clamp_cursor_pos(ScintillaObject *sci)
-{
-	gint pos = sci_get_current_position(sci);
-	gint start_pos = sci_get_position_from_line(sci, sci_get_current_line(sci));
-	gint end_pos = sci_get_line_end_position(sci, sci_get_current_line(sci));
-	if (pos == end_pos && pos != start_pos)
-		sci_send_command(sci, SCI_CHARLEFT);
-}
-
 static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer user_data)
 {
 	GeanyDocument *doc = document_get_current();
@@ -242,8 +246,12 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 		{
 			if (event->keyval == GDK_KEY_Escape)
 			{
+				gint pos = sci_get_current_position(sci);
+				gint start_pos = sci_get_position_from_line(sci, sci_get_current_line(sci));
 				plugin_data.insert_mode = FALSE;
-				prepare_vi_mode(document_get_current());
+				if (pos > start_pos)
+					sci_send_command(sci, SCI_CHARLEFT);
+				prepare_vi_mode(doc);
 			}
 		}
 		else
@@ -280,11 +288,13 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 				case GDK_KEY_downarrow:
 				case GDK_KEY_j:
 					sci_send_command(sci, SCI_LINEDOWN);
+					clamp_cursor_pos(sci);
 					break;
 				case GDK_KEY_Up:
 				case GDK_KEY_uparrow:
 				case GDK_KEY_k:
 					sci_send_command(sci, SCI_LINEUP);
+					clamp_cursor_pos(sci);
 					break;
 				case GDK_KEY_colon:
 				case GDK_KEY_slash:
@@ -297,11 +307,16 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 				}
 				case GDK_KEY_i:
 					plugin_data.insert_mode = TRUE;
-					prepare_vi_mode(document_get_current());
+					prepare_vi_mode(doc);
 					break;
+				case GDK_KEY_a:
+				{
+					sci_send_command(sci, SCI_CHARRIGHT);
+					plugin_data.insert_mode = TRUE;
+					prepare_vi_mode(doc);
+					break;
+				}
 			}
-
-			clamp_cursor_pos(sci);
 		}
 
 		return consumed;
