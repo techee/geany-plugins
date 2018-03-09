@@ -375,7 +375,10 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 
 	sci = doc->editor->sci;
 
-	//printf("key: %d\n", event->keyval);
+	if (gtk_window_get_focus(GTK_WINDOW(geany->main_widgets->window)) != GTK_WIDGET(sci))
+		return FALSE;
+
+	//printf("key: %d, state: %d\n", event->keyval, event->state);
 
 	if (plugin_data.vi_mode)
 	{
@@ -494,6 +497,21 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 					perform_search(TRUE);
 					break;
 				}
+				case GDK_KEY_u:
+				{
+					if (SSM(sci, SCI_CANUNDO, 0, 0))
+						SSM(sci, SCI_UNDO, 0, 0);
+					break;
+				}
+				case GDK_KEY_r:
+				{
+					if (event->state & GDK_CONTROL_MASK)
+					{
+						if (SSM(sci, SCI_CANREDO, 0, 0))
+							SSM(sci, SCI_REDO, 0, 0);
+					}
+					break;
+				}
 			}
 		}
 
@@ -508,9 +526,6 @@ static void on_doc_open(G_GNUC_UNUSED GObject *obj, GeanyDocument *doc,
 		G_GNUC_UNUSED gpointer user_data)
 {
 	g_return_if_fail(doc != NULL);
-
-	plugin_signal_connect(geany_plugin, G_OBJECT(doc->editor->sci), "key-press-event",
-			FALSE, G_CALLBACK(on_key_press), NULL);
 	prepare_vi_mode(doc);
 }
 
@@ -542,6 +557,7 @@ PluginCallback plugin_callbacks[] = {
 	{"document-open", (GCallback) &on_doc_open, TRUE, NULL},
 	{"document-activate", (GCallback) &on_doc_activate, TRUE, NULL},
 	{"editor-notify", (GCallback) &on_editor_notify, TRUE, NULL},
+	{"key-press", (GCallback) &on_key_press, TRUE, NULL},
 	{NULL, NULL, FALSE, NULL}
 };
 
@@ -550,7 +566,6 @@ void plugin_init(GeanyData *data)
 {
 	GeanyKeyGroup *group;
 	GtkWidget *frame;
-	gsize i;
 
 	load_config();
 
@@ -602,9 +617,6 @@ void plugin_init(GeanyData *data)
 	gtk_widget_show_all(frame);
 
 	/* final setup */
-	foreach_document(i)
-		plugin_signal_connect(geany_plugin, G_OBJECT(documents[i]->editor->sci),
-				"key-press-event", FALSE, G_CALLBACK(on_key_press), NULL);
 	prepare_vi_mode(document_get_current());
 }
 
