@@ -67,9 +67,12 @@ struct
 	gboolean onetime_vi_mode;
 	/* if we are in the insert mode or command mode of vi */
 	gboolean insert_mode;
+
+	/* the last full search command, including '/' or '?' */
+	gchar *search_text;
 } plugin_data =
 {
-	NULL, NULL, NULL, NULL, NULL, -1, TRUE, FALSE, FALSE
+	NULL, NULL, NULL, NULL, NULL, -1, TRUE, FALSE, FALSE, NULL
 };
 
 
@@ -137,6 +140,53 @@ static void close_prompt()
 }
 
 
+static void perform_search(gboolean forward)
+{
+	GeanyDocument *doc = document_get_current();
+	ScintillaObject *sci = doc != NULL ? doc->editor->sci : NULL;
+	struct Sci_TextToFind ttf;
+	gint pos;
+
+	if (!sci || !plugin_data.search_text)
+		return;
+
+	forward = (plugin_data.search_text[0] == '/' && forward) ||
+			(plugin_data.search_text[0] == '?' && !forward);
+	ttf.lpstrText = plugin_data.search_text + 1;
+	if (forward)
+	{
+		ttf.chrg.cpMin = sci_get_current_position(sci) + 1;
+		ttf.chrg.cpMax = sci_get_length(sci);
+	}
+	else
+	{
+		ttf.chrg.cpMin = sci_get_current_position(sci) - 1;
+		ttf.chrg.cpMax = 0;
+	}
+
+	pos = sci_find_text(sci, 0, &ttf);
+	if (pos < 0)
+	{
+		/* wrap */
+		if (forward)
+		{
+			ttf.chrg.cpMin = 0;
+			ttf.chrg.cpMax = sci_get_current_position(sci);
+		}
+		else
+		{
+			ttf.chrg.cpMin = sci_get_length(sci);
+			ttf.chrg.cpMax = sci_get_current_position(sci);
+		}
+
+		pos = sci_find_text(sci, 0, &ttf);
+	}
+
+	if (pos >= 0)
+		sci_set_current_position(sci, pos, TRUE);
+}
+
+
 static void perform_command(const gchar *cmd)
 {
 	guint i = 0;
@@ -147,22 +197,31 @@ static void perform_command(const gchar *cmd)
 	if (cmd == NULL || len == 1)
 		return;
 
-	if (cmd[i] == ':')
+	switch (cmd[i])
 	{
-		i++;
-		while (i < len)
+		case ':':
 		{
-			switch (cmd[i])
-			{
-				case 'w':
-				{
-					if (doc != NULL)
-						document_save_file(doc, FALSE);
-					break;
-				}
-			}
 			i++;
+			while (i < len)
+			{
+				switch (cmd[i])
+				{
+					case 'w':
+					{
+						if (doc != NULL)
+							document_save_file(doc, FALSE);
+						break;
+					}
+				}
+				i++;
+			}
 		}
+		case '/':
+		case '?':
+			g_free(plugin_data.search_text);
+			plugin_data.search_text = g_strdup(cmd);
+			perform_search(TRUE);
+			break;
 	}
 }
 
@@ -351,8 +410,21 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 					break;
 				case GDK_KEY_colon:
 				case GDK_KEY_slash:
+				case GDK_KEY_question:
 				{
-					const gchar *val = event->keyval == GDK_KEY_colon ? ":" : "/";
+					const gchar *val;
+					switch (event->keyval)
+					{
+						case GDK_KEY_colon:
+							val = ":";
+							break;
+						case GDK_KEY_slash:
+							val = "/";
+							break;
+						default:
+							val = "?";
+							break;
+					}
 					gtk_widget_show(plugin_data.prompt);
 					gtk_entry_set_text(GTK_ENTRY(plugin_data.entry), val);
 					gtk_editable_set_position(GTK_EDITABLE(plugin_data.entry), 1);
@@ -364,13 +436,19 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 					break;
 				case GDK_KEY_a:
 				{
-					sci_send_command(sci, SCI_CHARRIGHT);
+					gint pos = sci_get_current_position(sci);
+					gint end_pos = sci_get_line_end_position(sci, sci_get_current_line(sci));
+					if (pos < end_pos)
+						sci_send_command(sci, SCI_CHARRIGHT);
 					plugin_data.insert_mode = TRUE;
 					prepare_vi_mode(doc);
 					break;
 				}
-				default:
-					consumed = FALSE;
+				case GDK_KEY_n:
+					perform_search(TRUE);
+					break;
+				case GDK_KEY_N:
+					perform_search(FALSE);
 					break;
 			}
 		}
@@ -503,6 +581,8 @@ void plugin_cleanup(void)
 	gtk_widget_destroy(plugin_data.separator_item);
 	gtk_widget_destroy(plugin_data.toggle_vi_item);
 	gtk_widget_destroy(plugin_data.perform_vi_item);
+
+	g_free(plugin_data.search_text);
 }
 
 
