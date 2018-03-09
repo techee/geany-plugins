@@ -73,88 +73,11 @@ struct
 };
 
 
-static gboolean on_prompt_key_press_event(GtkWidget *widget, GdkEventKey *event, gpointer dummy)
-{
-	switch (event->keyval)
-	{
-		case GDK_KEY_Escape:
-			gtk_widget_hide(widget);
-			return TRUE;
-
-		case GDK_KEY_Tab:
-			/* avoid leaving the entry */
-			return TRUE;
-
-		case GDK_KEY_Return:
-		case GDK_KEY_KP_Enter:
-		case GDK_KEY_ISO_Enter:
-			return TRUE;
-	}
-
-	return FALSE;
-}
-
-static void on_entry_text_notify(GObject *object, GParamSpec *pspec, gpointer dummy)
-{
-}
-
-static void on_entry_activate(GtkEntry *entry, gpointer dummy)
-{
-}
-
-static void on_prompt_hide(GtkWidget *widget, gpointer dummy)
-{
-}
-
-static void on_prompt_show(GtkWidget *widget, gpointer dummy)
-{
-	gtk_widget_grab_focus(plugin_data.entry);
-}
-
-
-
-
-static gchar *get_config_filename (void)
-{
-	return g_build_filename (geany_data->app->configdir, "plugins", PLUGIN, PLUGIN".conf", NULL);
-}
-
-static void load_config(void)
-{
-	gchar *filename = get_config_filename();
-	GKeyFile *kf = g_key_file_new();
-
-	if (g_key_file_load_from_file(kf, filename, G_KEY_FILE_NONE, NULL))
-		plugin_data.vi_mode = g_key_file_get_boolean(kf, CONF_GROUP, CONF_VI_MODE, NULL);
-  
-	g_key_file_free(kf);
-	g_free(filename);
-}
-
-
-static void save_config(void)
-{
-	GKeyFile *kf = g_key_file_new();
-	gchar *filename = get_config_filename();
-	gchar *dirname = g_path_get_dirname(filename);
-	gchar *data;
-	gsize length;
-
-	g_key_file_set_boolean(kf, CONF_GROUP, CONF_VI_MODE, plugin_data.vi_mode);
-
-	utils_mkdir(dirname, TRUE);
-	data = g_key_file_to_data(kf, &length, NULL);
-	g_file_set_contents(filename, data, length, NULL);
-
-	g_free(data);
-	g_key_file_free(kf);
-	g_free(filename);
-	g_free(dirname);
-}
-
-
 static void clamp_cursor_pos(ScintillaObject *sci)
 {
+	if (plugin_data.insert_mode)
+		return;
+
 	gint pos = sci_get_current_position(sci);
 	gint start_pos = sci_get_position_from_line(sci, sci_get_current_line(sci));
 	gint end_pos = sci_get_line_end_position(sci, sci_get_current_line(sci));
@@ -191,8 +114,135 @@ static void prepare_vi_mode(GeanyDocument *doc)
 		ui_set_statusbar(FALSE, "Vim Mode: -- %s --", mode);
 	}
 
-	if (!plugin_data.insert_mode)
-		clamp_cursor_pos(sci);
+	clamp_cursor_pos(sci);
+}
+
+
+static void leave_onetime_vi_mode()
+{
+	if (plugin_data.onetime_vi_mode)
+	{
+		plugin_data.vi_mode = FALSE;
+		plugin_data.onetime_vi_mode = FALSE;
+		plugin_data.insert_mode = FALSE;
+		prepare_vi_mode(document_get_current());
+	}
+}
+
+
+static void close_prompt()
+{
+	leave_onetime_vi_mode();
+	gtk_widget_hide(plugin_data.prompt);
+}
+
+
+static void perform_command(const gchar *cmd)
+{
+	guint i = 0;
+	guint len = strlen(cmd);
+	GeanyDocument *doc = document_get_current();
+	//ScintillaObject *sci = doc != NULL ? doc->editor->sci : NULL;
+
+	if (cmd == NULL || len == 1)
+		return;
+
+	if (cmd[i] == ':')
+	{
+		i++;
+		while (i < len)
+		{
+			switch (cmd[i])
+			{
+				case 'w':
+				{
+					if (doc != NULL)
+						document_save_file(doc, FALSE);
+					break;
+				}
+			}
+			i++;
+		}
+	}
+}
+
+
+static gboolean on_prompt_key_press_event(GtkWidget *widget, GdkEventKey *event, gpointer dummy)
+{
+	switch (event->keyval)
+	{
+		case GDK_KEY_Escape:
+			close_prompt();
+			return TRUE;
+
+		case GDK_KEY_Tab:
+			/* avoid leaving the entry */
+			return TRUE;
+
+		case GDK_KEY_Return:
+		case GDK_KEY_KP_Enter:
+		case GDK_KEY_ISO_Enter:
+			perform_command(gtk_entry_get_text(GTK_ENTRY(plugin_data.entry)));
+			close_prompt();
+			return TRUE;
+	}
+
+	return FALSE;
+}
+
+
+static void on_entry_text_notify(GObject *object, GParamSpec *pspec, gpointer dummy)
+{
+	const gchar* cmd = gtk_entry_get_text(GTK_ENTRY(plugin_data.entry));
+
+	if (cmd == NULL || strlen(cmd) == 0)
+		close_prompt();
+}
+
+
+static void on_prompt_show(GtkWidget *widget, gpointer dummy)
+{
+	gtk_widget_grab_focus(plugin_data.entry);
+}
+
+
+static gchar *get_config_filename (void)
+{
+	return g_build_filename (geany_data->app->configdir, "plugins", PLUGIN, PLUGIN".conf", NULL);
+}
+
+
+static void load_config(void)
+{
+	gchar *filename = get_config_filename();
+	GKeyFile *kf = g_key_file_new();
+
+	if (g_key_file_load_from_file(kf, filename, G_KEY_FILE_NONE, NULL))
+		plugin_data.vi_mode = g_key_file_get_boolean(kf, CONF_GROUP, CONF_VI_MODE, NULL);
+  
+	g_key_file_free(kf);
+	g_free(filename);
+}
+
+
+static void save_config(void)
+{
+	GKeyFile *kf = g_key_file_new();
+	gchar *filename = get_config_filename();
+	gchar *dirname = g_path_get_dirname(filename);
+	gchar *data;
+	gsize length;
+
+	g_key_file_set_boolean(kf, CONF_GROUP, CONF_VI_MODE, plugin_data.vi_mode);
+
+	utils_mkdir(dirname, TRUE);
+	data = g_key_file_to_data(kf, &length, NULL);
+	g_file_set_contents(filename, data, length, NULL);
+
+	g_free(data);
+	g_key_file_free(kf);
+	g_free(filename);
+	g_free(dirname);
 }
 
 
@@ -207,6 +257,7 @@ static void on_toggle_vim_mode(void)
 	save_config();
 }
 
+
 static gboolean on_toggle_vim_mode_kb(GeanyKeyBinding *kb, guint key_id, gpointer data)
 {
 	gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(plugin_data.toggle_vi_item),
@@ -214,6 +265,7 @@ static gboolean on_toggle_vim_mode_kb(GeanyKeyBinding *kb, guint key_id, gpointe
 
 	return TRUE;
 }
+
 
 static gboolean on_perform_vim_command(GeanyKeyBinding *kb, guint key_id, gpointer data)
 {
@@ -251,6 +303,7 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 				plugin_data.insert_mode = FALSE;
 				if (pos > start_pos)
 					sci_send_command(sci, SCI_CHARLEFT);
+				leave_onetime_vi_mode();
 				prepare_vi_mode(doc);
 			}
 		}
@@ -316,6 +369,9 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 					prepare_vi_mode(doc);
 					break;
 				}
+				default:
+					consumed = FALSE;
+					break;
 			}
 		}
 
@@ -336,6 +392,7 @@ static void on_doc_open(G_GNUC_UNUSED GObject *obj, GeanyDocument *doc,
 	prepare_vi_mode(doc);
 }
 
+
 static void on_doc_activate(G_GNUC_UNUSED GObject *obj, GeanyDocument *doc,
 		G_GNUC_UNUSED gpointer user_data)
 {
@@ -344,9 +401,25 @@ static void on_doc_activate(G_GNUC_UNUSED GObject *obj, GeanyDocument *doc,
 	prepare_vi_mode(doc);
 }
 
+
+static gboolean on_editor_notify(GObject *object, GeanyEditor *editor,
+		SCNotification *nt, gpointer data)
+{
+	GeanyDocument *doc = document_get_current();
+
+	/* this makes sure that when we click behind the end of line in command mode,
+	 * the cursor is not placed BEHIND the last character but ON the last character */
+	if (doc != NULL && nt->nmhdr.code == SCN_UPDATEUI && nt->updated == SC_UPDATE_SELECTION)
+		clamp_cursor_pos(doc->editor->sci);
+
+	return FALSE;
+}
+
+
 PluginCallback plugin_callbacks[] = {
 	{"document-open", (GCallback) &on_doc_open, TRUE, NULL},
 	{"document-activate", (GCallback) &on_doc_activate, TRUE, NULL},
+	{"editor-notify", (GCallback) &on_editor_notify, TRUE, NULL},
 	{NULL, NULL, FALSE, NULL}
 };
 
@@ -385,16 +458,14 @@ void plugin_init(GeanyData *data)
 	plugin_data.prompt = g_object_new(GTK_TYPE_WINDOW,
 			"decorated", FALSE,
 			"default-width", 500,
-			//"default-height", 200,
 			"transient-for", geany_data->main_widgets->window,
 			"window-position", GTK_WIN_POS_CENTER_ON_PARENT,
 			"type-hint", GDK_WINDOW_TYPE_HINT_DIALOG,
 			"skip-taskbar-hint", TRUE,
 			"skip-pager-hint", TRUE,
 			NULL);
-	g_signal_connect(plugin_data.prompt, "focus-out-event", G_CALLBACK(gtk_widget_hide), NULL);
+	g_signal_connect(plugin_data.prompt, "focus-out-event", G_CALLBACK(close_prompt), NULL);
 	g_signal_connect(plugin_data.prompt, "show", G_CALLBACK(on_prompt_show), NULL);
-	g_signal_connect(plugin_data.prompt, "hide", G_CALLBACK(on_prompt_hide), NULL);
 	g_signal_connect(plugin_data.prompt, "key-press-event", G_CALLBACK(on_prompt_key_press_event), NULL);
 
 	frame = gtk_frame_new(NULL);
@@ -405,7 +476,6 @@ void plugin_init(GeanyData *data)
 	gtk_container_add(GTK_CONTAINER(frame), plugin_data.entry);
 
 	g_signal_connect(plugin_data.entry, "notify::text", G_CALLBACK(on_entry_text_notify), NULL);
-	g_signal_connect(plugin_data.entry, "activate", G_CALLBACK(on_entry_activate), NULL);
 
 	gtk_widget_show_all(frame);
 
