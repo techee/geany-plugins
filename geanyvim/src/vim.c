@@ -28,6 +28,8 @@
 #define CONF_GROUP "Settings"
 #define CONF_VI_MODE "vi_mode"
 
+#define SSM(s, m, w, l) scintilla_send_message(s, m, w, l)
+
 GeanyPlugin *geany_plugin;
 GeanyData *geany_data;
 
@@ -76,6 +78,27 @@ struct
 };
 
 
+static gchar *get_current_word(ScintillaObject *sci)
+{
+	gint start, end, pos;
+
+	if (!sci)
+		return NULL;
+
+	pos = sci_get_current_position(sci);
+	SSM(sci, SCI_WORDSTARTPOSITION, pos, TRUE);
+	start = SSM(sci, SCI_WORDSTARTPOSITION, pos, TRUE);
+	end = SSM(sci, SCI_WORDENDPOSITION, pos, TRUE);
+
+	if (start == end)
+		return NULL;
+
+	if (end - start >= GEANY_MAX_WORD_LENGTH)
+		end = start + GEANY_MAX_WORD_LENGTH - 1;
+	return sci_get_contents_range(sci, start, end);
+}
+
+
 static void clamp_cursor_pos(ScintillaObject *sci)
 {
 	if (plugin_data.insert_mode)
@@ -99,17 +122,17 @@ static void prepare_vi_mode(GeanyDocument *doc)
 	sci = doc->editor->sci;
 
 	if (plugin_data.default_caret_style == -1)
-		plugin_data.default_caret_style = scintilla_send_message(sci, SCI_GETCARETSTYLE, 0, 0);
+		plugin_data.default_caret_style = SSM(sci, SCI_GETCARETSTYLE, 0, 0);
 
 	if (plugin_data.vi_mode)
 	{
 		if (plugin_data.insert_mode)
-			scintilla_send_message(sci, SCI_SETCARETSTYLE, CARETSTYLE_LINE, 0);
+			SSM(sci, SCI_SETCARETSTYLE, CARETSTYLE_LINE, 0);
 		else
-			scintilla_send_message(sci, SCI_SETCARETSTYLE, CARETSTYLE_BLOCK, 0);
+			SSM(sci, SCI_SETCARETSTYLE, CARETSTYLE_BLOCK, 0);
 	}
 	else
-		scintilla_send_message(sci, SCI_SETCARETSTYLE, plugin_data.default_caret_style, 0);
+		SSM(sci, SCI_SETCARETSTYLE, plugin_data.default_caret_style, 0);
 
 	if (plugin_data.vi_mode)
 	{
@@ -145,45 +168,48 @@ static void perform_search(gboolean forward)
 	GeanyDocument *doc = document_get_current();
 	ScintillaObject *sci = doc != NULL ? doc->editor->sci : NULL;
 	struct Sci_TextToFind ttf;
-	gint pos;
+	gint loc, len, pos;
 
 	if (!sci || !plugin_data.search_text)
 		return;
+
+	len = sci_get_length(sci);
+	pos = sci_get_current_position(sci);
 
 	forward = (plugin_data.search_text[0] == '/' && forward) ||
 			(plugin_data.search_text[0] == '?' && !forward);
 	ttf.lpstrText = plugin_data.search_text + 1;
 	if (forward)
 	{
-		ttf.chrg.cpMin = sci_get_current_position(sci) + 1;
-		ttf.chrg.cpMax = sci_get_length(sci);
+		ttf.chrg.cpMin = pos + 1;
+		ttf.chrg.cpMax = len;
 	}
 	else
 	{
-		ttf.chrg.cpMin = sci_get_current_position(sci) - 1;
+		ttf.chrg.cpMin = pos - 1;
 		ttf.chrg.cpMax = 0;
 	}
 
-	pos = sci_find_text(sci, 0, &ttf);
-	if (pos < 0)
+	loc = sci_find_text(sci, 0, &ttf);
+	if (loc < 0)
 	{
 		/* wrap */
 		if (forward)
 		{
 			ttf.chrg.cpMin = 0;
-			ttf.chrg.cpMax = sci_get_current_position(sci);
+			ttf.chrg.cpMax = pos;
 		}
 		else
 		{
-			ttf.chrg.cpMin = sci_get_length(sci);
-			ttf.chrg.cpMax = sci_get_current_position(sci);
+			ttf.chrg.cpMin = len;
+			ttf.chrg.cpMax = pos;
 		}
 
-		pos = sci_find_text(sci, 0, &ttf);
+		loc = sci_find_text(sci, 0, &ttf);
 	}
 
-	if (pos >= 0)
-		sci_set_current_position(sci, pos, TRUE);
+	if (loc >= 0)
+		sci_set_current_position(sci, loc, TRUE);
 }
 
 
@@ -349,6 +375,8 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 
 	sci = doc->editor->sci;
 
+	//printf("key: %d\n", event->keyval);
+
 	if (plugin_data.vi_mode)
 	{
 		gboolean consumed = !plugin_data.insert_mode;
@@ -450,6 +478,22 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 				case GDK_KEY_N:
 					perform_search(FALSE);
 					break;
+				case GDK_KEY_asterisk:
+				case GDK_KEY_numbersign:
+				{
+					gchar *word = get_current_word(sci);
+					g_free(plugin_data.search_text);
+					if (!word)
+						plugin_data.search_text = NULL;
+					else
+					{
+						const gchar *prefix = event->keyval == GDK_KEY_asterisk ? "/" : "?";
+						plugin_data.search_text = g_strconcat(prefix, word, NULL);
+					}
+					g_free(word);
+					perform_search(TRUE);
+					break;
+				}
 			}
 		}
 
@@ -573,7 +617,7 @@ void plugin_cleanup(void)
 		foreach_document(i)
 		{
 			ScintillaObject *sci = documents[i]->editor->sci;
-			scintilla_send_message(sci, SCI_SETCARETSTYLE, plugin_data.default_caret_style, 0);
+			SSM(sci, SCI_SETCARETSTYLE, plugin_data.default_caret_style, 0);
 		}
 	}
 
