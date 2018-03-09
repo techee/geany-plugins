@@ -72,9 +72,11 @@ struct
 
 	/* the last full search command, including '/' or '?' */
 	gchar *search_text;
+	/* input accumulated over time (e.g. for commands like 100dd) */
+	gchar *accumulator;
 } plugin_data =
 {
-	NULL, NULL, NULL, NULL, NULL, -1, TRUE, FALSE, FALSE, NULL
+	NULL, NULL, NULL, NULL, NULL, -1, TRUE, FALSE, FALSE, NULL, NULL
 };
 
 
@@ -365,6 +367,30 @@ static gboolean on_perform_vim_command(GeanyKeyBinding *kb, guint key_id, gpoint
 	return TRUE;
 }
 
+
+static void accumulator_append(const gchar *val)
+{
+	if (!plugin_data.accumulator)
+		plugin_data.accumulator = g_strdup(val);
+	else
+		SETPTR(plugin_data.accumulator, g_strconcat(plugin_data.accumulator, val, NULL));
+}
+
+
+static void accumulator_clear()
+{
+	g_free(plugin_data.accumulator);
+	plugin_data.accumulator = NULL;
+}
+
+static guint accumulator_len()
+{
+	if (!plugin_data.accumulator)
+		return 0;
+	return strlen(plugin_data.accumulator);
+}
+
+
 static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer user_data)
 {
 	GeanyDocument *doc = document_get_current();
@@ -510,6 +536,30 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 						if (SSM(sci, SCI_CANREDO, 0, 0))
 							SSM(sci, SCI_REDO, 0, 0);
 					}
+					break;
+				}
+				case GDK_KEY_y:
+				{
+					guint accum_len = accumulator_len();
+					if (accum_len == 0)
+						accumulator_append("y");
+					else if (accum_len == 1 && plugin_data.accumulator[0] == 'y')
+					{
+						gint start = sci_get_position_from_line(sci, sci_get_current_line(sci));
+						gint end = sci_get_position_from_line(sci, sci_get_current_line(sci)+1);
+						SSM(sci, SCI_COPYRANGE, start, end);
+						accumulator_clear();
+					}
+					else
+						accumulator_clear();
+					break;
+				}
+				case GDK_KEY_p:
+				{	
+					gint pos = sci_get_position_from_line(sci, sci_get_current_line(sci)+1);
+					sci_set_current_position(sci, pos, TRUE);
+					SSM(sci, SCI_PASTE, 0, 0);
+					sci_set_current_position(sci, pos, TRUE);
 					break;
 				}
 			}
