@@ -16,7 +16,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include "config.h"
+#ifdef HAVE_CONFIG_H
+# include "config.h"
+#endif
 
 #include <string.h>
 #include <glib.h>
@@ -24,6 +26,10 @@
 #include <gdk/gdkkeysyms.h>
 
 #include <geanyplugin.h>
+
+#include "state.h"
+#include "cmds.h"
+#include "switch.h"
 
 #define CONF_GROUP "Settings"
 #define CONF_VI_MODE "vi_mode"
@@ -61,57 +67,20 @@ struct
 
 	/* caret style used by Geany we can revert to when disabling vi mode */
 	gint default_caret_style;
-
-	/* whether vi mode is enabled or disabled */
-	gboolean vi_mode; 
-	/* if vi mode is valid for a single command and will be disabled automatically
-	 * after performing it */
-	gboolean onetime_vi_mode;
-	/* if we are in the insert mode or command mode of vi */
-	gboolean insert_mode;
-
-	/* the last full search command, including '/' or '?' */
-	gchar *search_text;
-	/* input accumulated over time (e.g. for commands like 100dd) */
-	gchar *accumulator;
 } plugin_data =
 {
-	NULL, NULL, NULL, NULL, NULL, -1, TRUE, FALSE, FALSE, NULL, NULL
+	NULL, NULL, NULL, NULL, NULL, -1
 };
 
 
-static gchar *get_current_word(ScintillaObject *sci)
+ViState vi_state =
 {
-	gint start, end, pos;
-
-	if (!sci)
-		return NULL;
-
-	pos = sci_get_current_position(sci);
-	SSM(sci, SCI_WORDSTARTPOSITION, pos, TRUE);
-	start = SSM(sci, SCI_WORDSTARTPOSITION, pos, TRUE);
-	end = SSM(sci, SCI_WORDENDPOSITION, pos, TRUE);
-
-	if (start == end)
-		return NULL;
-
-	if (end - start >= GEANY_MAX_WORD_LENGTH)
-		end = start + GEANY_MAX_WORD_LENGTH - 1;
-	return sci_get_contents_range(sci, start, end);
-}
+	TRUE, FALSE, FALSE, NULL, NULL
+};
 
 
-static void clamp_cursor_pos(ScintillaObject *sci)
-{
-	if (plugin_data.insert_mode)
-		return;
 
-	gint pos = sci_get_current_position(sci);
-	gint start_pos = sci_get_position_from_line(sci, sci_get_current_line(sci));
-	gint end_pos = sci_get_line_end_position(sci, sci_get_current_line(sci));
-	if (pos == end_pos && pos != start_pos)
-		sci_send_command(sci, SCI_CHARLEFT);
-}
+
 
 
 static void prepare_vi_mode(GeanyDocument *doc)
@@ -126,9 +95,9 @@ static void prepare_vi_mode(GeanyDocument *doc)
 	if (plugin_data.default_caret_style == -1)
 		plugin_data.default_caret_style = SSM(sci, SCI_GETCARETSTYLE, 0, 0);
 
-	if (plugin_data.vi_mode)
+	if (vi_state.vi_mode)
 	{
-		if (plugin_data.insert_mode)
+		if (vi_state.insert_mode)
 			SSM(sci, SCI_SETCARETSTYLE, CARETSTYLE_LINE, 0);
 		else
 			SSM(sci, SCI_SETCARETSTYLE, CARETSTYLE_BLOCK, 0);
@@ -136,23 +105,23 @@ static void prepare_vi_mode(GeanyDocument *doc)
 	else
 		SSM(sci, SCI_SETCARETSTYLE, plugin_data.default_caret_style, 0);
 
-	if (plugin_data.vi_mode)
+	if (vi_state.vi_mode)
 	{
-		const gchar *mode = plugin_data.insert_mode ? "INSERT" : "COMMAND";
+		const gchar *mode = vi_state.insert_mode ? "INSERT" : "COMMAND";
 		ui_set_statusbar(FALSE, "Vim Mode: -- %s --", mode);
 	}
 
-	clamp_cursor_pos(sci);
+	clamp_cursor_pos(sci, &vi_state);
 }
 
 
 static void leave_onetime_vi_mode()
 {
-	if (plugin_data.onetime_vi_mode)
+	if (vi_state.onetime_vi_mode)
 	{
-		plugin_data.vi_mode = FALSE;
-		plugin_data.onetime_vi_mode = FALSE;
-		plugin_data.insert_mode = FALSE;
+		vi_state.vi_mode = FALSE;
+		vi_state.onetime_vi_mode = FALSE;
+		vi_state.insert_mode = FALSE;
 		prepare_vi_mode(document_get_current());
 	}
 }
@@ -165,54 +134,6 @@ static void close_prompt()
 }
 
 
-static void perform_search(gboolean forward)
-{
-	GeanyDocument *doc = document_get_current();
-	ScintillaObject *sci = doc != NULL ? doc->editor->sci : NULL;
-	struct Sci_TextToFind ttf;
-	gint loc, len, pos;
-
-	if (!sci || !plugin_data.search_text)
-		return;
-
-	len = sci_get_length(sci);
-	pos = sci_get_current_position(sci);
-
-	forward = (plugin_data.search_text[0] == '/' && forward) ||
-			(plugin_data.search_text[0] == '?' && !forward);
-	ttf.lpstrText = plugin_data.search_text + 1;
-	if (forward)
-	{
-		ttf.chrg.cpMin = pos + 1;
-		ttf.chrg.cpMax = len;
-	}
-	else
-	{
-		ttf.chrg.cpMin = pos - 1;
-		ttf.chrg.cpMax = 0;
-	}
-
-	loc = sci_find_text(sci, 0, &ttf);
-	if (loc < 0)
-	{
-		/* wrap */
-		if (forward)
-		{
-			ttf.chrg.cpMin = 0;
-			ttf.chrg.cpMax = pos;
-		}
-		else
-		{
-			ttf.chrg.cpMin = len;
-			ttf.chrg.cpMax = pos;
-		}
-
-		loc = sci_find_text(sci, 0, &ttf);
-	}
-
-	if (loc >= 0)
-		sci_set_current_position(sci, loc, TRUE);
-}
 
 
 static void perform_command(const gchar *cmd)
@@ -220,7 +141,10 @@ static void perform_command(const gchar *cmd)
 	guint i = 0;
 	guint len = strlen(cmd);
 	GeanyDocument *doc = document_get_current();
-	//ScintillaObject *sci = doc != NULL ? doc->editor->sci : NULL;
+	ScintillaObject *sci = doc != NULL ? doc->editor->sci : NULL;
+
+	if (!sci)
+		return;
 
 	if (cmd == NULL || len == 1)
 		return;
@@ -246,9 +170,9 @@ static void perform_command(const gchar *cmd)
 		}
 		case '/':
 		case '?':
-			g_free(plugin_data.search_text);
-			plugin_data.search_text = g_strdup(cmd);
-			perform_search(TRUE);
+			g_free(vi_state.search_text);
+			vi_state.search_text = g_strdup(cmd);
+			perform_search(sci, &vi_state, TRUE);
 			break;
 	}
 }
@@ -305,7 +229,7 @@ static void load_config(void)
 	GKeyFile *kf = g_key_file_new();
 
 	if (g_key_file_load_from_file(kf, filename, G_KEY_FILE_NONE, NULL))
-		plugin_data.vi_mode = g_key_file_get_boolean(kf, CONF_GROUP, CONF_VI_MODE, NULL);
+		vi_state.vi_mode = g_key_file_get_boolean(kf, CONF_GROUP, CONF_VI_MODE, NULL);
   
 	g_key_file_free(kf);
 	g_free(filename);
@@ -320,7 +244,7 @@ static void save_config(void)
 	gchar *data;
 	gsize length;
 
-	g_key_file_set_boolean(kf, CONF_GROUP, CONF_VI_MODE, plugin_data.vi_mode);
+	g_key_file_set_boolean(kf, CONF_GROUP, CONF_VI_MODE, vi_state.vi_mode);
 
 	utils_mkdir(dirname, TRUE);
 	data = g_key_file_to_data(kf, &length, NULL);
@@ -335,11 +259,11 @@ static void save_config(void)
 
 static void on_toggle_vim_mode(void)
 {
-	plugin_data.vi_mode = gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(plugin_data.toggle_vi_item));
-	plugin_data.onetime_vi_mode = FALSE;
-	plugin_data.insert_mode = FALSE;
+	vi_state.vi_mode = gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(plugin_data.toggle_vi_item));
+	vi_state.onetime_vi_mode = FALSE;
+	vi_state.insert_mode = FALSE;
 	prepare_vi_mode(document_get_current());
-	if (!plugin_data.vi_mode)
+	if (!vi_state.vi_mode)
 		ui_set_statusbar(FALSE, "Vim Mode Disabled");
 	save_config();
 }
@@ -348,7 +272,7 @@ static void on_toggle_vim_mode(void)
 static gboolean on_toggle_vim_mode_kb(GeanyKeyBinding *kb, guint key_id, gpointer data)
 {
 	gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(plugin_data.toggle_vi_item),
-			!plugin_data.vi_mode);
+			!vi_state.vi_mode);
 
 	return TRUE;
 }
@@ -356,12 +280,12 @@ static gboolean on_toggle_vim_mode_kb(GeanyKeyBinding *kb, guint key_id, gpointe
 
 static gboolean on_perform_vim_command(GeanyKeyBinding *kb, guint key_id, gpointer data)
 {
-	if (!plugin_data.vi_mode)
+	if (!vi_state.vi_mode)
 	{
-		plugin_data.onetime_vi_mode = TRUE;
-		plugin_data.vi_mode = TRUE;
+		vi_state.onetime_vi_mode = TRUE;
+		vi_state.vi_mode = TRUE;
 	}
-	plugin_data.insert_mode = FALSE;
+	vi_state.insert_mode = FALSE;
 	prepare_vi_mode(document_get_current());
 
 	return TRUE;
@@ -370,25 +294,26 @@ static gboolean on_perform_vim_command(GeanyKeyBinding *kb, guint key_id, gpoint
 
 static void accumulator_append(const gchar *val)
 {
-	if (!plugin_data.accumulator)
-		plugin_data.accumulator = g_strdup(val);
+	if (!vi_state.accumulator)
+		vi_state.accumulator = g_strdup(val);
 	else
-		SETPTR(plugin_data.accumulator, g_strconcat(plugin_data.accumulator, val, NULL));
+		SETPTR(vi_state.accumulator, g_strconcat(vi_state.accumulator, val, NULL));
 }
 
 
 static void accumulator_clear()
 {
-	g_free(plugin_data.accumulator);
-	plugin_data.accumulator = NULL;
+	g_free(vi_state.accumulator);
+	vi_state.accumulator = NULL;
 }
 
 static guint accumulator_len()
 {
-	if (!plugin_data.accumulator)
+	if (!vi_state.accumulator)
 		return 0;
-	return strlen(plugin_data.accumulator);
+	return strlen(vi_state.accumulator);
 }
+
 
 
 static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer user_data)
@@ -406,65 +331,28 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 
 	//printf("key: %d, state: %d\n", event->keyval, event->state);
 
-	if (plugin_data.vi_mode)
+	if (vi_state.vi_mode)
 	{
-		gboolean consumed = !plugin_data.insert_mode;
+		gboolean consumed = !vi_state.insert_mode;
 
-		if (plugin_data.insert_mode)
+		if (vi_state.insert_mode)
 		{
 			if (event->keyval == GDK_KEY_Escape)
 			{
 				gint pos = sci_get_current_position(sci);
 				gint start_pos = sci_get_position_from_line(sci, sci_get_current_line(sci));
-				plugin_data.insert_mode = FALSE;
+				vi_state.insert_mode = FALSE;
 				if (pos > start_pos)
 					sci_send_command(sci, SCI_CHARLEFT);
 				leave_onetime_vi_mode();
 				prepare_vi_mode(doc);
+				//clear accumulator
 			}
 		}
 		else
 		{
 			switch (event->keyval)
 			{
-				case GDK_KEY_Page_Up:
-					sci_send_command(sci, SCI_PAGEUP);
-					break;
-				case GDK_KEY_Page_Down:
-					sci_send_command(sci, SCI_PAGEDOWN);
-					break;
-				case GDK_KEY_Left:
-				case GDK_KEY_leftarrow:
-				case GDK_KEY_h:
-				{
-					gint pos = sci_get_current_position(sci);
-					gint start_pos = sci_get_position_from_line(sci, sci_get_current_line(sci));
-					if (pos > start_pos)
-						sci_send_command(sci, SCI_CHARLEFT);
-					break;
-				}
-				case GDK_KEY_Right:
-				case GDK_KEY_rightarrow:
-				case GDK_KEY_l:
-				{
-					gint pos = sci_get_current_position(sci);
-					gint end_pos = sci_get_line_end_position(sci, sci_get_current_line(sci));
-					if (pos < end_pos - 1)
-						sci_send_command(sci, SCI_CHARRIGHT);
-					break;
-				}
-				case GDK_KEY_Down:
-				case GDK_KEY_downarrow:
-				case GDK_KEY_j:
-					sci_send_command(sci, SCI_LINEDOWN);
-					clamp_cursor_pos(sci);
-					break;
-				case GDK_KEY_Up:
-				case GDK_KEY_uparrow:
-				case GDK_KEY_k:
-					sci_send_command(sci, SCI_LINEUP);
-					clamp_cursor_pos(sci);
-					break;
 				case GDK_KEY_colon:
 				case GDK_KEY_slash:
 				case GDK_KEY_question:
@@ -488,7 +376,7 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 					break;
 				}
 				case GDK_KEY_i:
-					plugin_data.insert_mode = TRUE;
+					vi_state.insert_mode = TRUE;
 					prepare_vi_mode(doc);
 					break;
 				case GDK_KEY_a:
@@ -497,32 +385,34 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 					gint end_pos = sci_get_line_end_position(sci, sci_get_current_line(sci));
 					if (pos < end_pos)
 						sci_send_command(sci, SCI_CHARRIGHT);
-					plugin_data.insert_mode = TRUE;
+					vi_state.insert_mode = TRUE;
 					prepare_vi_mode(doc);
 					break;
 				}
 				case GDK_KEY_n:
-					perform_search(TRUE);
+					perform_search(sci, &vi_state, TRUE);
 					break;
 				case GDK_KEY_N:
-					perform_search(FALSE);
+					perform_search(sci, &vi_state, FALSE);
 					break;
 				case GDK_KEY_asterisk:
 				case GDK_KEY_numbersign:
 				{
 					gchar *word = get_current_word(sci);
-					g_free(plugin_data.search_text);
+					g_free(vi_state.search_text);
 					if (!word)
-						plugin_data.search_text = NULL;
+						vi_state.search_text = NULL;
 					else
 					{
 						const gchar *prefix = event->keyval == GDK_KEY_asterisk ? "/" : "?";
-						plugin_data.search_text = g_strconcat(prefix, word, NULL);
+						vi_state.search_text = g_strconcat(prefix, word, NULL);
 					}
 					g_free(word);
-					perform_search(TRUE);
+					perform_search(sci, &vi_state, TRUE);
 					break;
 				}
+				case GDK_KEY_U:
+				// undo on single line - we probably won't implement it
 				case GDK_KEY_u:
 				{
 					if (SSM(sci, SCI_CANUNDO, 0, 0))
@@ -543,7 +433,7 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 					guint accum_len = accumulator_len();
 					if (accum_len == 0)
 						accumulator_append("y");
-					else if (accum_len == 1 && plugin_data.accumulator[0] == 'y')
+					else if (accum_len == 1 && vi_state.accumulator[0] == 'y')
 					{
 						gint start = sci_get_position_from_line(sci, sci_get_current_line(sci));
 						gint end = sci_get_position_from_line(sci, sci_get_current_line(sci)+1);
@@ -555,13 +445,79 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 					break;
 				}
 				case GDK_KEY_p:
-				{	
+				{
 					gint pos = sci_get_position_from_line(sci, sci_get_current_line(sci)+1);
 					sci_set_current_position(sci, pos, TRUE);
 					SSM(sci, SCI_PASTE, 0, 0);
 					sci_set_current_position(sci, pos, TRUE);
 					break;
 				}
+				case GDK_KEY_d:
+				{
+					guint accum_len = accumulator_len();
+					if (accum_len == 0)
+						accumulator_append("d");
+					else if (accum_len == 1 && vi_state.accumulator[0] == 'd')
+					{
+						gint start = sci_get_position_from_line(sci, sci_get_current_line(sci));
+						gint end = sci_get_position_from_line(sci, sci_get_current_line(sci)+1);
+						SSM(sci, SCI_DELETERANGE, start, end-start);
+						accumulator_clear();
+					}
+					else
+						accumulator_clear();
+					break;
+				}
+				case GDK_KEY_0:
+				case GDK_KEY_KP_0:
+				case GDK_KEY_1:
+				case GDK_KEY_KP_1:
+				case GDK_KEY_2:
+				case GDK_KEY_KP_2:
+				case GDK_KEY_3:
+				case GDK_KEY_KP_3:
+				case GDK_KEY_4:
+				case GDK_KEY_KP_4:
+				case GDK_KEY_5:
+				case GDK_KEY_KP_5:
+				case GDK_KEY_6:
+				case GDK_KEY_KP_6:
+				case GDK_KEY_7:
+				case GDK_KEY_KP_7:
+				case GDK_KEY_8:
+				case GDK_KEY_KP_8:
+				case GDK_KEY_9:
+				case GDK_KEY_KP_9:
+					accumulator_append(event->string);
+					break;
+				case GDK_KEY_x:
+					//delete character
+					//SSM(sci, SCI_DELETEBACKNOTLINE, 0, 0);
+					break;
+				case GDK_KEY_J:
+					//join lines
+					break;
+				case GDK_KEY_o:
+					//new line after current and switch to insert mode
+					break;
+				case GDK_KEY_O:
+					//new line before current
+					break;
+				case GDK_KEY_w:
+					//move to next word
+					break;
+				case GDK_KEY_b:
+					//move to previous word
+					break;
+				//home, 0 (zero) - move to start of line
+				//F - like above backwards
+				//tx, Tx - like above but stop one character before
+				//% go to matching parenthesis
+				//numG - move to line 'num'
+				//50% - go to half of the file
+				//H, M, L - moving within visible editor area
+				default:
+					cmd_switch(event, sci, &vi_state);
 			}
 		}
 
@@ -597,7 +553,7 @@ static gboolean on_editor_notify(GObject *object, GeanyEditor *editor,
 	/* this makes sure that when we click behind the end of line in command mode,
 	 * the cursor is not placed BEHIND the last character but ON the last character */
 	if (doc != NULL && nt->nmhdr.code == SCN_UPDATEUI && nt->updated == SC_UPDATE_SELECTION)
-		clamp_cursor_pos(doc->editor->sci);
+		clamp_cursor_pos(doc->editor->sci, &vi_state);
 
 	return FALSE;
 }
@@ -630,7 +586,7 @@ void plugin_init(GeanyData *data)
 	gtk_container_add(GTK_CONTAINER(geany->main_widgets->tools_menu), plugin_data.toggle_vi_item);
 	g_signal_connect((gpointer) plugin_data.toggle_vi_item, "activate", G_CALLBACK(on_toggle_vim_mode), NULL);
 	gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(plugin_data.toggle_vi_item),
-			plugin_data.vi_mode);
+			vi_state.vi_mode);
 	keybindings_set_item_full(group, KB_TOGGLE_VIM_MODE, 0, 0, "toggle_vim",
 			_("Enable Vim Mode"), NULL, on_toggle_vim_mode_kb, NULL, NULL);
 
@@ -688,7 +644,7 @@ void plugin_cleanup(void)
 	gtk_widget_destroy(plugin_data.toggle_vi_item);
 	gtk_widget_destroy(plugin_data.perform_vi_item);
 
-	g_free(plugin_data.search_text);
+	g_free(vi_state.search_text);
 }
 
 
