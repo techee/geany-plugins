@@ -37,25 +37,26 @@ ScintillaObject *get_current_doc_sci(void);
 void clamp_cursor_pos(ScintillaObject *sci, ViState *vi_state);
 gchar *get_current_word(ScintillaObject *sci);
 void perform_search(ScintillaObject *sci, ViState *vi_state, gboolean forward);
+gint accumulator_get_prev_int(ViState *vi_state);
 
 /* cmds */
 
-void cmd_page_up(ScintillaObject *sci, ViState *vi_state);
-void cmd_page_down(ScintillaObject *sci, ViState *vi_state);
+void cmd_page_up(ScintillaObject *sci, ViState *vi_state, gint num);
+void cmd_page_down(ScintillaObject *sci, ViState *vi_state, gint num);
 
-void cmd_move_caret_left(ScintillaObject *sci, ViState *vi_state);
-void cmd_move_caret_right(ScintillaObject *sci, ViState *vi_state);
-void cmd_move_caret_up(ScintillaObject *sci, ViState *vi_state);
-void cmd_move_caret_down(ScintillaObject *sci, ViState *vi_state);
+void cmd_move_caret_left(ScintillaObject *sci, ViState *vi_state, gint num);
+void cmd_move_caret_right(ScintillaObject *sci, ViState *vi_state, gint num);
+void cmd_move_caret_up(ScintillaObject *sci, ViState *vi_state, gint num);
+void cmd_move_caret_down(ScintillaObject *sci, ViState *vi_state, gint num);
 
-void cmd_undo(ScintillaObject *sci, ViState *vi_state);
-void cmd_redo(ScintillaObject *sci, ViState *vi_state);
+void cmd_undo(ScintillaObject *sci, ViState *vi_state, gint num);
+void cmd_redo(ScintillaObject *sci, ViState *vi_state, gint num);
 
-void cmd_copy_line(ScintillaObject *sci, ViState *vi_state);
-void cmd_paste(ScintillaObject *sci, ViState *vi_state);
+void cmd_copy_line(ScintillaObject *sci, ViState *vi_state, gint num);
+void cmd_paste(ScintillaObject *sci, ViState *vi_state, gint num);
 
-void cmd_search(ScintillaObject *sci, ViState *vi_state);
+void cmd_search(ScintillaObject *sci, ViState *vi_state, gint num);
 
-void cmd_delete_line(ScintillaObject *sci, ViState *vi_state);
+void cmd_delete_line(ScintillaObject *sci, ViState *vi_state, gint num);
 
 #endif

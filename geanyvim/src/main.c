@@ -305,8 +305,12 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 				case GDK_KEY_a:
 					perform_ui_cmd(ui_cmd_enter_insert_mode_after, sci, &vi_state, &vi_ui);
 					break;
+				case GDK_KEY_Escape:
+					accumulator_clear(&vi_state);
+					break;
 				default:
 					cmd_switch(event, sci, &vi_state);
+					break;
 			}
 		}
 

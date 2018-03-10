@@ -26,9 +26,10 @@
 #include "cmds.h"
 
 
-static void perform_cmd(void (*func)(ScintillaObject *sci, ViState *vi_state), ScintillaObject *sci, ViState *vi_state)
+static void perform_cmd(void (*func)(ScintillaObject *sci, ViState *vi_state, int num), ScintillaObject *sci, ViState *vi_state)
 {
-	func(sci, vi_state);
+	gint num = accumulator_get_prev_int(vi_state);
+	func(sci, vi_state, num);
 	accumulator_clear(vi_state);
 }
 
