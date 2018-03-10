@@ -71,7 +71,7 @@ gchar accumulator_previous_char(ViState *vi_state)
 	return '\0';
 }
 
-gint accumulator_get_prev_int(ViState *vi_state)
+gint accumulator_get_prev_int(ViState *vi_state, gint defaulti_val)
 {
 	gchar *s = g_strdup(vi_state->accumulator);
 	gint end = accumulator_len(vi_state) - 2;
@@ -86,7 +86,7 @@ gint accumulator_get_prev_int(ViState *vi_state)
 	start = i + 1;
 
 	if (end - start < 0)
-		return 1;
+		return defaulti_val;
 
 	s[end + 1] = '\0';
 	val = g_ascii_strtoll(s + start, NULL, 10);
@@ -253,7 +253,7 @@ void cmd_redo(ScintillaObject *sci, ViState *vi_state, gint num)
 void cmd_copy_line(ScintillaObject *sci, ViState *vi_state, gint num)
 {
 	gint start = sci_get_position_from_line(sci, sci_get_current_line(sci));
-	gint end = sci_get_position_from_line(sci, sci_get_current_line(sci)+1);
+	gint end = sci_get_position_from_line(sci, sci_get_current_line(sci) + num);
 	SSM(sci, SCI_COPYRANGE, start, end);
 }
 
@@ -270,7 +270,7 @@ void cmd_paste(ScintillaObject *sci, ViState *vi_state, gint num)
 void cmd_delete_line(ScintillaObject *sci, ViState *vi_state, gint num)
 {
 	gint start = sci_get_position_from_line(sci, sci_get_current_line(sci));
-	gint end = sci_get_position_from_line(sci, sci_get_current_line(sci)+num);
+	gint end = sci_get_position_from_line(sci, sci_get_current_line(sci) + num);
 	SSM(sci, SCI_DELETERANGE, start, end-start);
 }
 
@@ -278,6 +278,7 @@ void cmd_search(ScintillaObject *sci, ViState *vi_state, gint num)
 {
 	gboolean forward = TRUE;
 	char last;
+	gint i;
 
 	if (!vi_state->accumulator)
 		return;
@@ -287,5 +288,26 @@ void cmd_search(ScintillaObject *sci, ViState *vi_state, gint num)
 	if (last == 'N')
 		forward = FALSE;
 
-	perform_search(sci, vi_state, forward);
+	for (i = 0; i < num; i++)
+		perform_search(sci, vi_state, forward);
+}
+
+void cmd_delete_char(ScintillaObject *sci, ViState *vi_state, gint num)
+{
+	gint pos = sci_get_current_position(sci);
+	gint i;
+	for (i = 0; i < num; i++)
+		SSM(sci, SCI_DELETERANGE, pos, 1);
+}
+
+void cmd_goto_line(ScintillaObject *sci, ViState *vi_state, gint num)
+{
+	gint line_num = sci_get_line_count(sci);
+	gint pos;
+
+	/* override default line number to the end of file when number not entered */
+	num = accumulator_get_prev_int(vi_state, line_num);
+	num = num > line_num ? line_num : num;
+	pos = sci_get_position_from_line(sci, num - 1);
+	sci_set_current_position(sci, pos, TRUE);
 }

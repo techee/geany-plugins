@@ -28,7 +28,7 @@
 
 static void perform_cmd(void (*func)(ScintillaObject *sci, ViState *vi_state, int num), ScintillaObject *sci, ViState *vi_state)
 {
-	gint num = accumulator_get_prev_int(vi_state);
+	gint num = accumulator_get_prev_int(vi_state, 1);
 	func(sci, vi_state, num);
 	accumulator_clear(vi_state);
 }
@@ -104,11 +104,11 @@ gboolean cmd_switch(GdkEventKey *event, ScintillaObject *sci, ViState *vi_state)
 			if (accumulator_previous_char(vi_state) == 'd')
 				perform_cmd(cmd_delete_line, sci, vi_state);
 			break;
-
-		
 		case GDK_KEY_x:
-			//delete character
-			//SSM(sci, SCI_DELETEBACKNOTLINE, 0, 0);
+			perform_cmd(cmd_delete_char, sci, vi_state);
+			break;
+		case GDK_KEY_G:
+			perform_cmd(cmd_goto_line, sci, vi_state);
 			break;
 		case GDK_KEY_J:
 			//join lines
