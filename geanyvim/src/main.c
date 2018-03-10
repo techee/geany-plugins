@@ -267,7 +267,7 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 	if (gtk_window_get_focus(GTK_WINDOW(geany->main_widgets->window)) != GTK_WIDGET(sci))
 		return FALSE;
 
-	//printf("key: %d, state: %d\n", event->keyval, event->state);
+	printf("key: %d, state: %d\n", event->keyval, event->state);
 	printf("accumulator: %s\n", vi_state.accumulator);
 
 	if (vi_state.vi_enabled)

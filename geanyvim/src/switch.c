@@ -111,19 +111,32 @@ gboolean cmd_switch(GdkEventKey *event, ScintillaObject *sci, ViState *vi_state)
 			perform_cmd(cmd_goto_line, sci, vi_state);
 			break;
 		case GDK_KEY_J:
-			//join lines
+			perform_cmd(cmd_join_lines, sci, vi_state);
+			break;
+		case GDK_KEY_w:
+		case GDK_KEY_W:
+			perform_cmd(cmd_goto_next_word, sci, vi_state);
+			break;
+		case GDK_KEY_E:
+			perform_cmd(cmd_goto_next_word_end, sci, vi_state);
+			break;
+		case GDK_KEY_b:
+			perform_cmd(cmd_goto_previous_word, sci, vi_state);
+			break;
+		case GDK_KEY_B:
+			perform_cmd(cmd_goto_previous_word_end, sci, vi_state);
+			break;
+		case GDK_KEY_0:
+			perform_cmd(cmd_goto_line_start, sci, vi_state);
+			break;
+		case GDK_KEY_dollar:
+			perform_cmd(cmd_goto_line_end, sci, vi_state);
 			break;
 		case GDK_KEY_o:
 			//new line after current and switch to insert mode
 			break;
 		case GDK_KEY_O:
 			//new line before current
-			break;
-		case GDK_KEY_w:
-			//move to next word
-			break;
-		case GDK_KEY_b:
-			//move to previous word
 			break;
 		//home, 0 (zero) - move to start of line
 		//F - like above backwards

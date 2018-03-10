@@ -311,3 +311,57 @@ void cmd_goto_line(ScintillaObject *sci, ViState *vi_state, gint num)
 	pos = sci_get_position_from_line(sci, num - 1);
 	sci_set_current_position(sci, pos, TRUE);
 }
+
+void cmd_join_lines(ScintillaObject *sci, ViState *vi_state, gint num)
+{
+	gint line = sci_get_current_line(sci);
+	gint next_line_pos = sci_get_position_from_line(sci, line+num);
+
+	sci_set_target_start(sci, sci_get_current_position(sci));
+	sci_set_target_end(sci, next_line_pos);
+	SSM(sci, SCI_LINESJOIN, 0, 0);
+}
+
+void cmd_goto_next_word(ScintillaObject *sci, ViState *vi_state, gint num)
+{
+	gint i;
+	for (i = 0; i < num; i++)
+		sci_send_command(sci, SCI_WORDRIGHT);
+}
+
+void cmd_goto_next_word_end(ScintillaObject *sci, ViState *vi_state, gint num)
+{
+	gint i;
+	for (i = 0; i < num; i++)
+		sci_send_command(sci, SCI_WORDRIGHTEND);
+}
+
+void cmd_goto_previous_word(ScintillaObject *sci, ViState *vi_state, gint num)
+{
+	gint i;
+	for (i = 0; i < num; i++)
+		sci_send_command(sci, SCI_WORDLEFT);
+}
+
+void cmd_goto_previous_word_end(ScintillaObject *sci, ViState *vi_state, gint num)
+{
+	gint i;
+	for (i = 0; i < num; i++)
+		sci_send_command(sci, SCI_WORDLEFTEND);
+}
+
+void cmd_goto_line_start(ScintillaObject *sci, ViState *vi_state, gint num)
+{
+	sci_send_command(sci, SCI_HOME);
+}
+
+void cmd_goto_line_end(ScintillaObject *sci, ViState *vi_state, gint num)
+{
+	gint i;
+	for (i = 0; i < num; i++)
+	{
+		sci_send_command(sci, SCI_LINEEND);
+		if (i != num - 1)
+			sci_set_current_position(sci, sci_get_current_position(sci) + 1, TRUE);
+	}
+}
