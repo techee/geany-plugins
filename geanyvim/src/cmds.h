@@ -28,6 +28,8 @@
 void accumulator_append(ViState *vi_state, const gchar *val);
 void accumulator_clear(ViState *vi_state);
 guint accumulator_len(ViState *vi_state);
+gchar accumulator_last_char(ViState *vi_state);
+
 
 ScintillaObject *get_current_doc_sci(void);
 
@@ -50,5 +52,9 @@ void cmd_redo(ScintillaObject *sci, ViState *vi_state);
 
 void cmd_copy_line(ScintillaObject *sci, ViState *vi_state);
 void cmd_paste(ScintillaObject *sci, ViState *vi_state);
+
+void cmd_search(ScintillaObject *sci, ViState *vi_state);
+
+void cmd_delete_line(ScintillaObject *sci, ViState *vi_state);
 
 #endif

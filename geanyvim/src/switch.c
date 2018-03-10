@@ -65,14 +65,9 @@ gboolean cmd_switch(GdkEventKey *event, ScintillaObject *sci, ViState *vi_state)
 			perform_cmd(cmd_move_caret_up, sci, vi_state);
 			break;
 		case GDK_KEY_y:
-		{
-			guint accum_len = accumulator_len(vi_state);
-			if (accum_len == 0)
-				;
-			else if (accum_len == 1 && vi_state->accumulator[0] == 'y')
+			if (accumulator_last_char(vi_state) == 'y')
 				perform_cmd(cmd_copy_line, sci, vi_state);
 			break;
-		}
 		case GDK_KEY_p:
 			perform_cmd(cmd_paste, sci, vi_state);
 			break;
@@ -85,12 +80,8 @@ gboolean cmd_switch(GdkEventKey *event, ScintillaObject *sci, ViState *vi_state)
 				perform_cmd(cmd_redo, sci, vi_state);
 			break;
 		case GDK_KEY_n:
-			perform_search(sci, vi_state, TRUE);
-			accumulator_clear(vi_state);
-			break;
 		case GDK_KEY_N:
-			perform_search(sci, vi_state, FALSE);
-			accumulator_clear(vi_state);
+			perform_cmd(cmd_search, sci, vi_state);
 			break;
 		case GDK_KEY_asterisk:
 		case GDK_KEY_numbersign:
@@ -105,26 +96,13 @@ gboolean cmd_switch(GdkEventKey *event, ScintillaObject *sci, ViState *vi_state)
 				vi_state->search_text = g_strconcat(prefix, word, NULL);
 			}
 			g_free(word);
-			perform_search(sci, vi_state, TRUE);
-			accumulator_clear(vi_state);
+			perform_cmd(cmd_search, sci, vi_state);
 			break;
 		}
 		case GDK_KEY_d:
-		{
-			guint accum_len = accumulator_len(vi_state);
-			if (accum_len == 0)
-				;
-			else if (accum_len == 1 && vi_state->accumulator[0] == 'd')
-			{
-				gint start = sci_get_position_from_line(sci, sci_get_current_line(sci));
-				gint end = sci_get_position_from_line(sci, sci_get_current_line(sci)+1);
-				SSM(sci, SCI_DELETERANGE, start, end-start);
-				accumulator_clear(vi_state);
-			}
-			else
-				accumulator_clear(vi_state);
+			if (accumulator_last_char(vi_state) == 'd')
+				perform_cmd(cmd_delete_line, sci, vi_state);
 			break;
-		}
 
 		
 		case GDK_KEY_x:

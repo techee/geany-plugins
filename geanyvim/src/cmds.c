@@ -54,6 +54,14 @@ guint accumulator_len(ViState *vi_state)
 	return strlen(vi_state->accumulator);
 }
 
+gchar accumulator_last_char(ViState *vi_state)
+{
+	guint len = accumulator_len(vi_state);
+	if (len > 0)
+		return vi_state->accumulator[len-1];
+	return '\0';
+}
+
 void clamp_cursor_pos(ScintillaObject *sci, ViState *vi_state)
 {
 	if (vi_state->vi_mode != VI_MODE_COMMAND)
@@ -201,3 +209,25 @@ void cmd_paste(ScintillaObject *sci, ViState *vi_state)
 	sci_set_current_position(sci, pos, TRUE);
 }
 
+void cmd_delete_line(ScintillaObject *sci, ViState *vi_state)
+{
+	gint start = sci_get_position_from_line(sci, sci_get_current_line(sci));
+	gint end = sci_get_position_from_line(sci, sci_get_current_line(sci)+1);
+	SSM(sci, SCI_DELETERANGE, start, end-start);
+}
+
+void cmd_search(ScintillaObject *sci, ViState *vi_state)
+{
+	gboolean forward = TRUE;
+	char last;
+
+	if (!vi_state->accumulator)
+		return;
+
+	last = accumulator_last_char(vi_state);
+
+	if (last == 'N')
+		forward = FALSE;
+
+	perform_search(sci, vi_state, forward);
+}
