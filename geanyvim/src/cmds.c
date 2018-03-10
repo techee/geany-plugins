@@ -31,7 +31,7 @@
 
 void clamp_cursor_pos(ScintillaObject *sci, ViState *vi_state)
 {
-	if (vi_state->insert_mode)
+	if (vi_state->vi_mode != VI_MODE_COMMAND)
 		return;
 
 	gint pos = sci_get_current_position(sci);
@@ -149,3 +149,14 @@ void cmd_move_caret_down(ScintillaObject *sci, ViState *vi_state)
 	clamp_cursor_pos(sci, vi_state);
 }
 
+void cmd_undo(ScintillaObject *sci, ViState *vi_state)
+{
+	if (SSM(sci, SCI_CANUNDO, 0, 0))
+		SSM(sci, SCI_UNDO, 0, 0);
+}
+
+void cmd_redo(ScintillaObject *sci, ViState *vi_state)
+{
+	if (SSM(sci, SCI_CANREDO, 0, 0))
+		SSM(sci, SCI_REDO, 0, 0);
+}

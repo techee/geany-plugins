@@ -21,15 +21,21 @@
 
 #include <glib.h>
 
+typedef enum {
+	VI_MODE_COMMAND,
+	VI_MODE_INSERT,
+	VI_MODE_VISUAL
+} ViMode;
+
 typedef struct
 {
 	/* whether vi mode is enabled or disabled */
-	gboolean vi_mode; 
+	gboolean vi_enabled; 
 	/* if vi mode is valid for a single command and will be disabled automatically
 	 * after performing it */
-	gboolean onetime_vi_mode;
-	/* if we are in the insert mode or command mode of vi */
-	gboolean insert_mode;
+	gboolean vi_onetime;
+	/* vi mode */
+	ViMode vi_mode;
 
 	/* the last full search command, including '/' or '?' */
 	gchar *search_text;

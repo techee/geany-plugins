@@ -37,5 +37,8 @@ void cmd_move_caret_right(ScintillaObject *sci, ViState *vi_state);
 void cmd_move_caret_up(ScintillaObject *sci, ViState *vi_state);
 void cmd_move_caret_down(ScintillaObject *sci, ViState *vi_state);
 
+void cmd_undo(ScintillaObject *sci, ViState *vi_state);
+void cmd_redo(ScintillaObject *sci, ViState *vi_state);
+
 
 #endif

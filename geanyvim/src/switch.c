@@ -63,6 +63,32 @@ gboolean cmd_switch(GdkEventKey *event, ScintillaObject *sci, ViState *vi_state)
 		case GDK_KEY_k:
 			perform_cmd(cmd_move_caret_up, sci, vi_state);
 			break;
+		case GDK_KEY_x:
+			//delete character
+			//SSM(sci, SCI_DELETEBACKNOTLINE, 0, 0);
+			break;
+		case GDK_KEY_J:
+			//join lines
+			break;
+		case GDK_KEY_o:
+			//new line after current and switch to insert mode
+			break;
+		case GDK_KEY_O:
+			//new line before current
+			break;
+		case GDK_KEY_w:
+			//move to next word
+			break;
+		case GDK_KEY_b:
+			//move to previous word
+			break;
+		//home, 0 (zero) - move to start of line
+		//F - like above backwards
+		//tx, Tx - like above but stop one character before
+		//% go to matching parenthesis
+		//numG - move to line 'num'
+		//50% - go to half of the file
+		//H, M, L - moving within visible editor area
 		default:
 			performed = FALSE;
 	}
