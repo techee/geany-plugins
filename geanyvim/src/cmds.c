@@ -54,11 +54,19 @@ guint accumulator_len(ViState *vi_state)
 	return strlen(vi_state->accumulator);
 }
 
-gchar accumulator_last_char(ViState *vi_state)
+gchar accumulator_current_char(ViState *vi_state)
 {
 	guint len = accumulator_len(vi_state);
 	if (len > 0)
 		return vi_state->accumulator[len-1];
+	return '\0';
+}
+
+gchar accumulator_previous_char(ViState *vi_state)
+{
+	guint len = accumulator_len(vi_state);
+	if (len > 1)
+		return vi_state->accumulator[len-2];
 	return '\0';
 }
 
@@ -224,7 +232,7 @@ void cmd_search(ScintillaObject *sci, ViState *vi_state)
 	if (!vi_state->accumulator)
 		return;
 
-	last = accumulator_last_char(vi_state);
+	last = accumulator_current_char(vi_state);
 
 	if (last == 'N')
 		forward = FALSE;

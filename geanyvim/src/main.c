@@ -268,6 +268,7 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 		return FALSE;
 
 	//printf("key: %d, state: %d\n", event->keyval, event->state);
+	printf("accumulator: %s\n", vi_state.accumulator);
 
 	if (vi_state.vi_enabled)
 	{

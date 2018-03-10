@@ -65,7 +65,7 @@ gboolean cmd_switch(GdkEventKey *event, ScintillaObject *sci, ViState *vi_state)
 			perform_cmd(cmd_move_caret_up, sci, vi_state);
 			break;
 		case GDK_KEY_y:
-			if (accumulator_last_char(vi_state) == 'y')
+			if (accumulator_previous_char(vi_state) == 'y')
 				perform_cmd(cmd_copy_line, sci, vi_state);
 			break;
 		case GDK_KEY_p:
@@ -100,7 +100,7 @@ gboolean cmd_switch(GdkEventKey *event, ScintillaObject *sci, ViState *vi_state)
 			break;
 		}
 		case GDK_KEY_d:
-			if (accumulator_last_char(vi_state) == 'd')
+			if (accumulator_previous_char(vi_state) == 'd')
 				perform_cmd(cmd_delete_line, sci, vi_state);
 			break;
 

@@ -28,7 +28,8 @@
 void accumulator_append(ViState *vi_state, const gchar *val);
 void accumulator_clear(ViState *vi_state);
 guint accumulator_len(ViState *vi_state);
-gchar accumulator_last_char(ViState *vi_state);
+gchar accumulator_current_char(ViState *vi_state);
+gchar accumulator_previous_char(ViState *vi_state);
 
 
 ScintillaObject *get_current_doc_sci(void);
