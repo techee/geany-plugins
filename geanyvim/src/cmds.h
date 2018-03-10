@@ -21,7 +21,15 @@
 
 #include <glib.h>
 
+#define SSM(s, m, w, l) scintilla_send_message(s, m, w, l)
+
 /* utils */
+
+void accumulator_append(ViState *vi_state, const gchar *val);
+void accumulator_clear(ViState *vi_state);
+guint accumulator_len(ViState *vi_state);
+
+ScintillaObject *get_current_doc_sci(void);
 
 void clamp_cursor_pos(ScintillaObject *sci, ViState *vi_state);
 gchar *get_current_word(ScintillaObject *sci);
@@ -40,5 +48,7 @@ void cmd_move_caret_down(ScintillaObject *sci, ViState *vi_state);
 void cmd_undo(ScintillaObject *sci, ViState *vi_state);
 void cmd_redo(ScintillaObject *sci, ViState *vi_state);
 
+void cmd_copy_line(ScintillaObject *sci, ViState *vi_state);
+void cmd_paste(ScintillaObject *sci, ViState *vi_state);
 
 #endif

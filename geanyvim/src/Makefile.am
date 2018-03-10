@@ -4,12 +4,15 @@ plugin = geanyvim
 geanyplugins_LTLIBRARIES = geanyvim.la
 
 geanyvim_la_SOURCES = \
-    main.c \
-    state.h \
-    cmds.c \
-    cmds.h \
-    switch.c \
-    switch.h
+	state.h \
+	ui.h \
+	main.c \
+	cmds.h \
+	cmds.c \
+	ui_cmds.h \
+	ui_cmds.c \
+	switch.h \
+	switch.c
     
 geanyvim_la_CPPFLAGS = $(AM_CPPFLAGS) \
 	-DG_LOG_DOMAIN=\"GeanyVim\"

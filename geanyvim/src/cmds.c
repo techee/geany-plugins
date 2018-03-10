@@ -24,10 +24,35 @@
 #include "state.h"
 #include "cmds.h"
 
-#define SSM(s, m, w, l) scintilla_send_message(s, m, w, l)
-
 
 /* utils */
+
+ScintillaObject *get_current_doc_sci(void)
+{
+	GeanyDocument *doc = document_get_current();
+	return doc != NULL ? doc->editor->sci : NULL;
+}
+
+void accumulator_append(ViState *vi_state, const gchar *val)
+{
+	if (!vi_state->accumulator)
+		vi_state->accumulator = g_strdup(val);
+	else
+		SETPTR(vi_state->accumulator, g_strconcat(vi_state->accumulator, val, NULL));
+}
+
+void accumulator_clear(ViState *vi_state)
+{
+	g_free(vi_state->accumulator);
+	vi_state->accumulator = NULL;
+}
+
+guint accumulator_len(ViState *vi_state)
+{
+	if (!vi_state->accumulator)
+		return 0;
+	return strlen(vi_state->accumulator);
+}
 
 void clamp_cursor_pos(ScintillaObject *sci, ViState *vi_state)
 {
@@ -160,3 +185,19 @@ void cmd_redo(ScintillaObject *sci, ViState *vi_state)
 	if (SSM(sci, SCI_CANREDO, 0, 0))
 		SSM(sci, SCI_REDO, 0, 0);
 }
+
+void cmd_copy_line(ScintillaObject *sci, ViState *vi_state)
+{
+	gint start = sci_get_position_from_line(sci, sci_get_current_line(sci));
+	gint end = sci_get_position_from_line(sci, sci_get_current_line(sci)+1);
+	SSM(sci, SCI_COPYRANGE, start, end);
+}
+
+void cmd_paste(ScintillaObject *sci, ViState *vi_state)
+{
+	gint pos = sci_get_position_from_line(sci, sci_get_current_line(sci)+1);
+	sci_set_current_position(sci, pos, TRUE);
+	SSM(sci, SCI_PASTE, 0, 0);
+	sci_set_current_position(sci, pos, TRUE);
+}
+

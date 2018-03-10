@@ -29,6 +29,7 @@
 static void perform_cmd(void (*func)(ScintillaObject *sci, ViState *vi_state), ScintillaObject *sci, ViState *vi_state)
 {
 	func(sci, vi_state);
+	accumulator_clear(vi_state);
 }
 
 gboolean cmd_switch(GdkEventKey *event, ScintillaObject *sci, ViState *vi_state)
@@ -63,6 +64,69 @@ gboolean cmd_switch(GdkEventKey *event, ScintillaObject *sci, ViState *vi_state)
 		case GDK_KEY_k:
 			perform_cmd(cmd_move_caret_up, sci, vi_state);
 			break;
+		case GDK_KEY_y:
+		{
+			guint accum_len = accumulator_len(vi_state);
+			if (accum_len == 0)
+				;
+			else if (accum_len == 1 && vi_state->accumulator[0] == 'y')
+				perform_cmd(cmd_copy_line, sci, vi_state);
+			break;
+		}
+		case GDK_KEY_p:
+			perform_cmd(cmd_paste, sci, vi_state);
+			break;
+		case GDK_KEY_U: // undo on single line - we probably won't implement it
+		case GDK_KEY_u:
+			perform_cmd(cmd_undo, sci, vi_state);
+			break;
+		case GDK_KEY_r:
+			if (event->state & GDK_CONTROL_MASK)
+				perform_cmd(cmd_redo, sci, vi_state);
+			break;
+		case GDK_KEY_n:
+			perform_search(sci, vi_state, TRUE);
+			accumulator_clear(vi_state);
+			break;
+		case GDK_KEY_N:
+			perform_search(sci, vi_state, FALSE);
+			accumulator_clear(vi_state);
+			break;
+		case GDK_KEY_asterisk:
+		case GDK_KEY_numbersign:
+		{
+			gchar *word = get_current_word(sci);
+			g_free(vi_state->search_text);
+			if (!word)
+				vi_state->search_text = NULL;
+			else
+			{
+				const gchar *prefix = event->keyval == GDK_KEY_asterisk ? "/" : "?";
+				vi_state->search_text = g_strconcat(prefix, word, NULL);
+			}
+			g_free(word);
+			perform_search(sci, vi_state, TRUE);
+			accumulator_clear(vi_state);
+			break;
+		}
+		case GDK_KEY_d:
+		{
+			guint accum_len = accumulator_len(vi_state);
+			if (accum_len == 0)
+				;
+			else if (accum_len == 1 && vi_state->accumulator[0] == 'd')
+			{
+				gint start = sci_get_position_from_line(sci, sci_get_current_line(sci));
+				gint end = sci_get_position_from_line(sci, sci_get_current_line(sci)+1);
+				SSM(sci, SCI_DELETERANGE, start, end-start);
+				accumulator_clear(vi_state);
+			}
+			else
+				accumulator_clear(vi_state);
+			break;
+		}
+
+		
 		case GDK_KEY_x:
 			//delete character
 			//SSM(sci, SCI_DELETEBACKNOTLINE, 0, 0);

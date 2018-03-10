@@ -28,7 +28,9 @@
 #include <geanyplugin.h>
 
 #include "state.h"
+#include "ui.h"
 #include "cmds.h"
+#include "ui_cmds.h"
 #include "switch.h"
 
 #define CONF_GROUP "Settings"
@@ -50,6 +52,7 @@ PLUGIN_SET_TRANSLATABLE_INFO(
 	"Jiří Techet <techet@gmail.com>"
 )
 
+
 enum
 {
 	KB_TOGGLE_VIM_MODE,
@@ -57,76 +60,16 @@ enum
 	KB_COUNT
 };
 
-typedef struct
-{
-	GtkWidget *prompt;
-	GtkWidget *entry;
-	GtkWidget *separator_item;
-	GtkWidget *toggle_vi_item;
-	GtkWidget *perform_vi_item;
-
-	/* caret style used by Geany we can revert to when disabling vi mode */
-	gint default_caret_style;
-} ViUi;
 
 ViUi vi_ui =
 {
 	NULL, NULL, NULL, NULL, NULL, -1
 };
 
-
 ViState vi_state =
 {
 	TRUE, FALSE, VI_MODE_COMMAND, NULL, NULL
 };
-
-
-
-static const gchar *get_mode_name()
-{
-	switch (vi_state.vi_mode)
-	{
-		case VI_MODE_COMMAND:
-			return "COMMAND";
-			break;
-		case VI_MODE_INSERT:
-			return "INSERT";
-			break;
-		case VI_MODE_VISUAL:
-			return "VISUAL";
-			break;
-	}
-	return "";
-}
-
-
-static void prepare_vi_mode(GeanyDocument *doc)
-{
-	ScintillaObject *sci;
-
-	if (!doc)
-		return;
-
-	sci = doc->editor->sci;
-
-	if (vi_ui.default_caret_style == -1)
-		vi_ui.default_caret_style = SSM(sci, SCI_GETCARETSTYLE, 0, 0);
-
-	if (vi_state.vi_enabled)
-	{
-		if (vi_state.vi_mode == VI_MODE_INSERT)
-			SSM(sci, SCI_SETCARETSTYLE, CARETSTYLE_LINE, 0);
-		else
-			SSM(sci, SCI_SETCARETSTYLE, CARETSTYLE_BLOCK, 0);
-	}
-	else
-		SSM(sci, SCI_SETCARETSTYLE, vi_ui.default_caret_style, 0);
-
-	if (vi_state.vi_enabled)
-		ui_set_statusbar(FALSE, "Vim Mode: -- %s --", get_mode_name());
-
-	clamp_cursor_pos(sci, &vi_state);
-}
 
 
 static void leave_onetime_vi_mode()
@@ -136,7 +79,7 @@ static void leave_onetime_vi_mode()
 		vi_state.vi_enabled = FALSE;
 		vi_state.vi_onetime = FALSE;
 		vi_state.vi_mode = VI_MODE_COMMAND;
-		prepare_vi_mode(document_get_current());
+		prepare_vi_mode(get_current_doc_sci(), &vi_state, &vi_ui);
 	}
 }
 
@@ -146,8 +89,6 @@ static void close_prompt()
 	leave_onetime_vi_mode();
 	gtk_widget_hide(vi_ui.prompt);
 }
-
-
 
 
 static void perform_command(const gchar *cmd)
@@ -276,7 +217,7 @@ static void on_toggle_vim_mode(void)
 	vi_state.vi_enabled = gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(vi_ui.toggle_vi_item));
 	vi_state.vi_onetime = FALSE;
 	vi_state.vi_mode = VI_MODE_COMMAND;
-	prepare_vi_mode(document_get_current());
+	prepare_vi_mode(get_current_doc_sci(), &vi_state, &vi_ui);
 	if (!vi_state.vi_enabled)
 		ui_set_statusbar(FALSE, "Vim Mode Disabled");
 	save_config();
@@ -300,39 +241,17 @@ static gboolean on_perform_vim_command(GeanyKeyBinding *kb, guint key_id, gpoint
 		vi_state.vi_enabled = TRUE;
 	}
 	vi_state.vi_mode = VI_MODE_COMMAND;
-	prepare_vi_mode(document_get_current());
+	prepare_vi_mode(get_current_doc_sci(), &vi_state, &vi_ui);
 
 	return TRUE;
 }
 
 
-static void accumulator_append(const gchar *val)
+static void perform_ui_cmd(void (*func)(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui), ScintillaObject *sci, ViState *state, ViUi *ui)
 {
-	if (!vi_state.accumulator)
-		vi_state.accumulator = g_strdup(val);
-	else
-		SETPTR(vi_state.accumulator, g_strconcat(vi_state.accumulator, val, NULL));
+	func(sci, state, ui);
+	accumulator_clear(state);
 }
-
-
-static void accumulator_clear()
-{
-	g_free(vi_state.accumulator);
-	vi_state.accumulator = NULL;
-}
-
-static guint accumulator_len()
-{
-	if (!vi_state.accumulator)
-		return 0;
-	return strlen(vi_state.accumulator);
-}
-
-
-//static void perform_ui_cmd(void (*func)(ScintillaObject *sci, ViState *vi_state), ScintillaObject *sci, ViState *state)
-//{
-//	func(sci, state);
-//}
 
 
 static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer user_data)
@@ -364,153 +283,26 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 				if (pos > start_pos)
 					sci_send_command(sci, SCI_CHARLEFT);
 				leave_onetime_vi_mode();
-				prepare_vi_mode(doc);
-				accumulator_clear();
+				prepare_vi_mode(sci, &vi_state, &vi_ui);
+				accumulator_clear(&vi_state);
 			}
 		}
 		else if (vi_state.vi_mode == VI_MODE_COMMAND)
 		{
-			accumulator_append(event->string);
+			accumulator_append(&vi_state, event->string);
 
 			switch (event->keyval)
 			{
 				case GDK_KEY_colon:
 				case GDK_KEY_slash:
 				case GDK_KEY_question:
-				{
-					const gchar *val;
-					switch (event->keyval)
-					{
-						case GDK_KEY_colon:
-							val = ":";
-							break;
-						case GDK_KEY_slash:
-							val = "/";
-							break;
-						default:
-							val = "?";
-							break;
-					}
-					gtk_widget_show(vi_ui.prompt);
-					gtk_entry_set_text(GTK_ENTRY(vi_ui.entry), val);
-					gtk_editable_set_position(GTK_EDITABLE(vi_ui.entry), 1);
-					accumulator_clear();
+					perform_ui_cmd(ui_cmd_enter_cmdline_mode, sci, &vi_state, &vi_ui);
 					break;
-				}
 				case GDK_KEY_i:
-					vi_state.vi_mode = VI_MODE_INSERT;
-					prepare_vi_mode(doc);
-					accumulator_clear();
+					perform_ui_cmd(ui_cmd_enter_insert_mode, sci, &vi_state, &vi_ui);
 					break;
 				case GDK_KEY_a:
-				{
-					gint pos = sci_get_current_position(sci);
-					gint end_pos = sci_get_line_end_position(sci, sci_get_current_line(sci));
-					if (pos < end_pos)
-						sci_send_command(sci, SCI_CHARRIGHT);
-					vi_state.vi_mode = VI_MODE_INSERT;
-					prepare_vi_mode(doc);
-					accumulator_clear();
-					break;
-				}
-				case GDK_KEY_n:
-					perform_search(sci, &vi_state, TRUE);
-					accumulator_clear();
-					break;
-				case GDK_KEY_N:
-					perform_search(sci, &vi_state, FALSE);
-					accumulator_clear();
-					break;
-				case GDK_KEY_asterisk:
-				case GDK_KEY_numbersign:
-				{
-					gchar *word = get_current_word(sci);
-					g_free(vi_state.search_text);
-					if (!word)
-						vi_state.search_text = NULL;
-					else
-					{
-						const gchar *prefix = event->keyval == GDK_KEY_asterisk ? "/" : "?";
-						vi_state.search_text = g_strconcat(prefix, word, NULL);
-					}
-					g_free(word);
-					perform_search(sci, &vi_state, TRUE);
-					accumulator_clear();
-					break;
-				}
-				case GDK_KEY_U:
-				// undo on single line - we probably won't implement it
-				case GDK_KEY_u:
-					cmd_undo(sci, &vi_state);
-					accumulator_clear();
-					break;
-				case GDK_KEY_r:
-					if (event->state & GDK_CONTROL_MASK)
-						cmd_redo(sci, &vi_state);
-					accumulator_clear();
-					break;
-				case GDK_KEY_y:
-				{
-					guint accum_len = accumulator_len();
-					if (accum_len == 0)
-						accumulator_append("y");
-					else if (accum_len == 1 && vi_state.accumulator[0] == 'y')
-					{
-						gint start = sci_get_position_from_line(sci, sci_get_current_line(sci));
-						gint end = sci_get_position_from_line(sci, sci_get_current_line(sci)+1);
-						SSM(sci, SCI_COPYRANGE, start, end);
-						accumulator_clear();
-					}
-					else
-						accumulator_clear();
-					break;
-				}
-				case GDK_KEY_p:
-				{
-					gint pos = sci_get_position_from_line(sci, sci_get_current_line(sci)+1);
-					sci_set_current_position(sci, pos, TRUE);
-					SSM(sci, SCI_PASTE, 0, 0);
-					sci_set_current_position(sci, pos, TRUE);
-					accumulator_clear();
-					break;
-				}
-				case GDK_KEY_d:
-				{
-					guint accum_len = accumulator_len();
-					if (accum_len == 0)
-						accumulator_append("d");
-					else if (accum_len == 1 && vi_state.accumulator[0] == 'd')
-					{
-						gint start = sci_get_position_from_line(sci, sci_get_current_line(sci));
-						gint end = sci_get_position_from_line(sci, sci_get_current_line(sci)+1);
-						SSM(sci, SCI_DELETERANGE, start, end-start);
-						accumulator_clear();
-					}
-					else
-						accumulator_clear();
-					break;
-				}
-				case GDK_KEY_0:
-				case GDK_KEY_KP_0:
-				case GDK_KEY_1:
-				case GDK_KEY_KP_1:
-				case GDK_KEY_2:
-				case GDK_KEY_KP_2:
-				case GDK_KEY_3:
-				case GDK_KEY_KP_3:
-				case GDK_KEY_4:
-				case GDK_KEY_KP_4:
-				case GDK_KEY_5:
-				case GDK_KEY_KP_5:
-				case GDK_KEY_6:
-				case GDK_KEY_KP_6:
-				case GDK_KEY_7:
-				case GDK_KEY_KP_7:
-				case GDK_KEY_8:
-				case GDK_KEY_KP_8:
-				case GDK_KEY_9:
-				case GDK_KEY_KP_9:
-					accumulator_append(event->string);
+					perform_ui_cmd(ui_cmd_enter_insert_mode_after, sci, &vi_state, &vi_ui);
 					break;
 				default:
 					cmd_switch(event, sci, &vi_state);
@@ -528,7 +320,7 @@ static void on_doc_open(G_GNUC_UNUSED GObject *obj, GeanyDocument *doc,
 		G_GNUC_UNUSED gpointer user_data)
 {
 	g_return_if_fail(doc != NULL);
-	prepare_vi_mode(doc);
+	prepare_vi_mode(doc->editor->sci, &vi_state, &vi_ui);
 }
 
 
@@ -537,7 +329,7 @@ static void on_doc_activate(G_GNUC_UNUSED GObject *obj, GeanyDocument *doc,
 {
 	g_return_if_fail(doc != NULL);
 
-	prepare_vi_mode(doc);
+	prepare_vi_mode(doc->editor->sci, &vi_state, &vi_ui);
 }
 
 
@@ -619,7 +411,7 @@ void plugin_init(GeanyData *data)
 	gtk_widget_show_all(frame);
 
 	/* final setup */
-	prepare_vi_mode(document_get_current());
+	prepare_vi_mode(get_current_doc_sci(), &vi_state, &vi_ui);
 }
 
 
