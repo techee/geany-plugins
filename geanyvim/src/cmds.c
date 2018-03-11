@@ -363,8 +363,20 @@ void cmd_replace_char(ScintillaObject *sci, ViState *vi_state, gint num)
 {
 	gint pos = sci_get_current_position(sci);
 	gchar *repl = vi_state->accumulator + accumulator_len(vi_state) - 1;
-	
+
 	sci_set_target_start(sci, pos);
 	sci_set_target_end(sci, pos + 1);
 	sci_replace_target(sci, repl, FALSE);
+}
+
+void cmd_uppercase_char(ScintillaObject *sci, ViState *vi_state, gint num)
+{
+	//TODO: for some reason we don't get the same cursor position after undoing
+	gint pos = sci_get_current_position(sci);
+	gchar upper[2] = {toupper(sci_get_char_at(sci, pos)), '\0'};
+
+	sci_set_target_start(sci, pos);
+	sci_set_target_end(sci, pos + 1);
+	sci_replace_target(sci, upper, FALSE);
+	sci_send_command(sci, SCI_CHARRIGHT);
 }

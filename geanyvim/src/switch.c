@@ -70,7 +70,7 @@ void cmd_switch(GdkEventKey *event, ScintillaObject *sci, ViState *vi_state, ViU
 	if (handled)
 		return;
 
-	if (event->state == GDK_CONTROL_MASK)
+	if (event->state & GDK_CONTROL_MASK)
 	{
 		switch (event->keyval)
 		{
@@ -82,9 +82,6 @@ void cmd_switch(GdkEventKey *event, ScintillaObject *sci, ViState *vi_state, ViU
 		}
 		return;
 	}
-
-	if (event->state != 0)
-		return;
 
 	switch (event->keyval)
 	{
@@ -241,6 +238,9 @@ void cmd_switch(GdkEventKey *event, ScintillaObject *sci, ViState *vi_state, ViU
 			break;
 		case GDK_KEY_L:
 			perform_cmd(cmd_goto_screen_bottom, sci, vi_state);
+			break;
+		case GDK_KEY_asciitilde:
+			perform_cmd(cmd_uppercase_char, sci, vi_state);
 			break;
 		//tx, Tx - like above but stop one character before
 		default:
