@@ -30,23 +30,20 @@
 
 /* "UI" commands */
 
-void ui_cmd_enter_cmdline_mode(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui)
+void ui_cmd_enter_cmdline_mode(ScintillaObject *sci, ViState *state, ViUi *ui)
 {
-	const gchar *val = vi_state->accumulator + strlen(vi_state->accumulator) - 1;;
-	gtk_widget_show(vi_ui->prompt);
-	gtk_entry_set_text(GTK_ENTRY(vi_ui->entry), val);
-	gtk_editable_set_position(GTK_EDITABLE(vi_ui->entry), 1);
+	enter_cmdline_mode();
 }
 
 void ui_cmd_enter_insert_mode(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui)
 {
-	vi_state->vi_mode = VI_MODE_INSERT;
+	vi_ui->vi_mode = VI_MODE_INSERT;
 	prepare_vi_mode(sci, vi_state, vi_ui);
 }
 
 void ui_cmd_enter_replace_mode(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui)
 {
-	vi_state->vi_mode = VI_MODE_REPLACE;
+	vi_ui->vi_mode = VI_MODE_REPLACE;
 	prepare_vi_mode(sci, vi_state, vi_ui);
 }
 

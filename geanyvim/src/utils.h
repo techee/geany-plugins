@@ -37,7 +37,7 @@ ScintillaObject *get_current_doc_sci(void);
 gchar *get_current_word(ScintillaObject *sci);
 
 void prepare_vi_mode(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui);
-void clamp_cursor_pos(ScintillaObject *sci, ViState *vi_state);
+void clamp_cursor_pos(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui);
 void perform_search(ScintillaObject *sci, ViState *vi_state, gboolean forward);
 
 #endif

@@ -30,14 +30,6 @@ typedef enum {
 
 typedef struct
 {
-	/* whether vi mode is enabled or disabled */
-	gboolean vi_enabled; 
-	/* if vi mode is valid for a single command and will be disabled automatically
-	 * after performing it */
-	gboolean vi_onetime;
-	/* vi mode */
-	ViMode vi_mode;
-
 	/* the last full search command, including '/' or '?' */
 	gchar *search_text;
 
@@ -48,14 +40,18 @@ typedef struct
 
 typedef struct
 {
-	GtkWidget *prompt;
-	GtkWidget *entry;
-	GtkWidget *separator_item;
-	GtkWidget *toggle_vi_item;
-	GtkWidget *perform_vi_item;
-
 	/* caret style used by Geany we can revert to when disabling vi mode */
 	gint default_caret_style;
+
+	/* whether vi mode is enabled or disabled */
+	gboolean vi_enabled; 
+	/* if vi mode is valid for a single command and will be disabled automatically
+	 * after performing it */
+	gboolean vi_onetime;
+	/* vi mode */
+	ViMode vi_mode;
 } ViUi;
+
+void enter_cmdline_mode(void);
 
 #endif

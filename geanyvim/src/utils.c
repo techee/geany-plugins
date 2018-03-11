@@ -94,9 +94,9 @@ gint accumulator_get_int(ViState *vi_state, gint start_pos, gint default_val)
 }
 
 
-void clamp_cursor_pos(ScintillaObject *sci, ViState *vi_state)
+void clamp_cursor_pos(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui)
 {
-	if (!vi_state->vi_enabled || vi_state->vi_mode != VI_MODE_COMMAND)
+	if (!vi_ui->vi_enabled || vi_ui->vi_mode != VI_MODE_COMMAND)
 		return;
 
 	gint pos = sci_get_current_position(sci);
@@ -201,26 +201,26 @@ void prepare_vi_mode(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui)
 	if (vi_ui->default_caret_style == -1)
 		vi_ui->default_caret_style = SSM(sci, SCI_GETCARETSTYLE, 0, 0);
 
-	if (vi_state->vi_enabled)
+	if (vi_ui->vi_enabled)
 	{
-		if (vi_state->vi_mode == VI_MODE_COMMAND)
+		if (vi_ui->vi_mode == VI_MODE_COMMAND)
 		{
 			SSM(sci, SCI_SETCARETSTYLE, CARETSTYLE_BLOCK, 0);
 			SSM(sci, SCI_SETOVERTYPE, 0, 0);
 		}
 		else
 		{
-			if (vi_state->vi_mode == VI_MODE_INSERT)
+			if (vi_ui->vi_mode == VI_MODE_INSERT)
 				SSM(sci, SCI_SETOVERTYPE, 0, 0);
-			else if (vi_state->vi_mode == VI_MODE_REPLACE)
+			else if (vi_ui->vi_mode == VI_MODE_REPLACE)
 				SSM(sci, SCI_SETOVERTYPE, 1, 0);
 			SSM(sci, SCI_SETCARETSTYLE, CARETSTYLE_LINE, 0);
 		}
-		ui_set_statusbar(FALSE, "Vim Mode: -- %s --", get_mode_name(vi_state->vi_mode));
+		ui_set_statusbar(FALSE, "Vim Mode: -- %s --", get_mode_name(vi_ui->vi_mode));
 	}
 	else
 		SSM(sci, SCI_SETCARETSTYLE, vi_ui->default_caret_style, 0);
 
-	clamp_cursor_pos(sci, vi_state);
+	clamp_cursor_pos(sci, vi_state, vi_ui);
 }
 
