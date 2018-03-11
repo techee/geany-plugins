@@ -71,5 +71,8 @@ void cmd_goto_line_start(ScintillaObject *sci, ViState *vi_state, gint num);
 void cmd_goto_line_end(ScintillaObject *sci, ViState *vi_state, gint num);
 void cmd_goto_matching_brace(ScintillaObject *sci, ViState *vi_state, gint num);
 void cmd_goto_doc_percentage(ScintillaObject *sci, ViState *vi_state, gint num);
+void cmd_goto_screen_top(ScintillaObject *sci, ViState *vi_state, gint num);
+void cmd_goto_screen_middle(ScintillaObject *sci, ViState *vi_state, gint num);
+void cmd_goto_screen_bottom(ScintillaObject *sci, ViState *vi_state, gint num);
 
 #endif

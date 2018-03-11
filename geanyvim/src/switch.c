@@ -155,6 +155,15 @@ gboolean cmd_switch(GdkEventKey *event, ScintillaObject *sci, ViState *vi_state)
 			else
 				perform_cmd(cmd_goto_matching_brace, sci, vi_state);
 			break;
+		case GDK_KEY_H:
+			perform_cmd(cmd_goto_screen_top, sci, vi_state);
+			break;
+		case GDK_KEY_M:
+			perform_cmd(cmd_goto_screen_middle, sci, vi_state);
+			break;
+		case GDK_KEY_L:
+			perform_cmd(cmd_goto_screen_bottom, sci, vi_state);
+			break;
 		case GDK_KEY_o:
 			//new line after current and switch to insert mode
 			break;
@@ -162,7 +171,6 @@ gboolean cmd_switch(GdkEventKey *event, ScintillaObject *sci, ViState *vi_state)
 			//new line before current
 			break;
 		//tx, Tx - like above but stop one character before
-		//50% - go to half of the file
 		//H, M, L - moving within visible editor area
 		default:
 			performed = FALSE;

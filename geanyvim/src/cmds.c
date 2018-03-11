@@ -395,3 +395,26 @@ void cmd_goto_doc_percentage(ScintillaObject *sci, ViState *vi_state, gint num)
 	pos = sci_get_position_from_line(sci, line_num);
 	sci_set_current_position(sci, pos, TRUE);
 }
+
+void cmd_goto_screen_top(ScintillaObject *sci, ViState *vi_state, gint num)
+{
+	gint top = SSM(sci, SCI_GETFIRSTVISIBLELINE, 0, 0);
+	gint pos = sci_get_position_from_line(sci, top+num-1);
+	sci_set_current_position(sci, pos, TRUE);
+}
+
+void cmd_goto_screen_middle(ScintillaObject *sci, ViState *vi_state, gint num)
+{
+	gint top = SSM(sci, SCI_GETFIRSTVISIBLELINE, 0, 0);
+	gint count = SSM(sci, SCI_LINESONSCREEN, 0, 0);
+	gint pos = sci_get_position_from_line(sci, top+count/2);
+	sci_set_current_position(sci, pos, TRUE);
+}
+
+void cmd_goto_screen_bottom(ScintillaObject *sci, ViState *vi_state, gint num)
+{
+	gint top = SSM(sci, SCI_GETFIRSTVISIBLELINE, 0, 0);
+	gint count = SSM(sci, SCI_LINESONSCREEN, 0, 0);
+	gint pos = sci_get_position_from_line(sci, top+count-num);
+	sci_set_current_position(sci, pos, TRUE);
+}
