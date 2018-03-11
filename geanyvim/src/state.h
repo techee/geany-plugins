@@ -23,20 +23,11 @@
 
 typedef enum {
 	VI_MODE_COMMAND,
+	VI_MODE_CMDLINE,
 	VI_MODE_INSERT,
 	VI_MODE_VISUAL,
 	VI_MODE_REPLACE,
 } ViMode;
-
-typedef struct
-{
-	/* the last full search command, including '/' or '?' */
-	gchar *search_text;
-
-	/* input accumulated over time (e.g. for commands like 100dd) */
-	gchar *accumulator;
-} CmdContext;
-
 
 typedef struct
 {
@@ -52,6 +43,6 @@ typedef struct
 	ViMode vi_mode;
 } ViState;
 
-void enter_cmdline_mode(void);
+void set_vi_mode(ViMode mode, ScintillaObject *sci);
 
 #endif

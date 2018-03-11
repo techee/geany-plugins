@@ -23,6 +23,7 @@
 #include <geanyplugin.h>
 
 #include "state.h"
+#include "cmds.h"
 
 void cmd_switch(GdkEventKey *event, ScintillaObject *sci, CmdContext *ctx, ViState *state);
 

@@ -23,6 +23,7 @@
 #include <geanyplugin.h>
 
 #include "state.h"
+#include "cmds.h"
 
 #define SSM(s, m, w, l) scintilla_send_message(s, m, w, l)
 
@@ -36,7 +37,6 @@ gint accumulator_get_int(CmdContext *ctx, gint start_pos, gint default_val);
 ScintillaObject *get_current_doc_sci(void);
 gchar *get_current_word(ScintillaObject *sci);
 
-void prepare_vi_mode(ScintillaObject *sci, CmdContext *ctx, ViState *state);
 void clamp_cursor_pos(ScintillaObject *sci, CmdContext *ctx, ViState *state);
 void perform_search(ScintillaObject *sci, CmdContext *ctx, gboolean forward);
 

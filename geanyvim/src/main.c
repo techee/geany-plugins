@@ -83,12 +83,76 @@ CmdContext ctx =
 };
 
 
-void enter_cmdline_mode(void)
+static const gchar *get_mode_name(ViMode vi_mode)
 {
-	const gchar *val = ctx.accumulator + strlen(ctx.accumulator) - 1;
-	gtk_widget_show(vi_widgets.prompt);
-	gtk_entry_set_text(GTK_ENTRY(vi_widgets.entry), val);
-	gtk_editable_set_position(GTK_EDITABLE(vi_widgets.entry), 1);
+	switch (vi_mode)
+	{
+		case VI_MODE_COMMAND:
+			return "COMMAND";
+			break;
+		case VI_MODE_INSERT:
+			return "INSERT";
+			break;
+		case VI_MODE_REPLACE:
+			return "REPLACE";
+			break;
+		case VI_MODE_VISUAL:
+			return "VISUAL";
+			break;
+		case VI_MODE_CMDLINE:
+			return "CMDLINE";
+			break;
+	}
+	return "";
+}
+
+
+void set_vi_mode(ViMode mode, ScintillaObject *sci)
+{
+	if (!sci)
+		return;
+
+	if (state.default_caret_style == -1)
+		state.default_caret_style = SSM(sci, SCI_GETCARETSTYLE, 0, 0);
+
+	if (!state.vi_enabled)
+	{
+		SSM(sci, SCI_SETCARETSTYLE, state.default_caret_style, 0);
+		return;
+	}
+
+	state.vi_mode = mode;
+
+	switch (mode)
+	{
+		case VI_MODE_COMMAND:
+			SSM(sci, SCI_SETCARETSTYLE, CARETSTYLE_BLOCK, 0);
+			SSM(sci, SCI_SETOVERTYPE, 0, 0);
+			break;
+		case VI_MODE_CMDLINE:
+		{
+			const gchar *val = ctx.accumulator + strlen(ctx.accumulator) - 1;
+			gtk_widget_show(vi_widgets.prompt);
+			gtk_entry_set_text(GTK_ENTRY(vi_widgets.entry), val);
+			gtk_editable_set_position(GTK_EDITABLE(vi_widgets.entry), 1);
+			break;
+		}
+		case VI_MODE_INSERT:
+			SSM(sci, SCI_SETOVERTYPE, 0, 0);
+			SSM(sci, SCI_SETCARETSTYLE, CARETSTYLE_LINE, 0);
+			break;
+		case VI_MODE_REPLACE:
+			SSM(sci, SCI_SETOVERTYPE, 1, 0);
+			SSM(sci, SCI_SETCARETSTYLE, CARETSTYLE_LINE, 0);
+			break;
+		case VI_MODE_VISUAL:
+			break;
+	}
+
+	ui_set_statusbar(FALSE, "Vim Mode: -- %s --", get_mode_name(state.vi_mode));
+
+	clamp_cursor_pos(sci, &ctx, &state);
+
 }
 
 
@@ -98,8 +162,7 @@ static void leave_onetime_vi_mode()
 	{
 		state.vi_enabled = FALSE;
 		state.vi_onetime = FALSE;
-		state.vi_mode = VI_MODE_COMMAND;
-		prepare_vi_mode(get_current_doc_sci(), &ctx, &state);
+		set_vi_mode(VI_MODE_COMMAND, get_current_doc_sci());
 	}
 }
 
@@ -236,8 +299,7 @@ static void on_toggle_vim_mode(void)
 {
 	state.vi_enabled = gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(vi_widgets.toggle_vi_item));
 	state.vi_onetime = FALSE;
-	state.vi_mode = VI_MODE_COMMAND;
-	prepare_vi_mode(get_current_doc_sci(), &ctx, &state);
+	set_vi_mode(VI_MODE_COMMAND, get_current_doc_sci());
 	if (!state.vi_enabled)
 		ui_set_statusbar(FALSE, "Vim Mode Disabled");
 	save_config();
@@ -259,9 +321,8 @@ static gboolean on_perform_vim_command(GeanyKeyBinding *kb, guint key_id, gpoint
 	{
 		state.vi_onetime = TRUE;
 		state.vi_enabled = TRUE;
+		set_vi_mode(VI_MODE_COMMAND, get_current_doc_sci());
 	}
-	state.vi_mode = VI_MODE_COMMAND;
-	prepare_vi_mode(get_current_doc_sci(), &ctx, &state);
 
 	return TRUE;
 }
@@ -299,11 +360,10 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 			{
 				gint pos = sci_get_current_position(sci);
 				gint start_pos = sci_get_position_from_line(sci, sci_get_current_line(sci));
-				state.vi_mode = VI_MODE_COMMAND;
 				if (pos > start_pos)
 					sci_send_command(sci, SCI_CHARLEFT);
 				leave_onetime_vi_mode();
-				prepare_vi_mode(sci, &ctx, &state);
+				set_vi_mode(VI_MODE_COMMAND, get_current_doc_sci());
 				accumulator_clear(&ctx);
 			}
 		}
@@ -319,7 +379,7 @@ static void on_doc_open(G_GNUC_UNUSED GObject *obj, GeanyDocument *doc,
 		G_GNUC_UNUSED gpointer user_data)
 {
 	g_return_if_fail(doc != NULL);
-	prepare_vi_mode(doc->editor->sci, &ctx, &state);
+	set_vi_mode(state.vi_mode, doc->editor->sci);
 }
 
 
@@ -327,8 +387,7 @@ static void on_doc_activate(G_GNUC_UNUSED GObject *obj, GeanyDocument *doc,
 		G_GNUC_UNUSED gpointer user_data)
 {
 	g_return_if_fail(doc != NULL);
-
-	prepare_vi_mode(doc->editor->sci, &ctx, &state);
+	set_vi_mode(state.vi_mode, doc->editor->sci);
 }
 
 
@@ -337,6 +396,7 @@ static gboolean on_editor_notify(GObject *object, GeanyEditor *editor,
 {
 	GeanyDocument *doc = document_get_current();
 
+	//TODO: not when there's a selection
 	/* this makes sure that when we click behind the end of line in command mode,
 	 * the cursor is not placed BEHIND the last character but ON the last character */
 	if (doc != NULL && nt->nmhdr.code == SCN_UPDATEUI && nt->updated == SC_UPDATE_SELECTION)
@@ -409,8 +469,7 @@ void plugin_init(GeanyData *data)
 
 	gtk_widget_show_all(frame);
 
-	/* final setup */
-	prepare_vi_mode(get_current_doc_sci(), &ctx, &state);
+	set_vi_mode(VI_MODE_COMMAND, get_current_doc_sci());
 }
 
 
