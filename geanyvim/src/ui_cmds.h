@@ -28,5 +28,7 @@ void prepare_vi_mode(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui);
 void ui_cmd_enter_cmdline_mode(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui);
 void ui_cmd_enter_insert_mode(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui);
 void ui_cmd_enter_insert_mode_after(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui);
+void ui_cmd_enter_insert_mode_line_start(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui);
+void ui_cmd_enter_insert_mode_line_end(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui);
 
 #endif

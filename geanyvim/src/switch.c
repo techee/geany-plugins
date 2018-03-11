@@ -171,7 +171,6 @@ gboolean cmd_switch(GdkEventKey *event, ScintillaObject *sci, ViState *vi_state)
 			//new line before current
 			break;
 		//tx, Tx - like above but stop one character before
-		//H, M, L - moving within visible editor area
 		default:
 			performed = FALSE;
 	}

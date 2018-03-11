@@ -21,6 +21,7 @@
 #endif
 
 #include <geanyplugin.h>
+#include <ctype.h>
 #include "state.h"
 #include "ui.h"
 #include "ui_cmds.h"
@@ -92,5 +93,27 @@ void ui_cmd_enter_insert_mode_after(ScintillaObject *sci, ViState *vi_state, ViU
 	if (pos < end_pos)
 		sci_send_command(sci, SCI_CHARRIGHT);
 
+	ui_cmd_enter_insert_mode(sci, vi_state, vi_ui);
+}
+
+void ui_cmd_enter_insert_mode_line_start(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui)
+{
+	gint pos, line;
+	sci_send_command(sci, SCI_HOME);
+	pos = sci_get_current_position(sci);
+	line = sci_get_current_line(sci);
+	while (isspace(sci_get_char_at(sci, pos)))
+	{
+		if (sci_get_line_from_position(sci, pos + 1) != line)
+			break;
+		pos++;
+	}
+	sci_set_current_position(sci, pos, TRUE);
+	ui_cmd_enter_insert_mode(sci, vi_state, vi_ui);
+}
+
+void ui_cmd_enter_insert_mode_line_end(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui)
+{
+	sci_send_command(sci, SCI_LINEEND);
 	ui_cmd_enter_insert_mode(sci, vi_state, vi_ui);
 }
