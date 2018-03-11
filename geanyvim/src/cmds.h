@@ -19,62 +19,62 @@
 #ifndef __GEANYVIM_CMDS_H__
 #define __GEANYVIM_CMDS_H__
 
-/* "UI" commands */
-void ui_cmd_enter_cmdline_mode(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui);
-void ui_cmd_enter_insert_mode(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui);
-void ui_cmd_enter_insert_mode_after(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui);
-void ui_cmd_enter_insert_mode_line_start(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui);
-void ui_cmd_enter_insert_mode_line_end(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui);
-void ui_cmd_enter_insert_mode_next_line(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui);
-void ui_cmd_enter_insert_mode_prev_line(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui);
-void ui_cmd_enter_insert_mode_clear_line(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui);
-void ui_cmd_enter_insert_mode_clear_right(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui);
-void ui_cmd_enter_insert_mode_delete_char(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui);
+/* state commands */
+void state_cmd_enter_cmdline_mode(ScintillaObject *sci, CmdContext *ctx, ViState *state);
+void state_cmd_enter_insert_mode(ScintillaObject *sci, CmdContext *ctx, ViState *state);
+void state_cmd_enter_insert_mode_after(ScintillaObject *sci, CmdContext *ctx, ViState *state);
+void state_cmd_enter_insert_mode_line_start(ScintillaObject *sci, CmdContext *ctx, ViState *state);
+void state_cmd_enter_insert_mode_line_end(ScintillaObject *sci, CmdContext *ctx, ViState *state);
+void state_cmd_enter_insert_mode_next_line(ScintillaObject *sci, CmdContext *ctx, ViState *state);
+void state_cmd_enter_insert_mode_prev_line(ScintillaObject *sci, CmdContext *ctx, ViState *state);
+void state_cmd_enter_insert_mode_clear_line(ScintillaObject *sci, CmdContext *ctx, ViState *state);
+void state_cmd_enter_insert_mode_clear_right(ScintillaObject *sci, CmdContext *ctx, ViState *state);
+void state_cmd_enter_insert_mode_delete_char(ScintillaObject *sci, CmdContext *ctx, ViState *state);
 
 
-void ui_cmd_enter_replace_mode(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui);
+void state_cmd_enter_replace_mode(ScintillaObject *sci, CmdContext *ctx, ViState *state);
 
 
 /* normal commands */
-void cmd_page_up(ScintillaObject *sci, ViState *vi_state, gint num);
-void cmd_page_down(ScintillaObject *sci, ViState *vi_state, gint num);
+void cmd_page_up(ScintillaObject *sci, CmdContext *ctx, gint num);
+void cmd_page_down(ScintillaObject *sci, CmdContext *ctx, gint num);
 
-void cmd_move_caret_left(ScintillaObject *sci, ViState *vi_state, gint num);
-void cmd_move_caret_right(ScintillaObject *sci, ViState *vi_state, gint num);
-void cmd_move_caret_up(ScintillaObject *sci, ViState *vi_state, gint num);
-void cmd_move_caret_down(ScintillaObject *sci, ViState *vi_state, gint num);
+void cmd_move_caret_left(ScintillaObject *sci, CmdContext *ctx, gint num);
+void cmd_move_caret_right(ScintillaObject *sci, CmdContext *ctx, gint num);
+void cmd_move_caret_up(ScintillaObject *sci, CmdContext *ctx, gint num);
+void cmd_move_caret_down(ScintillaObject *sci, CmdContext *ctx, gint num);
 
-void cmd_undo(ScintillaObject *sci, ViState *vi_state, gint num);
-void cmd_redo(ScintillaObject *sci, ViState *vi_state, gint num);
+void cmd_undo(ScintillaObject *sci, CmdContext *ctx, gint num);
+void cmd_redo(ScintillaObject *sci, CmdContext *ctx, gint num);
 
-void cmd_copy_line(ScintillaObject *sci, ViState *vi_state, gint num);
-void cmd_paste(ScintillaObject *sci, ViState *vi_state, gint num);
+void cmd_copy_line(ScintillaObject *sci, CmdContext *ctx, gint num);
+void cmd_paste(ScintillaObject *sci, CmdContext *ctx, gint num);
 
-void cmd_search(ScintillaObject *sci, ViState *vi_state, gint num);
+void cmd_search(ScintillaObject *sci, CmdContext *ctx, gint num);
 
-void cmd_delete_line(ScintillaObject *sci, ViState *vi_state, gint num);
-void cmd_delete_char(ScintillaObject *sci, ViState *vi_state, gint num);
-void cmd_delete_char_back(ScintillaObject *sci, ViState *vi_state, gint num);
-void cmd_goto_line(ScintillaObject *sci, ViState *vi_state, gint num);
-void cmd_goto_line_last(ScintillaObject *sci, ViState *vi_state, gint num);
-void cmd_join_lines(ScintillaObject *sci, ViState *vi_state, gint num);
-void cmd_goto_next_word(ScintillaObject *sci, ViState *vi_state, gint num);
-void cmd_goto_next_word(ScintillaObject *sci, ViState *vi_state, gint num);
-void cmd_goto_next_word_end(ScintillaObject *sci, ViState *vi_state, gint num);
-void cmd_goto_previous_word(ScintillaObject *sci, ViState *vi_state, gint num);
-void cmd_goto_previous_word_end(ScintillaObject *sci, ViState *vi_state, gint num);
-void cmd_goto_line_start(ScintillaObject *sci, ViState *vi_state, gint num);
-void cmd_goto_line_end(ScintillaObject *sci, ViState *vi_state, gint num);
-void cmd_goto_matching_brace(ScintillaObject *sci, ViState *vi_state, gint num);
-void cmd_goto_doc_percentage(ScintillaObject *sci, ViState *vi_state, gint num);
-void cmd_goto_screen_top(ScintillaObject *sci, ViState *vi_state, gint num);
-void cmd_goto_screen_middle(ScintillaObject *sci, ViState *vi_state, gint num);
-void cmd_goto_screen_bottom(ScintillaObject *sci, ViState *vi_state, gint num);
+void cmd_delete_line(ScintillaObject *sci, CmdContext *ctx, gint num);
+void cmd_delete_char(ScintillaObject *sci, CmdContext *ctx, gint num);
+void cmd_delete_char_back(ScintillaObject *sci, CmdContext *ctx, gint num);
+void cmd_goto_line(ScintillaObject *sci, CmdContext *ctx, gint num);
+void cmd_goto_line_last(ScintillaObject *sci, CmdContext *ctx, gint num);
+void cmd_join_lines(ScintillaObject *sci, CmdContext *ctx, gint num);
+void cmd_goto_next_word(ScintillaObject *sci, CmdContext *ctx, gint num);
+void cmd_goto_next_word(ScintillaObject *sci, CmdContext *ctx, gint num);
+void cmd_goto_next_word_end(ScintillaObject *sci, CmdContext *ctx, gint num);
+void cmd_goto_previous_word(ScintillaObject *sci, CmdContext *ctx, gint num);
+void cmd_goto_previous_word_end(ScintillaObject *sci, CmdContext *ctx, gint num);
+void cmd_goto_line_start(ScintillaObject *sci, CmdContext *ctx, gint num);
+void cmd_goto_line_end(ScintillaObject *sci, CmdContext *ctx, gint num);
+void cmd_goto_matching_brace(ScintillaObject *sci, CmdContext *ctx, gint num);
+void cmd_goto_doc_percentage(ScintillaObject *sci, CmdContext *ctx, gint num);
+void cmd_goto_screen_top(ScintillaObject *sci, CmdContext *ctx, gint num);
+void cmd_goto_screen_middle(ScintillaObject *sci, CmdContext *ctx, gint num);
+void cmd_goto_screen_bottom(ScintillaObject *sci, CmdContext *ctx, gint num);
 
-void cmd_replace_char(ScintillaObject *sci, ViState *vi_state, gint num);
-void cmd_uppercase_char(ScintillaObject *sci, ViState *vi_state, gint num);
+void cmd_replace_char(ScintillaObject *sci, CmdContext *ctx, gint num);
+void cmd_uppercase_char(ScintillaObject *sci, CmdContext *ctx, gint num);
 
-void cmd_indent(ScintillaObject *sci, ViState *vi_state, gint num);
-void cmd_unindent(ScintillaObject *sci, ViState *vi_state, gint num);
+void cmd_indent(ScintillaObject *sci, CmdContext *ctx, gint num);
+void cmd_unindent(ScintillaObject *sci, CmdContext *ctx, gint num);
 
 #endif

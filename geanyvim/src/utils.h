@@ -26,18 +26,18 @@
 
 #define SSM(s, m, w, l) scintilla_send_message(s, m, w, l)
 
-void accumulator_append(ViState *vi_state, const gchar *val);
-void accumulator_clear(ViState *vi_state);
-guint accumulator_len(ViState *vi_state);
-gchar accumulator_current_char(ViState *vi_state);
-gchar accumulator_previous_char(ViState *vi_state);
-gint accumulator_get_int(ViState *vi_state, gint start_pos, gint default_val);
+void accumulator_append(CmdContext *ctx, const gchar *val);
+void accumulator_clear(CmdContext *ctx);
+guint accumulator_len(CmdContext *ctx);
+gchar accumulator_current_char(CmdContext *ctx);
+gchar accumulator_previous_char(CmdContext *ctx);
+gint accumulator_get_int(CmdContext *ctx, gint start_pos, gint default_val);
 
 ScintillaObject *get_current_doc_sci(void);
 gchar *get_current_word(ScintillaObject *sci);
 
-void prepare_vi_mode(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui);
-void clamp_cursor_pos(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui);
-void perform_search(ScintillaObject *sci, ViState *vi_state, gboolean forward);
+void prepare_vi_mode(ScintillaObject *sci, CmdContext *ctx, ViState *state);
+void clamp_cursor_pos(ScintillaObject *sci, CmdContext *ctx, ViState *state);
+void perform_search(ScintillaObject *sci, CmdContext *ctx, gboolean forward);
 
 #endif

@@ -30,47 +30,47 @@ ScintillaObject *get_current_doc_sci(void)
 	return doc != NULL ? doc->editor->sci : NULL;
 }
 
-void accumulator_append(ViState *vi_state, const gchar *val)
+void accumulator_append(CmdContext *ctx, const gchar *val)
 {
-	if (!vi_state->accumulator)
-		vi_state->accumulator = g_strdup(val);
+	if (!ctx->accumulator)
+		ctx->accumulator = g_strdup(val);
 	else
-		SETPTR(vi_state->accumulator, g_strconcat(vi_state->accumulator, val, NULL));
+		SETPTR(ctx->accumulator, g_strconcat(ctx->accumulator, val, NULL));
 }
 
-void accumulator_clear(ViState *vi_state)
+void accumulator_clear(CmdContext *ctx)
 {
-	g_free(vi_state->accumulator);
-	vi_state->accumulator = NULL;
+	g_free(ctx->accumulator);
+	ctx->accumulator = NULL;
 }
 
-guint accumulator_len(ViState *vi_state)
+guint accumulator_len(CmdContext *ctx)
 {
-	if (!vi_state->accumulator)
+	if (!ctx->accumulator)
 		return 0;
-	return strlen(vi_state->accumulator);
+	return strlen(ctx->accumulator);
 }
 
-gchar accumulator_current_char(ViState *vi_state)
+gchar accumulator_current_char(CmdContext *ctx)
 {
-	guint len = accumulator_len(vi_state);
+	guint len = accumulator_len(ctx);
 	if (len > 0)
-		return vi_state->accumulator[len-1];
+		return ctx->accumulator[len-1];
 	return '\0';
 }
 
-gchar accumulator_previous_char(ViState *vi_state)
+gchar accumulator_previous_char(CmdContext *ctx)
 {
-	guint len = accumulator_len(vi_state);
+	guint len = accumulator_len(ctx);
 	if (len > 1)
-		return vi_state->accumulator[len-2];
+		return ctx->accumulator[len-2];
 	return '\0';
 }
 
-gint accumulator_get_int(ViState *vi_state, gint start_pos, gint default_val)
+gint accumulator_get_int(CmdContext *ctx, gint start_pos, gint default_val)
 {
-	gchar *s = g_strdup(vi_state->accumulator);
-	gint end = accumulator_len(vi_state) - start_pos - 1;
+	gchar *s = g_strdup(ctx->accumulator);
+	gint end = accumulator_len(ctx) - start_pos - 1;
 	gint start = end + 1;
 	gint val, i;
 
@@ -94,9 +94,9 @@ gint accumulator_get_int(ViState *vi_state, gint start_pos, gint default_val)
 }
 
 
-void clamp_cursor_pos(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui)
+void clamp_cursor_pos(ScintillaObject *sci, CmdContext *ctx, ViState *state)
 {
-	if (!vi_ui->vi_enabled || vi_ui->vi_mode != VI_MODE_COMMAND)
+	if (!state->vi_enabled || state->vi_mode != VI_MODE_COMMAND)
 		return;
 
 	gint pos = sci_get_current_position(sci);
@@ -126,20 +126,20 @@ gchar *get_current_word(ScintillaObject *sci)
 	return sci_get_contents_range(sci, start, end);
 }
 
-void perform_search(ScintillaObject *sci, ViState *vi_state, gboolean forward)
+void perform_search(ScintillaObject *sci, CmdContext *ctx, gboolean forward)
 {
 	struct Sci_TextToFind ttf;
 	gint loc, len, pos;
 
-	if (!vi_state->search_text)
+	if (!ctx->search_text)
 		return;
 
 	len = sci_get_length(sci);
 	pos = sci_get_current_position(sci);
 
-	forward = (vi_state->search_text[0] == '/' && forward) ||
-			(vi_state->search_text[0] == '?' && !forward);
-	ttf.lpstrText = vi_state->search_text + 1;
+	forward = (ctx->search_text[0] == '/' && forward) ||
+			(ctx->search_text[0] == '?' && !forward);
+	ttf.lpstrText = ctx->search_text + 1;
 	if (forward)
 	{
 		ttf.chrg.cpMin = pos + 1;
@@ -193,34 +193,34 @@ static const gchar *get_mode_name(ViMode vi_mode)
 	return "";
 }
 
-void prepare_vi_mode(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui)
+void prepare_vi_mode(ScintillaObject *sci, CmdContext *ctx, ViState *state)
 {
 	if (!sci)
 		return;
 
-	if (vi_ui->default_caret_style == -1)
-		vi_ui->default_caret_style = SSM(sci, SCI_GETCARETSTYLE, 0, 0);
+	if (state->default_caret_style == -1)
+		state->default_caret_style = SSM(sci, SCI_GETCARETSTYLE, 0, 0);
 
-	if (vi_ui->vi_enabled)
+	if (state->vi_enabled)
 	{
-		if (vi_ui->vi_mode == VI_MODE_COMMAND)
+		if (state->vi_mode == VI_MODE_COMMAND)
 		{
 			SSM(sci, SCI_SETCARETSTYLE, CARETSTYLE_BLOCK, 0);
 			SSM(sci, SCI_SETOVERTYPE, 0, 0);
 		}
 		else
 		{
-			if (vi_ui->vi_mode == VI_MODE_INSERT)
+			if (state->vi_mode == VI_MODE_INSERT)
 				SSM(sci, SCI_SETOVERTYPE, 0, 0);
-			else if (vi_ui->vi_mode == VI_MODE_REPLACE)
+			else if (state->vi_mode == VI_MODE_REPLACE)
 				SSM(sci, SCI_SETOVERTYPE, 1, 0);
 			SSM(sci, SCI_SETCARETSTYLE, CARETSTYLE_LINE, 0);
 		}
-		ui_set_statusbar(FALSE, "Vim Mode: -- %s --", get_mode_name(vi_ui->vi_mode));
+		ui_set_statusbar(FALSE, "Vim Mode: -- %s --", get_mode_name(state->vi_mode));
 	}
 	else
-		SSM(sci, SCI_SETCARETSTYLE, vi_ui->default_caret_style, 0);
+		SSM(sci, SCI_SETCARETSTYLE, state->default_caret_style, 0);
 
-	clamp_cursor_pos(sci, vi_state, vi_ui);
+	clamp_cursor_pos(sci, ctx, state);
 }
 

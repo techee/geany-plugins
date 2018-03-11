@@ -35,7 +35,7 @@ typedef struct
 
 	/* input accumulated over time (e.g. for commands like 100dd) */
 	gchar *accumulator;
-} ViState;
+} CmdContext;
 
 
 typedef struct
@@ -50,7 +50,7 @@ typedef struct
 	gboolean vi_onetime;
 	/* vi mode */
 	ViMode vi_mode;
-} ViUi;
+} ViState;
 
 void enter_cmdline_mode(void);
 

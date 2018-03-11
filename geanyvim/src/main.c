@@ -72,12 +72,12 @@ struct
 	NULL, NULL, NULL, NULL, NULL
 };
 
-ViUi vi_ui =
+ViState state =
 {
 	-1, TRUE, FALSE, VI_MODE_COMMAND
 };
 
-ViState vi_state =
+CmdContext ctx =
 {
 	NULL, NULL
 };
@@ -85,7 +85,7 @@ ViState vi_state =
 
 void enter_cmdline_mode(void)
 {
-	const gchar *val = vi_state.accumulator + strlen(vi_state.accumulator) - 1;
+	const gchar *val = ctx.accumulator + strlen(ctx.accumulator) - 1;
 	gtk_widget_show(vi_widgets.prompt);
 	gtk_entry_set_text(GTK_ENTRY(vi_widgets.entry), val);
 	gtk_editable_set_position(GTK_EDITABLE(vi_widgets.entry), 1);
@@ -94,12 +94,12 @@ void enter_cmdline_mode(void)
 
 static void leave_onetime_vi_mode()
 {
-	if (vi_ui.vi_onetime)
+	if (state.vi_onetime)
 	{
-		vi_ui.vi_enabled = FALSE;
-		vi_ui.vi_onetime = FALSE;
-		vi_ui.vi_mode = VI_MODE_COMMAND;
-		prepare_vi_mode(get_current_doc_sci(), &vi_state, &vi_ui);
+		state.vi_enabled = FALSE;
+		state.vi_onetime = FALSE;
+		state.vi_mode = VI_MODE_COMMAND;
+		prepare_vi_mode(get_current_doc_sci(), &ctx, &state);
 	}
 }
 
@@ -145,9 +145,9 @@ static void perform_command(const gchar *cmd)
 		}
 		case '/':
 		case '?':
-			g_free(vi_state.search_text);
-			vi_state.search_text = g_strdup(cmd);
-			perform_search(sci, &vi_state, TRUE);
+			g_free(ctx.search_text);
+			ctx.search_text = g_strdup(cmd);
+			perform_search(sci, &ctx, TRUE);
 			break;
 	}
 }
@@ -204,7 +204,7 @@ static void load_config(void)
 	GKeyFile *kf = g_key_file_new();
 
 	if (g_key_file_load_from_file(kf, filename, G_KEY_FILE_NONE, NULL))
-		vi_ui.vi_enabled = g_key_file_get_boolean(kf, CONF_GROUP, CONF_VI_MODE, NULL);
+		state.vi_enabled = g_key_file_get_boolean(kf, CONF_GROUP, CONF_VI_MODE, NULL);
   
 	g_key_file_free(kf);
 	g_free(filename);
@@ -219,7 +219,7 @@ static void save_config(void)
 	gchar *data;
 	gsize length;
 
-	g_key_file_set_boolean(kf, CONF_GROUP, CONF_VI_MODE, vi_ui.vi_enabled);
+	g_key_file_set_boolean(kf, CONF_GROUP, CONF_VI_MODE, state.vi_enabled);
 
 	utils_mkdir(dirname, TRUE);
 	data = g_key_file_to_data(kf, &length, NULL);
@@ -234,11 +234,11 @@ static void save_config(void)
 
 static void on_toggle_vim_mode(void)
 {
-	vi_ui.vi_enabled = gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(vi_widgets.toggle_vi_item));
-	vi_ui.vi_onetime = FALSE;
-	vi_ui.vi_mode = VI_MODE_COMMAND;
-	prepare_vi_mode(get_current_doc_sci(), &vi_state, &vi_ui);
-	if (!vi_ui.vi_enabled)
+	state.vi_enabled = gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(vi_widgets.toggle_vi_item));
+	state.vi_onetime = FALSE;
+	state.vi_mode = VI_MODE_COMMAND;
+	prepare_vi_mode(get_current_doc_sci(), &ctx, &state);
+	if (!state.vi_enabled)
 		ui_set_statusbar(FALSE, "Vim Mode Disabled");
 	save_config();
 }
@@ -247,7 +247,7 @@ static void on_toggle_vim_mode(void)
 static gboolean on_toggle_vim_mode_kb(GeanyKeyBinding *kb, guint key_id, gpointer data)
 {
 	gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(vi_widgets.toggle_vi_item),
-			!vi_ui.vi_enabled);
+			!state.vi_enabled);
 
 	return TRUE;
 }
@@ -255,13 +255,13 @@ static gboolean on_toggle_vim_mode_kb(GeanyKeyBinding *kb, guint key_id, gpointe
 
 static gboolean on_perform_vim_command(GeanyKeyBinding *kb, guint key_id, gpointer data)
 {
-	if (!vi_ui.vi_enabled)
+	if (!state.vi_enabled)
 	{
-		vi_ui.vi_onetime = TRUE;
-		vi_ui.vi_enabled = TRUE;
+		state.vi_onetime = TRUE;
+		state.vi_enabled = TRUE;
 	}
-	vi_ui.vi_mode = VI_MODE_COMMAND;
-	prepare_vi_mode(get_current_doc_sci(), &vi_state, &vi_ui);
+	state.vi_mode = VI_MODE_COMMAND;
+	prepare_vi_mode(get_current_doc_sci(), &ctx, &state);
 
 	return TRUE;
 }
@@ -282,16 +282,16 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 		return FALSE;
 
 	printf("key: %d, state: %d\n", event->keyval, event->state);
-	printf("accumulator: %s\n", vi_state.accumulator);
+	printf("accumulator: %s\n", ctx.accumulator);
 
-	if (vi_ui.vi_enabled)
+	if (state.vi_enabled)
 	{
-		gboolean consumed = vi_ui.vi_mode == VI_MODE_COMMAND;
+		gboolean consumed = state.vi_mode == VI_MODE_COMMAND;
 
-		if (vi_ui.vi_mode == VI_MODE_COMMAND)
+		if (state.vi_mode == VI_MODE_COMMAND)
 		{
-			accumulator_append(&vi_state, event->string);
-			cmd_switch(event, sci, &vi_state, &vi_ui);
+			accumulator_append(&ctx, event->string);
+			cmd_switch(event, sci, &ctx, &state);
 		}
 		else
 		{
@@ -299,12 +299,12 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 			{
 				gint pos = sci_get_current_position(sci);
 				gint start_pos = sci_get_position_from_line(sci, sci_get_current_line(sci));
-				vi_ui.vi_mode = VI_MODE_COMMAND;
+				state.vi_mode = VI_MODE_COMMAND;
 				if (pos > start_pos)
 					sci_send_command(sci, SCI_CHARLEFT);
 				leave_onetime_vi_mode();
-				prepare_vi_mode(sci, &vi_state, &vi_ui);
-				accumulator_clear(&vi_state);
+				prepare_vi_mode(sci, &ctx, &state);
+				accumulator_clear(&ctx);
 			}
 		}
 
@@ -319,7 +319,7 @@ static void on_doc_open(G_GNUC_UNUSED GObject *obj, GeanyDocument *doc,
 		G_GNUC_UNUSED gpointer user_data)
 {
 	g_return_if_fail(doc != NULL);
-	prepare_vi_mode(doc->editor->sci, &vi_state, &vi_ui);
+	prepare_vi_mode(doc->editor->sci, &ctx, &state);
 }
 
 
@@ -328,7 +328,7 @@ static void on_doc_activate(G_GNUC_UNUSED GObject *obj, GeanyDocument *doc,
 {
 	g_return_if_fail(doc != NULL);
 
-	prepare_vi_mode(doc->editor->sci, &vi_state, &vi_ui);
+	prepare_vi_mode(doc->editor->sci, &ctx, &state);
 }
 
 
@@ -340,7 +340,7 @@ static gboolean on_editor_notify(GObject *object, GeanyEditor *editor,
 	/* this makes sure that when we click behind the end of line in command mode,
 	 * the cursor is not placed BEHIND the last character but ON the last character */
 	if (doc != NULL && nt->nmhdr.code == SCN_UPDATEUI && nt->updated == SC_UPDATE_SELECTION)
-		clamp_cursor_pos(doc->editor->sci, &vi_state, &vi_ui);
+		clamp_cursor_pos(doc->editor->sci, &ctx, &state);
 
 	return FALSE;
 }
@@ -373,7 +373,7 @@ void plugin_init(GeanyData *data)
 	gtk_container_add(GTK_CONTAINER(geany->main_widgets->tools_menu), vi_widgets.toggle_vi_item);
 	g_signal_connect((gpointer) vi_widgets.toggle_vi_item, "activate", G_CALLBACK(on_toggle_vim_mode), NULL);
 	gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(vi_widgets.toggle_vi_item),
-			vi_ui.vi_enabled);
+			state.vi_enabled);
 	keybindings_set_item_full(group, KB_TOGGLE_VIM_MODE, 0, 0, "toggle_vim",
 			_("Enable Vim Mode"), NULL, on_toggle_vim_mode_kb, NULL, NULL);
 
@@ -410,19 +410,19 @@ void plugin_init(GeanyData *data)
 	gtk_widget_show_all(frame);
 
 	/* final setup */
-	prepare_vi_mode(get_current_doc_sci(), &vi_state, &vi_ui);
+	prepare_vi_mode(get_current_doc_sci(), &ctx, &state);
 }
 
 
 void plugin_cleanup(void)
 {
-	if (vi_ui.default_caret_style != -1)
+	if (state.default_caret_style != -1)
 	{
 		gsize i;
 		foreach_document(i)
 		{
 			ScintillaObject *sci = documents[i]->editor->sci;
-			SSM(sci, SCI_SETCARETSTYLE, vi_ui.default_caret_style, 0);
+			SSM(sci, SCI_SETCARETSTYLE, state.default_caret_style, 0);
 		}
 	}
 
@@ -431,7 +431,7 @@ void plugin_cleanup(void)
 	gtk_widget_destroy(vi_widgets.toggle_vi_item);
 	gtk_widget_destroy(vi_widgets.perform_vi_item);
 
-	g_free(vi_state.search_text);
+	g_free(ctx.search_text);
 }
 
 

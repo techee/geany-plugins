@@ -28,36 +28,36 @@
 #include "utils.h"
 
 
-/* "UI" commands */
+/* state commands */
 
-void ui_cmd_enter_cmdline_mode(ScintillaObject *sci, ViState *state, ViUi *ui)
+void state_cmd_enter_cmdline_mode(ScintillaObject *sci, CmdContext *ctx, ViState *state)
 {
 	enter_cmdline_mode();
 }
 
-void ui_cmd_enter_insert_mode(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui)
+void state_cmd_enter_insert_mode(ScintillaObject *sci, CmdContext *ctx, ViState *state)
 {
-	vi_ui->vi_mode = VI_MODE_INSERT;
-	prepare_vi_mode(sci, vi_state, vi_ui);
+	state->vi_mode = VI_MODE_INSERT;
+	prepare_vi_mode(sci, ctx, state);
 }
 
-void ui_cmd_enter_replace_mode(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui)
+void state_cmd_enter_replace_mode(ScintillaObject *sci, CmdContext *ctx, ViState *state)
 {
-	vi_ui->vi_mode = VI_MODE_REPLACE;
-	prepare_vi_mode(sci, vi_state, vi_ui);
+	state->vi_mode = VI_MODE_REPLACE;
+	prepare_vi_mode(sci, ctx, state);
 }
 
-void ui_cmd_enter_insert_mode_after(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui)
+void state_cmd_enter_insert_mode_after(ScintillaObject *sci, CmdContext *ctx, ViState *state)
 {
 	gint pos = sci_get_current_position(sci);
 	gint end_pos = sci_get_line_end_position(sci, sci_get_current_line(sci));
 	if (pos < end_pos)
 		sci_send_command(sci, SCI_CHARRIGHT);
 
-	ui_cmd_enter_insert_mode(sci, vi_state, vi_ui);
+	state_cmd_enter_insert_mode(sci, ctx, state);
 }
 
-void ui_cmd_enter_insert_mode_line_start(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui)
+void state_cmd_enter_insert_mode_line_start(ScintillaObject *sci, CmdContext *ctx, ViState *state)
 {
 	gint pos, line;
 	sci_send_command(sci, SCI_HOME);
@@ -70,68 +70,68 @@ void ui_cmd_enter_insert_mode_line_start(ScintillaObject *sci, ViState *vi_state
 		pos++;
 	}
 	sci_set_current_position(sci, pos, TRUE);
-	ui_cmd_enter_insert_mode(sci, vi_state, vi_ui);
+	state_cmd_enter_insert_mode(sci, ctx, state);
 }
 
-void ui_cmd_enter_insert_mode_line_end(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui)
+void state_cmd_enter_insert_mode_line_end(ScintillaObject *sci, CmdContext *ctx, ViState *state)
 {
 	sci_send_command(sci, SCI_LINEEND);
-	ui_cmd_enter_insert_mode(sci, vi_state, vi_ui);
+	state_cmd_enter_insert_mode(sci, ctx, state);
 }
 
-void ui_cmd_enter_insert_mode_next_line(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui)
+void state_cmd_enter_insert_mode_next_line(ScintillaObject *sci, CmdContext *ctx, ViState *state)
 {
 	sci_send_command(sci, SCI_LINEEND);
 	sci_send_command(sci, SCI_NEWLINE);
-	ui_cmd_enter_insert_mode(sci, vi_state, vi_ui);
+	state_cmd_enter_insert_mode(sci, ctx, state);
 }
 
-void ui_cmd_enter_insert_mode_prev_line(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui)
+void state_cmd_enter_insert_mode_prev_line(ScintillaObject *sci, CmdContext *ctx, ViState *state)
 {
 	sci_send_command(sci, SCI_HOME);
 	sci_send_command(sci, SCI_NEWLINE);
 	sci_send_command(sci, SCI_LINEUP);
-	ui_cmd_enter_insert_mode(sci, vi_state, vi_ui);
+	state_cmd_enter_insert_mode(sci, ctx, state);
 }
 
-void ui_cmd_enter_insert_mode_clear_line(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui)
+void state_cmd_enter_insert_mode_clear_line(ScintillaObject *sci, CmdContext *ctx, ViState *state)
 {
 	sci_send_command(sci, SCI_DELLINELEFT);
 	sci_send_command(sci, SCI_DELLINERIGHT);
-	ui_cmd_enter_insert_mode(sci, vi_state, vi_ui);
+	state_cmd_enter_insert_mode(sci, ctx, state);
 }
 
-void ui_cmd_enter_insert_mode_clear_right(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui)
+void state_cmd_enter_insert_mode_clear_right(ScintillaObject *sci, CmdContext *ctx, ViState *state)
 {
 	sci_send_command(sci, SCI_DELLINERIGHT);
-	ui_cmd_enter_insert_mode(sci, vi_state, vi_ui);
+	state_cmd_enter_insert_mode(sci, ctx, state);
 }
 
-void ui_cmd_enter_insert_mode_delete_char(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui)
+void state_cmd_enter_insert_mode_delete_char(ScintillaObject *sci, CmdContext *ctx, ViState *state)
 {
 	gint pos = sci_get_current_position(sci);
 	SSM(sci, SCI_DELETERANGE, pos, 1);
-	ui_cmd_enter_insert_mode(sci, vi_state, vi_ui);
+	state_cmd_enter_insert_mode(sci, ctx, state);
 }
 
 
 /* normal commands */
 
-void cmd_page_up(ScintillaObject *sci, ViState *vi_state, gint num)
+void cmd_page_up(ScintillaObject *sci, CmdContext *ctx, gint num)
 {
 	gint i;
 	for (i = 0; i < num; i++)
 		sci_send_command(sci, SCI_PAGEUP);
 }
 
-void cmd_page_down(ScintillaObject *sci, ViState *vi_state, gint num)
+void cmd_page_down(ScintillaObject *sci, CmdContext *ctx, gint num)
 {
 	gint i;
 	for (i = 0; i < num; i++)
 		sci_send_command(sci, SCI_PAGEDOWN);
 }
 
-void cmd_move_caret_left(ScintillaObject *sci, ViState *vi_state, gint num)
+void cmd_move_caret_left(ScintillaObject *sci, CmdContext *ctx, gint num)
 {
 	gint pos = sci_get_current_position(sci);
 	gint start_pos = sci_get_position_from_line(sci, sci_get_current_line(sci));
@@ -140,7 +140,7 @@ void cmd_move_caret_left(ScintillaObject *sci, ViState *vi_state, gint num)
 		sci_send_command(sci, SCI_CHARLEFT);
 }
 
-void cmd_move_caret_right(ScintillaObject *sci, ViState *vi_state, gint num)
+void cmd_move_caret_right(ScintillaObject *sci, CmdContext *ctx, gint num)
 {
 	gint pos = sci_get_current_position(sci);
 	gint end_pos = sci_get_line_end_position(sci, sci_get_current_line(sci));
@@ -149,21 +149,21 @@ void cmd_move_caret_right(ScintillaObject *sci, ViState *vi_state, gint num)
 		sci_send_command(sci, SCI_CHARRIGHT);
 }
 
-void cmd_move_caret_up(ScintillaObject *sci, ViState *vi_state, gint num)
+void cmd_move_caret_up(ScintillaObject *sci, CmdContext *ctx, gint num)
 {
 	gint i;
 	for (i = 0; i < num; i++)
 		sci_send_command(sci, SCI_LINEUP);
 }
 
-void cmd_move_caret_down(ScintillaObject *sci, ViState *vi_state, gint num)
+void cmd_move_caret_down(ScintillaObject *sci, CmdContext *ctx, gint num)
 {
 	gint i;
 	for (i = 0; i < num; i++)
 		sci_send_command(sci, SCI_LINEDOWN);
 }
 
-void cmd_undo(ScintillaObject *sci, ViState *vi_state, gint num)
+void cmd_undo(ScintillaObject *sci, CmdContext *ctx, gint num)
 {
 	gint i;
 	for (i = 0; i < num; i++)
@@ -175,7 +175,7 @@ void cmd_undo(ScintillaObject *sci, ViState *vi_state, gint num)
 	}
 }
 
-void cmd_redo(ScintillaObject *sci, ViState *vi_state, gint num)
+void cmd_redo(ScintillaObject *sci, CmdContext *ctx, gint num)
 {
 	gint i;
 	for (i = 0; i < num; i++)
@@ -187,14 +187,14 @@ void cmd_redo(ScintillaObject *sci, ViState *vi_state, gint num)
 	}
 }
 
-void cmd_copy_line(ScintillaObject *sci, ViState *vi_state, gint num)
+void cmd_copy_line(ScintillaObject *sci, CmdContext *ctx, gint num)
 {
 	gint start = sci_get_position_from_line(sci, sci_get_current_line(sci));
 	gint end = sci_get_position_from_line(sci, sci_get_current_line(sci) + num);
 	SSM(sci, SCI_COPYRANGE, start, end);
 }
 
-void cmd_paste(ScintillaObject *sci, ViState *vi_state, gint num)
+void cmd_paste(ScintillaObject *sci, CmdContext *ctx, gint num)
 {
 	gint pos = sci_get_position_from_line(sci, sci_get_current_line(sci)+1);
 	gint i;
@@ -204,32 +204,32 @@ void cmd_paste(ScintillaObject *sci, ViState *vi_state, gint num)
 	sci_set_current_position(sci, pos, TRUE);
 }
 
-void cmd_delete_line(ScintillaObject *sci, ViState *vi_state, gint num)
+void cmd_delete_line(ScintillaObject *sci, CmdContext *ctx, gint num)
 {
 	gint start = sci_get_position_from_line(sci, sci_get_current_line(sci));
 	gint end = sci_get_position_from_line(sci, sci_get_current_line(sci) + num);
 	SSM(sci, SCI_DELETERANGE, start, end-start);
 }
 
-void cmd_search(ScintillaObject *sci, ViState *vi_state, gint num)
+void cmd_search(ScintillaObject *sci, CmdContext *ctx, gint num)
 {
 	gboolean forward = TRUE;
 	char last;
 	gint i;
 
-	if (!vi_state->accumulator)
+	if (!ctx->accumulator)
 		return;
 
-	last = accumulator_current_char(vi_state);
+	last = accumulator_current_char(ctx);
 
 	if (last == 'N')
 		forward = FALSE;
 
 	for (i = 0; i < num; i++)
-		perform_search(sci, vi_state, forward);
+		perform_search(sci, ctx, forward);
 }
 
-void cmd_delete_char(ScintillaObject *sci, ViState *vi_state, gint num)
+void cmd_delete_char(ScintillaObject *sci, CmdContext *ctx, gint num)
 {
 	gint pos = sci_get_current_position(sci);
 	gint i;
@@ -237,7 +237,7 @@ void cmd_delete_char(ScintillaObject *sci, ViState *vi_state, gint num)
 		SSM(sci, SCI_DELETERANGE, pos, 1);
 }
 
-void cmd_delete_char_back(ScintillaObject *sci, ViState *vi_state, gint num)
+void cmd_delete_char_back(ScintillaObject *sci, CmdContext *ctx, gint num)
 {
 	gint pos = sci_get_current_position(sci);
 	gint i;
@@ -245,7 +245,7 @@ void cmd_delete_char_back(ScintillaObject *sci, ViState *vi_state, gint num)
 		SSM(sci, SCI_DELETERANGE, pos-1, 1);
 }
 
-void cmd_goto_line(ScintillaObject *sci, ViState *vi_state, gint num)
+void cmd_goto_line(ScintillaObject *sci, CmdContext *ctx, gint num)
 {
 	gint line_num = sci_get_line_count(sci);
 	gint pos;
@@ -255,16 +255,16 @@ void cmd_goto_line(ScintillaObject *sci, ViState *vi_state, gint num)
 	sci_set_current_position(sci, pos, TRUE);
 }
 
-void cmd_goto_line_last(ScintillaObject *sci, ViState *vi_state, gint num)
+void cmd_goto_line_last(ScintillaObject *sci, CmdContext *ctx, gint num)
 {
 	gint line_num = sci_get_line_count(sci);
 
 	/* override default line number to the end of file when number not entered */
-	num = accumulator_get_int(vi_state, 1, line_num);
-	cmd_goto_line(sci, vi_state, num);
+	num = accumulator_get_int(ctx, 1, line_num);
+	cmd_goto_line(sci, ctx, num);
 }
 
-void cmd_join_lines(ScintillaObject *sci, ViState *vi_state, gint num)
+void cmd_join_lines(ScintillaObject *sci, CmdContext *ctx, gint num)
 {
 	gint line = sci_get_current_line(sci);
 	gint next_line_pos = sci_get_position_from_line(sci, line+num);
@@ -274,40 +274,40 @@ void cmd_join_lines(ScintillaObject *sci, ViState *vi_state, gint num)
 	SSM(sci, SCI_LINESJOIN, 0, 0);
 }
 
-void cmd_goto_next_word(ScintillaObject *sci, ViState *vi_state, gint num)
+void cmd_goto_next_word(ScintillaObject *sci, CmdContext *ctx, gint num)
 {
 	gint i;
 	for (i = 0; i < num; i++)
 		sci_send_command(sci, SCI_WORDRIGHT);
 }
 
-void cmd_goto_next_word_end(ScintillaObject *sci, ViState *vi_state, gint num)
+void cmd_goto_next_word_end(ScintillaObject *sci, CmdContext *ctx, gint num)
 {
 	gint i;
 	for (i = 0; i < num; i++)
 		sci_send_command(sci, SCI_WORDRIGHTEND);
 }
 
-void cmd_goto_previous_word(ScintillaObject *sci, ViState *vi_state, gint num)
+void cmd_goto_previous_word(ScintillaObject *sci, CmdContext *ctx, gint num)
 {
 	gint i;
 	for (i = 0; i < num; i++)
 		sci_send_command(sci, SCI_WORDLEFT);
 }
 
-void cmd_goto_previous_word_end(ScintillaObject *sci, ViState *vi_state, gint num)
+void cmd_goto_previous_word_end(ScintillaObject *sci, CmdContext *ctx, gint num)
 {
 	gint i;
 	for (i = 0; i < num; i++)
 		sci_send_command(sci, SCI_WORDLEFTEND);
 }
 
-void cmd_goto_line_start(ScintillaObject *sci, ViState *vi_state, gint num)
+void cmd_goto_line_start(ScintillaObject *sci, CmdContext *ctx, gint num)
 {
 	sci_send_command(sci, SCI_HOME);
 }
 
-void cmd_goto_line_end(ScintillaObject *sci, ViState *vi_state, gint num)
+void cmd_goto_line_end(ScintillaObject *sci, CmdContext *ctx, gint num)
 {
 	gint i;
 	for (i = 0; i < num; i++)
@@ -318,7 +318,7 @@ void cmd_goto_line_end(ScintillaObject *sci, ViState *vi_state, gint num)
 	}
 }
 
-void cmd_goto_matching_brace(ScintillaObject *sci, ViState *vi_state, gint num)
+void cmd_goto_matching_brace(ScintillaObject *sci, CmdContext *ctx, gint num)
 {
 	gint pos = sci_get_current_position(sci);
 	pos = SSM(sci, SCI_BRACEMATCH, pos, 0);
@@ -326,7 +326,7 @@ void cmd_goto_matching_brace(ScintillaObject *sci, ViState *vi_state, gint num)
 		sci_set_current_position(sci, pos, TRUE);
 }
 
-void cmd_goto_doc_percentage(ScintillaObject *sci, ViState *vi_state, gint num)
+void cmd_goto_doc_percentage(ScintillaObject *sci, CmdContext *ctx, gint num)
 {
 	gint line_num = sci_get_line_count(sci);
 	gint pos;
@@ -339,14 +339,14 @@ void cmd_goto_doc_percentage(ScintillaObject *sci, ViState *vi_state, gint num)
 	sci_set_current_position(sci, pos, TRUE);
 }
 
-void cmd_goto_screen_top(ScintillaObject *sci, ViState *vi_state, gint num)
+void cmd_goto_screen_top(ScintillaObject *sci, CmdContext *ctx, gint num)
 {
 	gint top = SSM(sci, SCI_GETFIRSTVISIBLELINE, 0, 0);
 	gint pos = sci_get_position_from_line(sci, top+num-1);
 	sci_set_current_position(sci, pos, TRUE);
 }
 
-void cmd_goto_screen_middle(ScintillaObject *sci, ViState *vi_state, gint num)
+void cmd_goto_screen_middle(ScintillaObject *sci, CmdContext *ctx, gint num)
 {
 	gint top = SSM(sci, SCI_GETFIRSTVISIBLELINE, 0, 0);
 	gint count = SSM(sci, SCI_LINESONSCREEN, 0, 0);
@@ -354,7 +354,7 @@ void cmd_goto_screen_middle(ScintillaObject *sci, ViState *vi_state, gint num)
 	sci_set_current_position(sci, pos, TRUE);
 }
 
-void cmd_goto_screen_bottom(ScintillaObject *sci, ViState *vi_state, gint num)
+void cmd_goto_screen_bottom(ScintillaObject *sci, CmdContext *ctx, gint num)
 {
 	gint top = SSM(sci, SCI_GETFIRSTVISIBLELINE, 0, 0);
 	gint count = SSM(sci, SCI_LINESONSCREEN, 0, 0);
@@ -362,17 +362,17 @@ void cmd_goto_screen_bottom(ScintillaObject *sci, ViState *vi_state, gint num)
 	sci_set_current_position(sci, pos, TRUE);
 }
 
-void cmd_replace_char(ScintillaObject *sci, ViState *vi_state, gint num)
+void cmd_replace_char(ScintillaObject *sci, CmdContext *ctx, gint num)
 {
 	gint pos = sci_get_current_position(sci);
-	gchar *repl = vi_state->accumulator + accumulator_len(vi_state) - 1;
+	gchar *repl = ctx->accumulator + accumulator_len(ctx) - 1;
 
 	sci_set_target_start(sci, pos);
 	sci_set_target_end(sci, pos + 1);
 	sci_replace_target(sci, repl, FALSE);
 }
 
-void cmd_uppercase_char(ScintillaObject *sci, ViState *vi_state, gint num)
+void cmd_uppercase_char(ScintillaObject *sci, CmdContext *ctx, gint num)
 {
 	//TODO: for some reason we don't get the same cursor position after undoing
 	gint pos = sci_get_current_position(sci);
@@ -384,7 +384,7 @@ void cmd_uppercase_char(ScintillaObject *sci, ViState *vi_state, gint num)
 	sci_send_command(sci, SCI_CHARRIGHT);
 }
 
-void cmd_indent(ScintillaObject *sci, ViState *vi_state, gint num)
+void cmd_indent(ScintillaObject *sci, CmdContext *ctx, gint num)
 {
 	gint pos = sci_get_current_position(sci);;
 	gint i;
@@ -400,7 +400,7 @@ void cmd_indent(ScintillaObject *sci, ViState *vi_state, gint num)
 	sci_set_current_position(sci, pos, FALSE);
 }
 
-void cmd_unindent(ScintillaObject *sci, ViState *vi_state, gint num)
+void cmd_unindent(ScintillaObject *sci, CmdContext *ctx, gint num)
 {
 	gint pos = sci_get_current_position(sci);;
 	gint i;
