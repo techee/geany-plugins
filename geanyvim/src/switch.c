@@ -31,7 +31,9 @@
 static void perform_cmd_generic(void (*func)(ScintillaObject *sci, ViState *vi_state, int num), ScintillaObject *sci, ViState *vi_state, gint cmd_len)
 {
 	gint num = accumulator_get_int(vi_state, cmd_len, 1);
+	sci_start_undo_action(sci);
 	func(sci, vi_state, num);
+	sci_end_undo_action(sci);
 	accumulator_clear(vi_state);
 }
 
@@ -47,7 +49,9 @@ static void perform_cmd_2(void (*func)(ScintillaObject *sci, ViState *vi_state, 
 
 static void perform_ui_cmd(void (*func)(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui), ScintillaObject *sci, ViState *state, ViUi *ui)
 {
+	sci_start_undo_action(sci);
 	func(sci, state, ui);
+	sci_end_undo_action(sci);
 	accumulator_clear(state);
 }
 
@@ -90,6 +94,13 @@ void cmd_switch(GdkEventKey *event, ScintillaObject *sci, ViState *vi_state, ViU
 			break;
 		case GDK_KEY_o:
 			perform_ui_cmd(ui_cmd_enter_insert_mode_next_line, sci, vi_state, vi_ui);
+			break;
+		case GDK_KEY_S:
+			perform_ui_cmd(ui_cmd_enter_insert_mode_clear_line, sci, vi_state, vi_ui);
+			break;
+		case GDK_KEY_c:
+			if (accumulator_previous_char(vi_state) == 'c')
+				perform_ui_cmd(ui_cmd_enter_insert_mode_clear_line, sci, vi_state, vi_ui);
 			break;
 		case GDK_KEY_O:
 			perform_ui_cmd(ui_cmd_enter_insert_mode_prev_line, sci, vi_state, vi_ui);

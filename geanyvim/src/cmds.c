@@ -96,6 +96,12 @@ void ui_cmd_enter_insert_mode_prev_line(ScintillaObject *sci, ViState *vi_state,
 	sci_send_command(sci, SCI_LINEUP);
 }
 
+void ui_cmd_enter_insert_mode_clear_line(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui)
+{
+	sci_send_command(sci, SCI_DELLINELEFT);
+	sci_send_command(sci, SCI_DELLINERIGHT);
+}
+
 
 /* normal commands */
 
