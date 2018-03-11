@@ -54,6 +54,7 @@ void cmd_search(ScintillaObject *sci, ViState *vi_state, gint num);
 
 void cmd_delete_line(ScintillaObject *sci, ViState *vi_state, gint num);
 void cmd_delete_char(ScintillaObject *sci, ViState *vi_state, gint num);
+void cmd_delete_char_back(ScintillaObject *sci, ViState *vi_state, gint num);
 void cmd_goto_line(ScintillaObject *sci, ViState *vi_state, gint num);
 void cmd_goto_line_last(ScintillaObject *sci, ViState *vi_state, gint num);
 void cmd_join_lines(ScintillaObject *sci, ViState *vi_state, gint num);

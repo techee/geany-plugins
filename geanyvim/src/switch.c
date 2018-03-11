@@ -190,12 +190,18 @@ void cmd_switch(GdkEventKey *event, ScintillaObject *sci, ViState *vi_state, ViU
 			perform_cmd(cmd_search, sci, vi_state);
 			break;
 		}
+		case GDK_KEY_D:
+			perform_cmd(cmd_delete_line, sci, vi_state);
+			break;
 		case GDK_KEY_d:
 			if (accumulator_previous_char(vi_state) == 'd')
 				perform_cmd_2(cmd_delete_line, sci, vi_state);
 			break;
 		case GDK_KEY_x:
 			perform_cmd(cmd_delete_char, sci, vi_state);
+			break;
+		case GDK_KEY_X:
+			perform_cmd(cmd_delete_char_back, sci, vi_state);
 			break;
 		case GDK_KEY_G:
 			perform_cmd(cmd_goto_line_last, sci, vi_state);

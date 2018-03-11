@@ -240,6 +240,14 @@ void cmd_delete_char(ScintillaObject *sci, ViState *vi_state, gint num)
 		SSM(sci, SCI_DELETERANGE, pos, 1);
 }
 
+void cmd_delete_char_back(ScintillaObject *sci, ViState *vi_state, gint num)
+{
+	gint pos = sci_get_current_position(sci);
+	gint i;
+	for (i = 0; i < num; i++)
+		SSM(sci, SCI_DELETERANGE, pos-1, 1);
+}
+
 void cmd_goto_line(ScintillaObject *sci, ViState *vi_state, gint num)
 {
 	gint line_num = sci_get_line_count(sci);
