@@ -19,7 +19,7 @@
 #ifndef __GEANYVIM_STATE_H__
 #define __GEANYVIM_STATE_H__
 
-#include <glib.h>
+#include <gtk/gtk.h>
 
 typedef enum {
 	VI_MODE_COMMAND,
@@ -43,5 +43,18 @@ typedef struct
 	/* input accumulated over time (e.g. for commands like 100dd) */
 	gchar *accumulator;
 } ViState;
+
+
+typedef struct
+{
+	GtkWidget *prompt;
+	GtkWidget *entry;
+	GtkWidget *separator_item;
+	GtkWidget *toggle_vi_item;
+	GtkWidget *perform_vi_item;
+
+	/* caret style used by Geany we can revert to when disabling vi mode */
+	gint default_caret_style;
+} ViUi;
 
 #endif

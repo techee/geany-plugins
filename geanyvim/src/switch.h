@@ -24,6 +24,6 @@
 
 #include "state.h"
 
-gboolean cmd_switch(GdkEventKey *event, ScintillaObject *sci, ViState *vi_state);
+void cmd_switch(GdkEventKey *event, ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui);
 
 #endif

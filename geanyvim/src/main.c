@@ -28,10 +28,9 @@
 #include <geanyplugin.h>
 
 #include "state.h"
-#include "ui.h"
 #include "cmds.h"
-#include "ui_cmds.h"
 #include "switch.h"
+#include "utils.h"
 
 #define CONF_GROUP "Settings"
 #define CONF_VI_MODE "vi_mode"
@@ -247,12 +246,6 @@ static gboolean on_perform_vim_command(GeanyKeyBinding *kb, guint key_id, gpoint
 }
 
 
-static void perform_ui_cmd(void (*func)(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui), ScintillaObject *sci, ViState *state, ViUi *ui)
-{
-	func(sci, state, ui);
-	accumulator_clear(state);
-}
-
 
 static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer user_data)
 {
@@ -291,33 +284,7 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 		else if (vi_state.vi_mode == VI_MODE_COMMAND)
 		{
 			accumulator_append(&vi_state, event->string);
-
-			switch (event->keyval)
-			{
-				case GDK_KEY_colon:
-				case GDK_KEY_slash:
-				case GDK_KEY_question:
-					perform_ui_cmd(ui_cmd_enter_cmdline_mode, sci, &vi_state, &vi_ui);
-					break;
-				case GDK_KEY_i:
-					perform_ui_cmd(ui_cmd_enter_insert_mode, sci, &vi_state, &vi_ui);
-					break;
-				case GDK_KEY_a:
-					perform_ui_cmd(ui_cmd_enter_insert_mode_after, sci, &vi_state, &vi_ui);
-					break;
-				case GDK_KEY_I:
-					perform_ui_cmd(ui_cmd_enter_insert_mode_line_start, sci, &vi_state, &vi_ui);
-					break;
-				case GDK_KEY_A:
-					perform_ui_cmd(ui_cmd_enter_insert_mode_line_end, sci, &vi_state, &vi_ui);
-					break;
-				case GDK_KEY_Escape:
-					accumulator_clear(&vi_state);
-					break;
-				default:
-					cmd_switch(event, sci, &vi_state);
-					break;
-			}
+			cmd_switch(event, sci, &vi_state, &vi_ui);
 		}
 
 		return consumed;

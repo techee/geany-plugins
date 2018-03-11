@@ -25,6 +25,7 @@
 
 #include "switch.h"
 #include "cmds.h"
+#include "utils.h"
 
 
 static void perform_cmd_generic(void (*func)(ScintillaObject *sci, ViState *vi_state, int num), ScintillaObject *sci, ViState *vi_state, gint cmd_len)
@@ -44,10 +45,14 @@ static void perform_cmd_2(void (*func)(ScintillaObject *sci, ViState *vi_state, 
 	perform_cmd_generic(func, sci, vi_state, 2);
 }
 
-gboolean cmd_switch(GdkEventKey *event, ScintillaObject *sci, ViState *vi_state)
+static void perform_ui_cmd(void (*func)(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui), ScintillaObject *sci, ViState *state, ViUi *ui)
 {
-	gboolean performed = TRUE;
+	func(sci, state, ui);
+	accumulator_clear(state);
+}
 
+void cmd_switch(GdkEventKey *event, ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui)
+{
 	switch (event->keyval)
 	{
 		case GDK_KEY_Page_Up:
@@ -164,6 +169,26 @@ gboolean cmd_switch(GdkEventKey *event, ScintillaObject *sci, ViState *vi_state)
 		case GDK_KEY_L:
 			perform_cmd(cmd_goto_screen_bottom, sci, vi_state);
 			break;
+		case GDK_KEY_colon:
+		case GDK_KEY_slash:
+		case GDK_KEY_question:
+			perform_ui_cmd(ui_cmd_enter_cmdline_mode, sci, vi_state, vi_ui);
+			break;
+		case GDK_KEY_i:
+			perform_ui_cmd(ui_cmd_enter_insert_mode, sci, vi_state, vi_ui);
+			break;
+		case GDK_KEY_a:
+			perform_ui_cmd(ui_cmd_enter_insert_mode_after, sci, vi_state, vi_ui);
+			break;
+		case GDK_KEY_I:
+			perform_ui_cmd(ui_cmd_enter_insert_mode_line_start, sci, vi_state, vi_ui);
+			break;
+		case GDK_KEY_A:
+			perform_ui_cmd(ui_cmd_enter_insert_mode_line_end, sci, vi_state, vi_ui);
+			break;
+		case GDK_KEY_Escape:
+			accumulator_clear(vi_state);
+			break;
 		case GDK_KEY_o:
 			//new line after current and switch to insert mode
 			break;
@@ -172,8 +197,6 @@ gboolean cmd_switch(GdkEventKey *event, ScintillaObject *sci, ViState *vi_state)
 			break;
 		//tx, Tx - like above but stop one character before
 		default:
-			performed = FALSE;
+			break;
 	}
-
-	return performed;
 }

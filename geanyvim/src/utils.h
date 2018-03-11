@@ -16,19 +16,28 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef __GEANYVIM_UI_CMDS_H__
-#define __GEANYVIM_UI_CMDS_H__
+#ifndef __GEANYVIM_UTILS_H__
+#define __GEANYVIM_UTILS_H__
 
 #include <glib.h>
+#include <geanyplugin.h>
 
-/* utils */
+#include "state.h"
+
+#define SSM(s, m, w, l) scintilla_send_message(s, m, w, l)
+
+void accumulator_append(ViState *vi_state, const gchar *val);
+void accumulator_clear(ViState *vi_state);
+guint accumulator_len(ViState *vi_state);
+gchar accumulator_current_char(ViState *vi_state);
+gchar accumulator_previous_char(ViState *vi_state);
+gint accumulator_get_int(ViState *vi_state, gint start_pos, gint default_val);
+
+ScintillaObject *get_current_doc_sci(void);
+gchar *get_current_word(ScintillaObject *sci);
+
 void prepare_vi_mode(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui);
-
-/* cmds */
-void ui_cmd_enter_cmdline_mode(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui);
-void ui_cmd_enter_insert_mode(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui);
-void ui_cmd_enter_insert_mode_after(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui);
-void ui_cmd_enter_insert_mode_line_start(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui);
-void ui_cmd_enter_insert_mode_line_end(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui);
+void clamp_cursor_pos(ScintillaObject *sci, ViState *vi_state);
+void perform_search(ScintillaObject *sci, ViState *vi_state, gboolean forward);
 
 #endif

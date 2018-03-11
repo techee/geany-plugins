@@ -19,27 +19,6 @@
 #ifndef __GEANYVIM_CMDS_H__
 #define __GEANYVIM_CMDS_H__
 
-#include <glib.h>
-
-#define SSM(s, m, w, l) scintilla_send_message(s, m, w, l)
-
-/* utils */
-
-void accumulator_append(ViState *vi_state, const gchar *val);
-void accumulator_clear(ViState *vi_state);
-guint accumulator_len(ViState *vi_state);
-gchar accumulator_current_char(ViState *vi_state);
-gchar accumulator_previous_char(ViState *vi_state);
-gint accumulator_get_int(ViState *vi_state, gint start_pos, gint default_val);
-
-
-ScintillaObject *get_current_doc_sci(void);
-
-void clamp_cursor_pos(ScintillaObject *sci, ViState *vi_state);
-gchar *get_current_word(ScintillaObject *sci);
-void perform_search(ScintillaObject *sci, ViState *vi_state, gboolean forward);
-
-/* cmds */
 
 void cmd_page_up(ScintillaObject *sci, ViState *vi_state, gint num);
 void cmd_page_down(ScintillaObject *sci, ViState *vi_state, gint num);
@@ -74,5 +53,11 @@ void cmd_goto_doc_percentage(ScintillaObject *sci, ViState *vi_state, gint num);
 void cmd_goto_screen_top(ScintillaObject *sci, ViState *vi_state, gint num);
 void cmd_goto_screen_middle(ScintillaObject *sci, ViState *vi_state, gint num);
 void cmd_goto_screen_bottom(ScintillaObject *sci, ViState *vi_state, gint num);
+
+void ui_cmd_enter_cmdline_mode(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui);
+void ui_cmd_enter_insert_mode(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui);
+void ui_cmd_enter_insert_mode_after(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui);
+void ui_cmd_enter_insert_mode_line_start(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui);
+void ui_cmd_enter_insert_mode_line_end(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui);
 
 #endif

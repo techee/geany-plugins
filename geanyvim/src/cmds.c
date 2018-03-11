@@ -22,163 +22,11 @@
 
 #include <geanyplugin.h>
 #include <ctype.h>
+
 #include "state.h"
 #include "cmds.h"
+#include "utils.h"
 
-
-/* utils */
-
-ScintillaObject *get_current_doc_sci(void)
-{
-	GeanyDocument *doc = document_get_current();
-	return doc != NULL ? doc->editor->sci : NULL;
-}
-
-void accumulator_append(ViState *vi_state, const gchar *val)
-{
-	if (!vi_state->accumulator)
-		vi_state->accumulator = g_strdup(val);
-	else
-		SETPTR(vi_state->accumulator, g_strconcat(vi_state->accumulator, val, NULL));
-}
-
-void accumulator_clear(ViState *vi_state)
-{
-	g_free(vi_state->accumulator);
-	vi_state->accumulator = NULL;
-}
-
-guint accumulator_len(ViState *vi_state)
-{
-	if (!vi_state->accumulator)
-		return 0;
-	return strlen(vi_state->accumulator);
-}
-
-gchar accumulator_current_char(ViState *vi_state)
-{
-	guint len = accumulator_len(vi_state);
-	if (len > 0)
-		return vi_state->accumulator[len-1];
-	return '\0';
-}
-
-gchar accumulator_previous_char(ViState *vi_state)
-{
-	guint len = accumulator_len(vi_state);
-	if (len > 1)
-		return vi_state->accumulator[len-2];
-	return '\0';
-}
-
-gint accumulator_get_int(ViState *vi_state, gint start_pos, gint default_val)
-{
-	gchar *s = g_strdup(vi_state->accumulator);
-	gint end = accumulator_len(vi_state) - start_pos - 1;
-	gint start = end + 1;
-	gint val, i;
-
-	for (i = end; i >= 0; i--)
-	{
-		if (!isdigit(s[i]))
-			break;
-		start = i;
-	}
-
-	if (end - start < 0)
-		val = default_val;
-	else
-	{
-		s[end + 1] = '\0';
-		val = g_ascii_strtoll(s + start, NULL, 10);
-	}
-
-	g_free(s);
-	return val;
-}
-
-
-void clamp_cursor_pos(ScintillaObject *sci, ViState *vi_state)
-{
-	if (vi_state->vi_mode != VI_MODE_COMMAND)
-		return;
-
-	gint pos = sci_get_current_position(sci);
-	gint start_pos = sci_get_position_from_line(sci, sci_get_current_line(sci));
-	gint end_pos = sci_get_line_end_position(sci, sci_get_current_line(sci));
-	if (pos == end_pos && pos != start_pos)
-		sci_send_command(sci, SCI_CHARLEFT);
-}
-
-gchar *get_current_word(ScintillaObject *sci)
-{
-	gint start, end, pos;
-
-	if (!sci)
-		return NULL;
-
-	pos = sci_get_current_position(sci);
-	SSM(sci, SCI_WORDSTARTPOSITION, pos, TRUE);
-	start = SSM(sci, SCI_WORDSTARTPOSITION, pos, TRUE);
-	end = SSM(sci, SCI_WORDENDPOSITION, pos, TRUE);
-
-	if (start == end)
-		return NULL;
-
-	if (end - start >= GEANY_MAX_WORD_LENGTH)
-		end = start + GEANY_MAX_WORD_LENGTH - 1;
-	return sci_get_contents_range(sci, start, end);
-}
-
-void perform_search(ScintillaObject *sci, ViState *vi_state, gboolean forward)
-{
-	struct Sci_TextToFind ttf;
-	gint loc, len, pos;
-
-	if (!vi_state->search_text)
-		return;
-
-	len = sci_get_length(sci);
-	pos = sci_get_current_position(sci);
-
-	forward = (vi_state->search_text[0] == '/' && forward) ||
-			(vi_state->search_text[0] == '?' && !forward);
-	ttf.lpstrText = vi_state->search_text + 1;
-	if (forward)
-	{
-		ttf.chrg.cpMin = pos + 1;
-		ttf.chrg.cpMax = len;
-	}
-	else
-	{
-		ttf.chrg.cpMin = pos - 1;
-		ttf.chrg.cpMax = 0;
-	}
-
-	loc = sci_find_text(sci, 0, &ttf);
-	if (loc < 0)
-	{
-		/* wrap */
-		if (forward)
-		{
-			ttf.chrg.cpMin = 0;
-			ttf.chrg.cpMax = pos;
-		}
-		else
-		{
-			ttf.chrg.cpMin = len;
-			ttf.chrg.cpMax = pos;
-		}
-
-		loc = sci_find_text(sci, 0, &ttf);
-	}
-
-	if (loc >= 0)
-		sci_set_current_position(sci, loc, TRUE);
-}
-
-
-/* cmds */
 
 void cmd_page_up(ScintillaObject *sci, ViState *vi_state, gint num)
 {
@@ -417,4 +265,50 @@ void cmd_goto_screen_bottom(ScintillaObject *sci, ViState *vi_state, gint num)
 	gint count = SSM(sci, SCI_LINESONSCREEN, 0, 0);
 	gint pos = sci_get_position_from_line(sci, top+count-num);
 	sci_set_current_position(sci, pos, TRUE);
+}
+
+void ui_cmd_enter_cmdline_mode(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui)
+{
+	const gchar *val = vi_state->accumulator + strlen(vi_state->accumulator) - 1;;
+	gtk_widget_show(vi_ui->prompt);
+	gtk_entry_set_text(GTK_ENTRY(vi_ui->entry), val);
+	gtk_editable_set_position(GTK_EDITABLE(vi_ui->entry), 1);
+}
+
+void ui_cmd_enter_insert_mode(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui)
+{
+	vi_state->vi_mode = VI_MODE_INSERT;
+	prepare_vi_mode(sci, vi_state, vi_ui);
+}
+
+void ui_cmd_enter_insert_mode_after(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui)
+{
+	gint pos = sci_get_current_position(sci);
+	gint end_pos = sci_get_line_end_position(sci, sci_get_current_line(sci));
+	if (pos < end_pos)
+		sci_send_command(sci, SCI_CHARRIGHT);
+
+	ui_cmd_enter_insert_mode(sci, vi_state, vi_ui);
+}
+
+void ui_cmd_enter_insert_mode_line_start(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui)
+{
+	gint pos, line;
+	sci_send_command(sci, SCI_HOME);
+	pos = sci_get_current_position(sci);
+	line = sci_get_current_line(sci);
+	while (isspace(sci_get_char_at(sci, pos)))
+	{
+		if (sci_get_line_from_position(sci, pos + 1) != line)
+			break;
+		pos++;
+	}
+	sci_set_current_position(sci, pos, TRUE);
+	ui_cmd_enter_insert_mode(sci, vi_state, vi_ui);
+}
+
+void ui_cmd_enter_insert_mode_line_end(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui)
+{
+	sci_send_command(sci, SCI_LINEEND);
+	ui_cmd_enter_insert_mode(sci, vi_state, vi_ui);
 }

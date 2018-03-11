@@ -5,12 +5,11 @@ geanyplugins_LTLIBRARIES = geanyvim.la
 
 geanyvim_la_SOURCES = \
 	state.h \
-	ui.h \
 	main.c \
 	cmds.h \
 	cmds.c \
-	ui_cmds.h \
-	ui_cmds.c \
+	utils.h \
+	utils.c \
 	switch.h \
 	switch.c
     
