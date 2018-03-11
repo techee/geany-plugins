@@ -30,7 +30,7 @@ void accumulator_clear(ViState *vi_state);
 guint accumulator_len(ViState *vi_state);
 gchar accumulator_current_char(ViState *vi_state);
 gchar accumulator_previous_char(ViState *vi_state);
-gint accumulator_get_prev_int(ViState *vi_state, gint defaulti_val);
+gint accumulator_get_int(ViState *vi_state, gint start_pos, gint default_val);
 
 
 ScintillaObject *get_current_doc_sci(void);
@@ -60,6 +60,7 @@ void cmd_search(ScintillaObject *sci, ViState *vi_state, gint num);
 void cmd_delete_line(ScintillaObject *sci, ViState *vi_state, gint num);
 void cmd_delete_char(ScintillaObject *sci, ViState *vi_state, gint num);
 void cmd_goto_line(ScintillaObject *sci, ViState *vi_state, gint num);
+void cmd_goto_line_last(ScintillaObject *sci, ViState *vi_state, gint num);
 void cmd_join_lines(ScintillaObject *sci, ViState *vi_state, gint num);
 void cmd_goto_next_word(ScintillaObject *sci, ViState *vi_state, gint num);
 void cmd_goto_next_word(ScintillaObject *sci, ViState *vi_state, gint num);
@@ -68,5 +69,6 @@ void cmd_goto_previous_word(ScintillaObject *sci, ViState *vi_state, gint num);
 void cmd_goto_previous_word_end(ScintillaObject *sci, ViState *vi_state, gint num);
 void cmd_goto_line_start(ScintillaObject *sci, ViState *vi_state, gint num);
 void cmd_goto_line_end(ScintillaObject *sci, ViState *vi_state, gint num);
+void cmd_goto_matching_brace(ScintillaObject *sci, ViState *vi_state, gint num);
 
 #endif

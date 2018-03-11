@@ -71,22 +71,22 @@ gchar accumulator_previous_char(ViState *vi_state)
 	return '\0';
 }
 
-gint accumulator_get_prev_int(ViState *vi_state, gint defaulti_val)
+gint accumulator_get_int(ViState *vi_state, gint start_pos, gint default_val)
 {
 	gchar *s = g_strdup(vi_state->accumulator);
-	gint end = accumulator_len(vi_state) - 2;
-	gint start = end;
+	gint end = accumulator_len(vi_state) - start_pos - 1;
+	gint start = end + 1;
 	gint val, i;
 
 	for (i = end; i >= 0; i--)
 	{
-		if (!isalnum(s[i]))
+		if (!isdigit(s[i]))
 			break;
+		start = i;
 	}
-	start = i + 1;
 
 	if (end - start < 0)
-		return defaulti_val;
+		return default_val;
 
 	s[end + 1] = '\0';
 	val = g_ascii_strtoll(s + start, NULL, 10);
@@ -305,11 +305,18 @@ void cmd_goto_line(ScintillaObject *sci, ViState *vi_state, gint num)
 	gint line_num = sci_get_line_count(sci);
 	gint pos;
 
-	/* override default line number to the end of file when number not entered */
-	num = accumulator_get_prev_int(vi_state, line_num);
 	num = num > line_num ? line_num : num;
 	pos = sci_get_position_from_line(sci, num - 1);
 	sci_set_current_position(sci, pos, TRUE);
+}
+
+void cmd_goto_line_last(ScintillaObject *sci, ViState *vi_state, gint num)
+{
+	gint line_num = sci_get_line_count(sci);
+
+	/* override default line number to the end of file when number not entered */
+	num = accumulator_get_int(vi_state, 1, line_num);
+	cmd_goto_line(sci, vi_state, num);
 }
 
 void cmd_join_lines(ScintillaObject *sci, ViState *vi_state, gint num)
@@ -364,4 +371,12 @@ void cmd_goto_line_end(ScintillaObject *sci, ViState *vi_state, gint num)
 		if (i != num - 1)
 			sci_set_current_position(sci, sci_get_current_position(sci) + 1, TRUE);
 	}
+}
+
+void cmd_goto_matching_brace(ScintillaObject *sci, ViState *vi_state, gint num)
+{
+	gint pos = sci_get_current_position(sci);
+	pos = SSM(sci, SCI_BRACEMATCH, pos, 0);
+	if (pos != -1)
+		sci_set_current_position(sci, pos, TRUE);
 }

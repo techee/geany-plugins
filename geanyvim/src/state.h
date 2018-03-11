@@ -39,6 +39,7 @@ typedef struct
 
 	/* the last full search command, including '/' or '?' */
 	gchar *search_text;
+
 	/* input accumulated over time (e.g. for commands like 100dd) */
 	gchar *accumulator;
 } ViState;

@@ -26,11 +26,21 @@
 #include "cmds.h"
 
 
-static void perform_cmd(void (*func)(ScintillaObject *sci, ViState *vi_state, int num), ScintillaObject *sci, ViState *vi_state)
+static void perform_cmd_generic(void (*func)(ScintillaObject *sci, ViState *vi_state, int num), ScintillaObject *sci, ViState *vi_state, gint cmd_len)
 {
-	gint num = accumulator_get_prev_int(vi_state, 1);
+	gint num = accumulator_get_int(vi_state, cmd_len, 1);
 	func(sci, vi_state, num);
 	accumulator_clear(vi_state);
+}
+
+static void perform_cmd(void (*func)(ScintillaObject *sci, ViState *vi_state, int num), ScintillaObject *sci, ViState *vi_state)
+{
+	perform_cmd_generic(func, sci, vi_state, 1);
+}
+
+static void perform_cmd_2(void (*func)(ScintillaObject *sci, ViState *vi_state, int num), ScintillaObject *sci, ViState *vi_state)
+{
+	perform_cmd_generic(func, sci, vi_state, 2);
 }
 
 gboolean cmd_switch(GdkEventKey *event, ScintillaObject *sci, ViState *vi_state)
@@ -67,7 +77,7 @@ gboolean cmd_switch(GdkEventKey *event, ScintillaObject *sci, ViState *vi_state)
 			break;
 		case GDK_KEY_y:
 			if (accumulator_previous_char(vi_state) == 'y')
-				perform_cmd(cmd_copy_line, sci, vi_state);
+				perform_cmd_2(cmd_copy_line, sci, vi_state);
 			break;
 		case GDK_KEY_p:
 			perform_cmd(cmd_paste, sci, vi_state);
@@ -102,13 +112,17 @@ gboolean cmd_switch(GdkEventKey *event, ScintillaObject *sci, ViState *vi_state)
 		}
 		case GDK_KEY_d:
 			if (accumulator_previous_char(vi_state) == 'd')
-				perform_cmd(cmd_delete_line, sci, vi_state);
+				perform_cmd_2(cmd_delete_line, sci, vi_state);
 			break;
 		case GDK_KEY_x:
 			perform_cmd(cmd_delete_char, sci, vi_state);
 			break;
 		case GDK_KEY_G:
-			perform_cmd(cmd_goto_line, sci, vi_state);
+			perform_cmd(cmd_goto_line_last, sci, vi_state);
+			break;
+		case GDK_KEY_g:
+			if (accumulator_previous_char(vi_state) == 'g')
+				perform_cmd_2(cmd_goto_line, sci, vi_state);
 			break;
 		case GDK_KEY_J:
 			perform_cmd(cmd_join_lines, sci, vi_state);
@@ -117,6 +131,7 @@ gboolean cmd_switch(GdkEventKey *event, ScintillaObject *sci, ViState *vi_state)
 		case GDK_KEY_W:
 			perform_cmd(cmd_goto_next_word, sci, vi_state);
 			break;
+		case GDK_KEY_e:
 		case GDK_KEY_E:
 			perform_cmd(cmd_goto_next_word_end, sci, vi_state);
 			break;
@@ -132,17 +147,16 @@ gboolean cmd_switch(GdkEventKey *event, ScintillaObject *sci, ViState *vi_state)
 		case GDK_KEY_dollar:
 			perform_cmd(cmd_goto_line_end, sci, vi_state);
 			break;
+		case GDK_KEY_percent:
+			perform_cmd(cmd_goto_matching_brace, sci, vi_state);
+			break;
 		case GDK_KEY_o:
 			//new line after current and switch to insert mode
 			break;
 		case GDK_KEY_O:
 			//new line before current
 			break;
-		//home, 0 (zero) - move to start of line
-		//F - like above backwards
 		//tx, Tx - like above but stop one character before
-		//% go to matching parenthesis
-		//numG - move to line 'num'
 		//50% - go to half of the file
 		//H, M, L - moving within visible editor area
 		default:
