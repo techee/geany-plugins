@@ -55,6 +55,34 @@ void cmd_switch(GdkEventKey *event, ScintillaObject *sci, ViState *vi_state, ViU
 {
 	switch (event->keyval)
 	{
+		case GDK_KEY_colon:
+		case GDK_KEY_slash:
+		case GDK_KEY_question:
+			perform_ui_cmd(ui_cmd_enter_cmdline_mode, sci, vi_state, vi_ui);
+			break;
+		case GDK_KEY_i:
+			perform_ui_cmd(ui_cmd_enter_insert_mode, sci, vi_state, vi_ui);
+			break;
+		case GDK_KEY_a:
+			perform_ui_cmd(ui_cmd_enter_insert_mode_after, sci, vi_state, vi_ui);
+			break;
+		case GDK_KEY_I:
+			perform_ui_cmd(ui_cmd_enter_insert_mode_line_start, sci, vi_state, vi_ui);
+			break;
+		case GDK_KEY_A:
+			perform_ui_cmd(ui_cmd_enter_insert_mode_line_end, sci, vi_state, vi_ui);
+			break;
+		case GDK_KEY_o:
+			//new line after current and switch to insert mode
+			break;
+		case GDK_KEY_O:
+			//new line before current
+			break;
+
+
+		case GDK_KEY_Escape:
+			accumulator_clear(vi_state);
+			break;
 		case GDK_KEY_Page_Up:
 			perform_cmd(cmd_page_up, sci, vi_state);
 			break;
@@ -168,32 +196,6 @@ void cmd_switch(GdkEventKey *event, ScintillaObject *sci, ViState *vi_state, ViU
 			break;
 		case GDK_KEY_L:
 			perform_cmd(cmd_goto_screen_bottom, sci, vi_state);
-			break;
-		case GDK_KEY_colon:
-		case GDK_KEY_slash:
-		case GDK_KEY_question:
-			perform_ui_cmd(ui_cmd_enter_cmdline_mode, sci, vi_state, vi_ui);
-			break;
-		case GDK_KEY_i:
-			perform_ui_cmd(ui_cmd_enter_insert_mode, sci, vi_state, vi_ui);
-			break;
-		case GDK_KEY_a:
-			perform_ui_cmd(ui_cmd_enter_insert_mode_after, sci, vi_state, vi_ui);
-			break;
-		case GDK_KEY_I:
-			perform_ui_cmd(ui_cmd_enter_insert_mode_line_start, sci, vi_state, vi_ui);
-			break;
-		case GDK_KEY_A:
-			perform_ui_cmd(ui_cmd_enter_insert_mode_line_end, sci, vi_state, vi_ui);
-			break;
-		case GDK_KEY_Escape:
-			accumulator_clear(vi_state);
-			break;
-		case GDK_KEY_o:
-			//new line after current and switch to insert mode
-			break;
-		case GDK_KEY_O:
-			//new line before current
 			break;
 		//tx, Tx - like above but stop one character before
 		default:

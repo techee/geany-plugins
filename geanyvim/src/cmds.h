@@ -19,7 +19,15 @@
 #ifndef __GEANYVIM_CMDS_H__
 #define __GEANYVIM_CMDS_H__
 
+/* "UI" commands */
+void ui_cmd_enter_cmdline_mode(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui);
+void ui_cmd_enter_insert_mode(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui);
+void ui_cmd_enter_insert_mode_after(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui);
+void ui_cmd_enter_insert_mode_line_start(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui);
+void ui_cmd_enter_insert_mode_line_end(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui);
 
+
+/* normal commands */
 void cmd_page_up(ScintillaObject *sci, ViState *vi_state, gint num);
 void cmd_page_down(ScintillaObject *sci, ViState *vi_state, gint num);
 
@@ -53,11 +61,5 @@ void cmd_goto_doc_percentage(ScintillaObject *sci, ViState *vi_state, gint num);
 void cmd_goto_screen_top(ScintillaObject *sci, ViState *vi_state, gint num);
 void cmd_goto_screen_middle(ScintillaObject *sci, ViState *vi_state, gint num);
 void cmd_goto_screen_bottom(ScintillaObject *sci, ViState *vi_state, gint num);
-
-void ui_cmd_enter_cmdline_mode(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui);
-void ui_cmd_enter_insert_mode(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui);
-void ui_cmd_enter_insert_mode_after(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui);
-void ui_cmd_enter_insert_mode_line_start(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui);
-void ui_cmd_enter_insert_mode_line_end(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui);
 
 #endif

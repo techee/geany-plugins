@@ -28,6 +28,57 @@
 #include "utils.h"
 
 
+/* "UI" commands */
+
+void ui_cmd_enter_cmdline_mode(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui)
+{
+	const gchar *val = vi_state->accumulator + strlen(vi_state->accumulator) - 1;;
+	gtk_widget_show(vi_ui->prompt);
+	gtk_entry_set_text(GTK_ENTRY(vi_ui->entry), val);
+	gtk_editable_set_position(GTK_EDITABLE(vi_ui->entry), 1);
+}
+
+void ui_cmd_enter_insert_mode(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui)
+{
+	vi_state->vi_mode = VI_MODE_INSERT;
+	prepare_vi_mode(sci, vi_state, vi_ui);
+}
+
+void ui_cmd_enter_insert_mode_after(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui)
+{
+	gint pos = sci_get_current_position(sci);
+	gint end_pos = sci_get_line_end_position(sci, sci_get_current_line(sci));
+	if (pos < end_pos)
+		sci_send_command(sci, SCI_CHARRIGHT);
+
+	ui_cmd_enter_insert_mode(sci, vi_state, vi_ui);
+}
+
+void ui_cmd_enter_insert_mode_line_start(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui)
+{
+	gint pos, line;
+	sci_send_command(sci, SCI_HOME);
+	pos = sci_get_current_position(sci);
+	line = sci_get_current_line(sci);
+	while (isspace(sci_get_char_at(sci, pos)))
+	{
+		if (sci_get_line_from_position(sci, pos + 1) != line)
+			break;
+		pos++;
+	}
+	sci_set_current_position(sci, pos, TRUE);
+	ui_cmd_enter_insert_mode(sci, vi_state, vi_ui);
+}
+
+void ui_cmd_enter_insert_mode_line_end(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui)
+{
+	sci_send_command(sci, SCI_LINEEND);
+	ui_cmd_enter_insert_mode(sci, vi_state, vi_ui);
+}
+
+
+/* normal commands */
+
 void cmd_page_up(ScintillaObject *sci, ViState *vi_state, gint num)
 {
 	gint i;
@@ -267,48 +318,3 @@ void cmd_goto_screen_bottom(ScintillaObject *sci, ViState *vi_state, gint num)
 	sci_set_current_position(sci, pos, TRUE);
 }
 
-void ui_cmd_enter_cmdline_mode(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui)
-{
-	const gchar *val = vi_state->accumulator + strlen(vi_state->accumulator) - 1;;
-	gtk_widget_show(vi_ui->prompt);
-	gtk_entry_set_text(GTK_ENTRY(vi_ui->entry), val);
-	gtk_editable_set_position(GTK_EDITABLE(vi_ui->entry), 1);
-}
-
-void ui_cmd_enter_insert_mode(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui)
-{
-	vi_state->vi_mode = VI_MODE_INSERT;
-	prepare_vi_mode(sci, vi_state, vi_ui);
-}
-
-void ui_cmd_enter_insert_mode_after(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui)
-{
-	gint pos = sci_get_current_position(sci);
-	gint end_pos = sci_get_line_end_position(sci, sci_get_current_line(sci));
-	if (pos < end_pos)
-		sci_send_command(sci, SCI_CHARRIGHT);
-
-	ui_cmd_enter_insert_mode(sci, vi_state, vi_ui);
-}
-
-void ui_cmd_enter_insert_mode_line_start(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui)
-{
-	gint pos, line;
-	sci_send_command(sci, SCI_HOME);
-	pos = sci_get_current_position(sci);
-	line = sci_get_current_line(sci);
-	while (isspace(sci_get_char_at(sci, pos)))
-	{
-		if (sci_get_line_from_position(sci, pos + 1) != line)
-			break;
-		pos++;
-	}
-	sci_set_current_position(sci, pos, TRUE);
-	ui_cmd_enter_insert_mode(sci, vi_state, vi_ui);
-}
-
-void ui_cmd_enter_insert_mode_line_end(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui)
-{
-	sci_send_command(sci, SCI_LINEEND);
-	ui_cmd_enter_insert_mode(sci, vi_state, vi_ui);
-}
