@@ -76,6 +76,20 @@ void ui_cmd_enter_insert_mode_line_end(ScintillaObject *sci, ViState *vi_state, 
 	ui_cmd_enter_insert_mode(sci, vi_state, vi_ui);
 }
 
+void ui_cmd_enter_insert_mode_next_line(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui)
+{
+	sci_send_command(sci, SCI_LINEEND);
+	sci_send_command(sci, SCI_NEWLINE);
+	ui_cmd_enter_insert_mode(sci, vi_state, vi_ui);
+}
+
+void ui_cmd_enter_insert_mode_prev_line(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui)
+{
+	sci_send_command(sci, SCI_HOME);
+	sci_send_command(sci, SCI_NEWLINE);
+	sci_send_command(sci, SCI_LINEUP);
+}
+
 
 /* normal commands */
 

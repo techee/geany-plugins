@@ -73,10 +73,10 @@ void cmd_switch(GdkEventKey *event, ScintillaObject *sci, ViState *vi_state, ViU
 			perform_ui_cmd(ui_cmd_enter_insert_mode_line_end, sci, vi_state, vi_ui);
 			break;
 		case GDK_KEY_o:
-			//new line after current and switch to insert mode
+			perform_ui_cmd(ui_cmd_enter_insert_mode_next_line, sci, vi_state, vi_ui);
 			break;
 		case GDK_KEY_O:
-			//new line before current
+			perform_ui_cmd(ui_cmd_enter_insert_mode_prev_line, sci, vi_state, vi_ui);
 			break;
 
 
