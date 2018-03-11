@@ -96,7 +96,7 @@ gint accumulator_get_int(ViState *vi_state, gint start_pos, gint default_val)
 
 void clamp_cursor_pos(ScintillaObject *sci, ViState *vi_state)
 {
-	if (vi_state->vi_mode != VI_MODE_COMMAND)
+	if (!vi_state->vi_enabled || vi_state->vi_mode != VI_MODE_COMMAND)
 		return;
 
 	gint pos = sci_get_current_position(sci);

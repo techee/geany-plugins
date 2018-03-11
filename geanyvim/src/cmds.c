@@ -332,3 +332,12 @@ void cmd_goto_screen_bottom(ScintillaObject *sci, ViState *vi_state, gint num)
 	sci_set_current_position(sci, pos, TRUE);
 }
 
+void cmd_replace_char(ScintillaObject *sci, ViState *vi_state, gint num)
+{
+	gint pos = sci_get_current_position(sci);
+	gchar *repl = vi_state->accumulator + accumulator_len(vi_state) - 1;
+	
+	sci_set_target_start(sci, pos);
+	sci_set_target_end(sci, pos + 1);
+	sci_replace_target(sci, repl, FALSE);
+}

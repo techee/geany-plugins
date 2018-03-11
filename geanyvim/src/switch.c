@@ -53,6 +53,19 @@ static void perform_ui_cmd(void (*func)(ScintillaObject *sci, ViState *vi_state,
 
 void cmd_switch(GdkEventKey *event, ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui)
 {
+	gboolean handled = TRUE;
+	switch (accumulator_previous_char(vi_state))
+	{
+		case 'r':
+			perform_cmd(cmd_replace_char, sci, vi_state);
+			break;
+		default:
+			handled = FALSE;
+	}
+
+	if (handled)
+		return;
+
 	switch (event->keyval)
 	{
 		case GDK_KEY_colon:
@@ -123,6 +136,7 @@ void cmd_switch(GdkEventKey *event, ScintillaObject *sci, ViState *vi_state, ViU
 		case GDK_KEY_r:
 			if (event->state & GDK_CONTROL_MASK)
 				perform_cmd(cmd_redo, sci, vi_state);
+			//without control used for replace
 			break;
 		case GDK_KEY_n:
 		case GDK_KEY_N:

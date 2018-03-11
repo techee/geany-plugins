@@ -63,5 +63,6 @@ void cmd_goto_doc_percentage(ScintillaObject *sci, ViState *vi_state, gint num);
 void cmd_goto_screen_top(ScintillaObject *sci, ViState *vi_state, gint num);
 void cmd_goto_screen_middle(ScintillaObject *sci, ViState *vi_state, gint num);
 void cmd_goto_screen_bottom(ScintillaObject *sci, ViState *vi_state, gint num);
+void cmd_replace_char(ScintillaObject *sci, ViState *vi_state, gint num);
 
 #endif
