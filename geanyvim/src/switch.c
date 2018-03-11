@@ -70,6 +70,22 @@ void cmd_switch(GdkEventKey *event, ScintillaObject *sci, ViState *vi_state, ViU
 	if (handled)
 		return;
 
+	if (event->state == GDK_CONTROL_MASK)
+	{
+		switch (event->keyval)
+		{
+			case GDK_KEY_r:
+				perform_cmd(cmd_redo, sci, vi_state);
+				break;
+			default:
+				break;
+		}
+		return;
+	}
+
+	if (event->state != 0)
+		return;
+
 	switch (event->keyval)
 	{
 		case GDK_KEY_colon:
@@ -104,6 +120,9 @@ void cmd_switch(GdkEventKey *event, ScintillaObject *sci, ViState *vi_state, ViU
 			break;
 		case GDK_KEY_O:
 			perform_ui_cmd(ui_cmd_enter_insert_mode_prev_line, sci, vi_state, vi_ui);
+			break;
+		case GDK_KEY_C:
+			perform_ui_cmd(ui_cmd_enter_insert_mode_clear_right, sci, vi_state, vi_ui);
 			break;
 
 
@@ -146,11 +165,6 @@ void cmd_switch(GdkEventKey *event, ScintillaObject *sci, ViState *vi_state, ViU
 		case GDK_KEY_U: // undo on single line - we probably won't implement it
 		case GDK_KEY_u:
 			perform_cmd(cmd_undo, sci, vi_state);
-			break;
-		case GDK_KEY_r:
-			if (event->state & GDK_CONTROL_MASK)
-				perform_cmd(cmd_redo, sci, vi_state);
-			//without control used for replace
 			break;
 		case GDK_KEY_n:
 		case GDK_KEY_N:
