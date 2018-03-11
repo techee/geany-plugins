@@ -76,6 +76,9 @@ void cmd_switch(GdkEventKey *event, ScintillaObject *sci, ViState *vi_state, ViU
 		case GDK_KEY_i:
 			perform_ui_cmd(ui_cmd_enter_insert_mode, sci, vi_state, vi_ui);
 			break;
+		case GDK_KEY_R:
+			perform_ui_cmd(ui_cmd_enter_replace_mode, sci, vi_state, vi_ui);
+			break;
 		case GDK_KEY_a:
 			perform_ui_cmd(ui_cmd_enter_insert_mode_after, sci, vi_state, vi_ui);
 			break;

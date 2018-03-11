@@ -183,6 +183,9 @@ static const gchar *get_mode_name(ViMode vi_mode)
 		case VI_MODE_INSERT:
 			return "INSERT";
 			break;
+		case VI_MODE_REPLACE:
+			return "REPLACE";
+			break;
 		case VI_MODE_VISUAL:
 			return "VISUAL";
 			break;
@@ -200,16 +203,23 @@ void prepare_vi_mode(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui)
 
 	if (vi_state->vi_enabled)
 	{
-		if (vi_state->vi_mode == VI_MODE_INSERT)
-			SSM(sci, SCI_SETCARETSTYLE, CARETSTYLE_LINE, 0);
-		else
+		if (vi_state->vi_mode == VI_MODE_COMMAND)
+		{
 			SSM(sci, SCI_SETCARETSTYLE, CARETSTYLE_BLOCK, 0);
+			SSM(sci, SCI_SETOVERTYPE, 0, 0);
+		}
+		else
+		{
+			if (vi_state->vi_mode == VI_MODE_INSERT)
+				SSM(sci, SCI_SETOVERTYPE, 0, 0);
+			else if (vi_state->vi_mode == VI_MODE_REPLACE)
+				SSM(sci, SCI_SETOVERTYPE, 1, 0);
+			SSM(sci, SCI_SETCARETSTYLE, CARETSTYLE_LINE, 0);
+		}
+		ui_set_statusbar(FALSE, "Vim Mode: -- %s --", get_mode_name(vi_state->vi_mode));
 	}
 	else
 		SSM(sci, SCI_SETCARETSTYLE, vi_ui->default_caret_style, 0);
-
-	if (vi_state->vi_enabled)
-		ui_set_statusbar(FALSE, "Vim Mode: -- %s --", get_mode_name(vi_state->vi_mode));
 
 	clamp_cursor_pos(sci, vi_state);
 }

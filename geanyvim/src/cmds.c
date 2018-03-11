@@ -44,6 +44,12 @@ void ui_cmd_enter_insert_mode(ScintillaObject *sci, ViState *vi_state, ViUi *vi_
 	prepare_vi_mode(sci, vi_state, vi_ui);
 }
 
+void ui_cmd_enter_replace_mode(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui)
+{
+	vi_state->vi_mode = VI_MODE_REPLACE;
+	prepare_vi_mode(sci, vi_state, vi_ui);
+}
+
 void ui_cmd_enter_insert_mode_after(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui)
 {
 	gint pos = sci_get_current_position(sci);

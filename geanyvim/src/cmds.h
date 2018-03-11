@@ -27,6 +27,7 @@ void ui_cmd_enter_insert_mode_line_start(ScintillaObject *sci, ViState *vi_state
 void ui_cmd_enter_insert_mode_line_end(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui);
 void ui_cmd_enter_insert_mode_next_line(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui);
 void ui_cmd_enter_insert_mode_prev_line(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui);
+void ui_cmd_enter_replace_mode(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui);
 
 
 /* normal commands */

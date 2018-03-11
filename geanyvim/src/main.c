@@ -265,9 +265,14 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 
 	if (vi_state.vi_enabled)
 	{
-		gboolean consumed = vi_state.vi_mode != VI_MODE_INSERT;
+		gboolean consumed = vi_state.vi_mode == VI_MODE_COMMAND;
 
-		if (vi_state.vi_mode == VI_MODE_INSERT)
+		if (vi_state.vi_mode == VI_MODE_COMMAND)
+		{
+			accumulator_append(&vi_state, event->string);
+			cmd_switch(event, sci, &vi_state, &vi_ui);
+		}
+		else
 		{
 			if (event->keyval == GDK_KEY_Escape)
 			{
@@ -280,11 +285,6 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 				prepare_vi_mode(sci, &vi_state, &vi_ui);
 				accumulator_clear(&vi_state);
 			}
-		}
-		else if (vi_state.vi_mode == VI_MODE_COMMAND)
-		{
-			accumulator_append(&vi_state, event->string);
-			cmd_switch(event, sci, &vi_state, &vi_ui);
 		}
 
 		return consumed;

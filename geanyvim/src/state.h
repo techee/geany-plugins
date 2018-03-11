@@ -24,7 +24,8 @@
 typedef enum {
 	VI_MODE_COMMAND,
 	VI_MODE_INSERT,
-	VI_MODE_VISUAL
+	VI_MODE_VISUAL,
+	VI_MODE_REPLACE,
 } ViMode;
 
 typedef struct
