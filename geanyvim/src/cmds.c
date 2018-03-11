@@ -86,10 +86,12 @@ gint accumulator_get_int(ViState *vi_state, gint start_pos, gint default_val)
 	}
 
 	if (end - start < 0)
-		return default_val;
-
-	s[end + 1] = '\0';
-	val = g_ascii_strtoll(s + start, NULL, 10);
+		val = default_val;
+	else
+	{
+		s[end + 1] = '\0';
+		val = g_ascii_strtoll(s + start, NULL, 10);
+	}
 
 	g_free(s);
 	return val;
@@ -379,4 +381,17 @@ void cmd_goto_matching_brace(ScintillaObject *sci, ViState *vi_state, gint num)
 	pos = SSM(sci, SCI_BRACEMATCH, pos, 0);
 	if (pos != -1)
 		sci_set_current_position(sci, pos, TRUE);
+}
+
+void cmd_goto_doc_percentage(ScintillaObject *sci, ViState *vi_state, gint num)
+{
+	gint line_num = sci_get_line_count(sci);
+	gint pos;
+
+	if (num > 100)
+		num = 100;
+
+	line_num = (line_num * num) / 100;
+	pos = sci_get_position_from_line(sci, line_num);
+	sci_set_current_position(sci, pos, TRUE);
 }

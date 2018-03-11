@@ -70,5 +70,6 @@ void cmd_goto_previous_word_end(ScintillaObject *sci, ViState *vi_state, gint nu
 void cmd_goto_line_start(ScintillaObject *sci, ViState *vi_state, gint num);
 void cmd_goto_line_end(ScintillaObject *sci, ViState *vi_state, gint num);
 void cmd_goto_matching_brace(ScintillaObject *sci, ViState *vi_state, gint num);
+void cmd_goto_doc_percentage(ScintillaObject *sci, ViState *vi_state, gint num);
 
 #endif

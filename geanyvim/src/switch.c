@@ -21,6 +21,7 @@
 #endif
 
 #include <gdk/gdkkeysyms.h>
+#include <ctype.h>
 
 #include "switch.h"
 #include "cmds.h"
@@ -142,13 +143,17 @@ gboolean cmd_switch(GdkEventKey *event, ScintillaObject *sci, ViState *vi_state)
 			perform_cmd(cmd_goto_previous_word_end, sci, vi_state);
 			break;
 		case GDK_KEY_0:
-			perform_cmd(cmd_goto_line_start, sci, vi_state);
+			if (!isdigit(accumulator_previous_char(vi_state)))
+				perform_cmd(cmd_goto_line_start, sci, vi_state);
 			break;
 		case GDK_KEY_dollar:
 			perform_cmd(cmd_goto_line_end, sci, vi_state);
 			break;
 		case GDK_KEY_percent:
-			perform_cmd(cmd_goto_matching_brace, sci, vi_state);
+			if (accumulator_len(vi_state) > 1 && accumulator_get_int(vi_state, 1, -1) != -1)
+				perform_cmd(cmd_goto_doc_percentage, sci, vi_state);
+			else
+				perform_cmd(cmd_goto_matching_brace, sci, vi_state);
 			break;
 		case GDK_KEY_o:
 			//new line after current and switch to insert mode
