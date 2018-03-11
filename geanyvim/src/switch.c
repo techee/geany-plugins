@@ -33,8 +33,10 @@ static void perform_cmd_generic(void (*func)(ScintillaObject *sci, ViState *vi_s
 	gint num = accumulator_get_int(vi_state, cmd_len, 1);
 	sci_start_undo_action(sci);
 	func(sci, vi_state, num);
-	sci_end_undo_action(sci);
 	accumulator_clear(vi_state);
+	if (vi_state->vi_mode == VI_MODE_COMMAND)
+		clamp_cursor_pos(sci, vi_state);
+	sci_end_undo_action(sci);
 }
 
 static void perform_cmd(void (*func)(ScintillaObject *sci, ViState *vi_state, int num), ScintillaObject *sci, ViState *vi_state)
@@ -47,12 +49,14 @@ static void perform_cmd_2(void (*func)(ScintillaObject *sci, ViState *vi_state, 
 	perform_cmd_generic(func, sci, vi_state, 2);
 }
 
-static void perform_ui_cmd(void (*func)(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui), ScintillaObject *sci, ViState *state, ViUi *ui)
+static void perform_ui_cmd(void (*func)(ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui), ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui)
 {
 	sci_start_undo_action(sci);
-	func(sci, state, ui);
+	func(sci, vi_state, vi_ui);
+	accumulator_clear(vi_state);
+	if (vi_state->vi_mode == VI_MODE_COMMAND)
+		clamp_cursor_pos(sci, vi_state);
 	sci_end_undo_action(sci);
-	accumulator_clear(state);
 }
 
 void cmd_switch(GdkEventKey *event, ScintillaObject *sci, ViState *vi_state, ViUi *vi_ui)
@@ -241,6 +245,14 @@ void cmd_switch(GdkEventKey *event, ScintillaObject *sci, ViState *vi_state, ViU
 			break;
 		case GDK_KEY_asciitilde:
 			perform_cmd(cmd_uppercase_char, sci, vi_state);
+			break;
+		case GDK_KEY_less:
+			if (accumulator_previous_char(vi_state) == '<')
+				perform_cmd_2(cmd_unindent, sci, vi_state);
+			break;
+		case GDK_KEY_greater:
+			if (accumulator_previous_char(vi_state) == '>')
+				perform_cmd_2(cmd_indent, sci, vi_state);
 			break;
 		//tx, Tx - like above but stop one character before
 		default:

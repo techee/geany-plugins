@@ -157,7 +157,6 @@ void cmd_move_caret_up(ScintillaObject *sci, ViState *vi_state, gint num)
 	gint i;
 	for (i = 0; i < num; i++)
 		sci_send_command(sci, SCI_LINEUP);
-	clamp_cursor_pos(sci, vi_state);
 }
 
 void cmd_move_caret_down(ScintillaObject *sci, ViState *vi_state, gint num)
@@ -165,7 +164,6 @@ void cmd_move_caret_down(ScintillaObject *sci, ViState *vi_state, gint num)
 	gint i;
 	for (i = 0; i < num; i++)
 		sci_send_command(sci, SCI_LINEDOWN);
-	clamp_cursor_pos(sci, vi_state);
 }
 
 void cmd_undo(ScintillaObject *sci, ViState *vi_state, gint num)
@@ -379,4 +377,36 @@ void cmd_uppercase_char(ScintillaObject *sci, ViState *vi_state, gint num)
 	sci_set_target_end(sci, pos + 1);
 	sci_replace_target(sci, upper, FALSE);
 	sci_send_command(sci, SCI_CHARRIGHT);
+}
+
+void cmd_indent(ScintillaObject *sci, ViState *vi_state, gint num)
+{
+	gint pos = sci_get_current_position(sci);;
+	gint i;
+
+	for (i = 0; i < num; i++)
+	{
+		sci_send_command(sci, SCI_HOME);
+		sci_send_command(sci, SCI_TAB);
+		if (i == 0)
+			pos = sci_get_current_position(sci);
+		sci_send_command(sci, SCI_LINEDOWN);
+	}
+	sci_set_current_position(sci, pos, FALSE);
+}
+
+void cmd_unindent(ScintillaObject *sci, ViState *vi_state, gint num)
+{
+	gint pos = sci_get_current_position(sci);;
+	gint i;
+
+	for (i = 0; i < num; i++)
+	{
+		sci_send_command(sci, SCI_HOME);
+		sci_send_command(sci, SCI_BACKTAB);
+		if (i == 0)
+			pos = sci_get_current_position(sci);
+		sci_send_command(sci, SCI_LINEDOWN);
+	}
+	sci_set_current_position(sci, pos, FALSE);
 }

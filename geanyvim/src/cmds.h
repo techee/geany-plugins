@@ -73,4 +73,7 @@ void cmd_goto_screen_bottom(ScintillaObject *sci, ViState *vi_state, gint num);
 void cmd_replace_char(ScintillaObject *sci, ViState *vi_state, gint num);
 void cmd_uppercase_char(ScintillaObject *sci, ViState *vi_state, gint num);
 
+void cmd_indent(ScintillaObject *sci, ViState *vi_state, gint num);
+void cmd_unindent(ScintillaObject *sci, ViState *vi_state, gint num);
+
 #endif
