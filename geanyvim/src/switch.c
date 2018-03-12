@@ -37,12 +37,11 @@ static void perform_cmd(Cmd cmd, ScintillaObject *sci, CmdContext *ctx, ViState 
 	sci_start_undo_action(sci);
 	cmd(ctx, &param);
 	accumulator_clear(ctx);
-	if (state->vi_mode == VI_MODE_COMMAND)
-		clamp_cursor_pos(sci, ctx, state);
+	clamp_cursor_pos(sci);
 	sci_end_undo_action(sci);
 }
 
-void cmd_switch(GdkEventKey *event, ScintillaObject *sci, CmdContext *ctx, ViState *state)
+gboolean cmd_switch(GdkEventKey *event, ScintillaObject *sci, CmdContext *ctx, ViState *state)
 {
 	Cmd cmd = NULL;
 	gint cmdlen = 1;
@@ -58,8 +57,11 @@ void cmd_switch(GdkEventKey *event, ScintillaObject *sci, CmdContext *ctx, ViSta
 				break;
 		}
 		if (cmd)
+		{
 			perform_cmd(cmd, sci, ctx, state, cmdlen);
-		return;
+			return TRUE;
+		}
+		return FALSE;
 	}
 
 	switch (accumulator_previous_char(ctx))
@@ -75,7 +77,7 @@ void cmd_switch(GdkEventKey *event, ScintillaObject *sci, CmdContext *ctx, ViSta
 	if (cmd)
 	{
 		perform_cmd(cmd, sci, ctx, state, cmdlen);
-		return;
+		return TRUE;
 	}
 
 	switch (event->keyval)
@@ -275,5 +277,10 @@ void cmd_switch(GdkEventKey *event, ScintillaObject *sci, CmdContext *ctx, ViSta
 	}
 
 	if (cmd)
+	{
 		perform_cmd(cmd, sci, ctx, state, cmdlen);
+		return TRUE;
+	}
+
+	return FALSE;
 }

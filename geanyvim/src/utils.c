@@ -94,11 +94,8 @@ gint accumulator_get_int(CmdContext *ctx, gint start_pos, gint default_val)
 }
 
 
-void clamp_cursor_pos(ScintillaObject *sci, CmdContext *ctx, ViState *state)
+void clamp_cursor_pos(ScintillaObject *sci)
 {
-	if (!state->vi_enabled || state->vi_mode != VI_MODE_COMMAND)
-		return;
-
 	gint pos = sci_get_current_position(sci);
 	gint start_pos = sci_get_position_from_line(sci, sci_get_current_line(sci));
 	gint end_pos = sci_get_line_end_position(sci, sci_get_current_line(sci));

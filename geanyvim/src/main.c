@@ -128,6 +128,7 @@ void set_vi_mode(ViMode mode, ScintillaObject *sci)
 		case VI_MODE_COMMAND:
 			SSM(sci, SCI_SETCARETSTYLE, CARETSTYLE_BLOCK, 0);
 			SSM(sci, SCI_SETOVERTYPE, 0, 0);
+			clamp_cursor_pos(sci);
 			break;
 		case VI_MODE_CMDLINE:
 		{
@@ -150,9 +151,6 @@ void set_vi_mode(ViMode mode, ScintillaObject *sci)
 	}
 
 	ui_set_statusbar(FALSE, "Vim Mode: -- %s --", get_mode_name(state.vi_mode));
-
-	clamp_cursor_pos(sci, &ctx, &state);
-
 }
 
 
@@ -179,7 +177,7 @@ static void perform_command(const gchar *cmd)
 	guint i = 0;
 	guint len = strlen(cmd);
 	GeanyDocument *doc = document_get_current();
-	ScintillaObject *sci = doc != NULL ? doc->editor->sci : NULL;
+	ScintillaObject *sci = get_current_doc_sci();
 
 	if (!sci)
 		return;
@@ -331,47 +329,41 @@ static gboolean on_perform_vim_command(GeanyKeyBinding *kb, guint key_id, gpoint
 
 static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer user_data)
 {
-	GeanyDocument *doc = document_get_current();
-	ScintillaObject *sci;
+	ScintillaObject *sci = get_current_doc_sci();
+	gboolean consumed;
 
-	if (!doc)
+	if (!state.vi_enabled || !sci)
 		return FALSE;
-
-	sci = doc->editor->sci;
 
 	if (gtk_window_get_focus(GTK_WINDOW(geany->main_widgets->window)) != GTK_WIDGET(sci))
 		return FALSE;
 
+	consumed = state.vi_mode == VI_MODE_COMMAND;
+
+	if (state.vi_mode == VI_MODE_COMMAND)
+	{
+		accumulator_append(&ctx, event->string);
+		if (cmd_switch(event, sci, &ctx, &state))
+			leave_onetime_vi_mode();
+	}
+	else
+	{
+		if (event->keyval == GDK_KEY_Escape)
+		{
+			gint pos = sci_get_current_position(sci);
+			gint start_pos = sci_get_position_from_line(sci, sci_get_current_line(sci));
+			if (pos > start_pos)
+				sci_send_command(sci, SCI_CHARLEFT);
+			leave_onetime_vi_mode();
+			set_vi_mode(VI_MODE_COMMAND, get_current_doc_sci());
+			accumulator_clear(&ctx);
+		}
+	}
+
 	printf("key: %d, state: %d\n", event->keyval, event->state);
 	printf("accumulator: %s\n", ctx.accumulator);
 
-	if (state.vi_enabled)
-	{
-		gboolean consumed = state.vi_mode == VI_MODE_COMMAND;
-
-		if (state.vi_mode == VI_MODE_COMMAND)
-		{
-			accumulator_append(&ctx, event->string);
-			cmd_switch(event, sci, &ctx, &state);
-		}
-		else
-		{
-			if (event->keyval == GDK_KEY_Escape)
-			{
-				gint pos = sci_get_current_position(sci);
-				gint start_pos = sci_get_position_from_line(sci, sci_get_current_line(sci));
-				if (pos > start_pos)
-					sci_send_command(sci, SCI_CHARLEFT);
-				leave_onetime_vi_mode();
-				set_vi_mode(VI_MODE_COMMAND, get_current_doc_sci());
-				accumulator_clear(&ctx);
-			}
-		}
-
-		return consumed;
-	}
-
-	return FALSE;
+	return consumed;
 }
 
 
@@ -394,13 +386,16 @@ static void on_doc_activate(G_GNUC_UNUSED GObject *obj, GeanyDocument *doc,
 static gboolean on_editor_notify(GObject *object, GeanyEditor *editor,
 		SCNotification *nt, gpointer data)
 {
-	GeanyDocument *doc = document_get_current();
+	ScintillaObject *sci = get_current_doc_sci();
+
+	if (!state.vi_enabled || !sci || state.vi_mode != VI_MODE_COMMAND)
+		return FALSE;
 
 	//TODO: not when there's a selection
 	/* this makes sure that when we click behind the end of line in command mode,
 	 * the cursor is not placed BEHIND the last character but ON the last character */
-	if (doc != NULL && nt->nmhdr.code == SCN_UPDATEUI && nt->updated == SC_UPDATE_SELECTION)
-		clamp_cursor_pos(doc->editor->sci, &ctx, &state);
+	if (nt->nmhdr.code == SCN_UPDATEUI && nt->updated == SC_UPDATE_SELECTION)
+		clamp_cursor_pos(sci);
 
 	return FALSE;
 }
