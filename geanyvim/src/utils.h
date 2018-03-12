@@ -22,7 +22,6 @@
 #include <glib.h>
 #include <geanyplugin.h>
 
-#include "state.h"
 #include "cmds.h"
 
 #define SSM(s, m, w, l) scintilla_send_message(s, m, w, l)

@@ -29,19 +29,6 @@ typedef enum {
 	VI_MODE_REPLACE,
 } ViMode;
 
-typedef struct
-{
-	/* caret style used by Geany we can revert to when disabling vi mode */
-	gint default_caret_style;
-
-	/* whether vi mode is enabled or disabled */
-	gboolean vi_enabled; 
-	/* if vi mode is valid for a single command and will be disabled automatically
-	 * after performing it */
-	gboolean vi_onetime;
-	/* vi mode */
-	ViMode vi_mode;
-} ViState;
 
 void set_vi_mode(ViMode mode, ScintillaObject *sci);
 

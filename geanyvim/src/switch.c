@@ -28,7 +28,7 @@
 #include "utils.h"
 
 
-static void perform_cmd(Cmd cmd, ScintillaObject *sci, CmdContext *ctx, ViState *state, gint cmd_len)
+static void perform_cmd(Cmd cmd, ScintillaObject *sci, CmdContext *ctx, gint cmd_len)
 {
 	CmdParams param;
 	param.sci = sci;
@@ -41,7 +41,7 @@ static void perform_cmd(Cmd cmd, ScintillaObject *sci, CmdContext *ctx, ViState 
 	sci_end_undo_action(sci);
 }
 
-gboolean cmd_switch(GdkEventKey *event, ScintillaObject *sci, CmdContext *ctx, ViState *state)
+gboolean cmd_switch(GdkEventKey *event, ScintillaObject *sci, CmdContext *ctx)
 {
 	Cmd cmd = NULL;
 	gint cmdlen = 1;
@@ -58,7 +58,7 @@ gboolean cmd_switch(GdkEventKey *event, ScintillaObject *sci, CmdContext *ctx, V
 		}
 		if (cmd)
 		{
-			perform_cmd(cmd, sci, ctx, state, cmdlen);
+			perform_cmd(cmd, sci, ctx, cmdlen);
 			return TRUE;
 		}
 		return FALSE;
@@ -76,7 +76,7 @@ gboolean cmd_switch(GdkEventKey *event, ScintillaObject *sci, CmdContext *ctx, V
 
 	if (cmd)
 	{
-		perform_cmd(cmd, sci, ctx, state, cmdlen);
+		perform_cmd(cmd, sci, ctx, cmdlen);
 		return TRUE;
 	}
 
@@ -278,7 +278,7 @@ gboolean cmd_switch(GdkEventKey *event, ScintillaObject *sci, CmdContext *ctx, V
 
 	if (cmd)
 	{
-		perform_cmd(cmd, sci, ctx, state, cmdlen);
+		perform_cmd(cmd, sci, ctx, cmdlen);
 		return TRUE;
 	}
 

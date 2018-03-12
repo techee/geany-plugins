@@ -22,9 +22,8 @@
 #include <gtk/gtk.h>
 #include <geanyplugin.h>
 
-#include "state.h"
 #include "cmds.h"
 
-gboolean cmd_switch(GdkEventKey *event, ScintillaObject *sci, CmdContext *ctx, ViState *state);
+gboolean cmd_switch(GdkEventKey *event, ScintillaObject *sci, CmdContext *ctx);
 
 #endif

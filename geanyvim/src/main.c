@@ -72,7 +72,19 @@ struct
 	NULL, NULL, NULL, NULL, NULL
 };
 
-ViState state =
+struct
+{
+	/* caret style used by Geany we can revert to when disabling vi mode */
+	gint default_caret_style;
+
+	/* whether vi mode is enabled or disabled */
+	gboolean vi_enabled; 
+	/* if vi mode is valid for a single command and will be disabled automatically
+	 * after performing it */
+	gboolean vi_onetime;
+	/* vi mode */
+	ViMode vi_mode;
+} state =
 {
 	-1, TRUE, FALSE, VI_MODE_COMMAND
 };
@@ -343,7 +355,7 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 	if (state.vi_mode == VI_MODE_COMMAND)
 	{
 		accumulator_append(&ctx, event->string);
-		if (cmd_switch(event, sci, &ctx, &state))
+		if (cmd_switch(event, sci, &ctx))
 			leave_onetime_vi_mode();
 	}
 	else
