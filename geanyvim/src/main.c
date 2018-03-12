@@ -29,7 +29,6 @@
 
 #include "state.h"
 #include "cmds.h"
-#include "switch.h"
 #include "utils.h"
 
 #define CONF_GROUP "Settings"
@@ -138,8 +137,8 @@ void set_vi_mode(ViMode mode, ScintillaObject *sci)
 	switch (mode)
 	{
 		case VI_MODE_COMMAND:
-			SSM(sci, SCI_SETCARETSTYLE, CARETSTYLE_BLOCK, 0);
 			SSM(sci, SCI_SETOVERTYPE, 0, 0);
+			SSM(sci, SCI_SETCARETSTYLE, CARETSTYLE_BLOCK, 0);
 			clamp_cursor_pos(sci);
 			break;
 		case VI_MODE_CMDLINE:
@@ -181,6 +180,7 @@ static void close_prompt()
 {
 	leave_onetime_vi_mode();
 	gtk_widget_hide(vi_widgets.prompt);
+	set_vi_mode(VI_MODE_COMMAND, get_current_doc_sci());
 }
 
 
@@ -355,20 +355,23 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 	if (state.vi_mode == VI_MODE_COMMAND)
 	{
 		accumulator_append(&ctx, event->string);
-		if (cmd_switch(event, sci, &ctx))
+		if (process_event_cmd_mode(event, sci, &ctx))
 			leave_onetime_vi_mode();
 	}
 	else
 	{
 		if (event->keyval == GDK_KEY_Escape)
 		{
-			gint pos = sci_get_current_position(sci);
-			gint start_pos = sci_get_position_from_line(sci, sci_get_current_line(sci));
-			if (pos > start_pos)
-				sci_send_command(sci, SCI_CHARLEFT);
-			leave_onetime_vi_mode();
-			set_vi_mode(VI_MODE_COMMAND, get_current_doc_sci());
-			accumulator_clear(&ctx);
+			if (!SSM(sci, SCI_AUTOCACTIVE, 0, 0) && !SSM(sci, SCI_CALLTIPACTIVE, 0, 0))
+			{
+				gint pos = sci_get_current_position(sci);
+				gint start_pos = sci_get_position_from_line(sci, sci_get_current_line(sci));
+				if (pos > start_pos)
+					sci_send_command(sci, SCI_CHARLEFT);
+				leave_onetime_vi_mode();
+				set_vi_mode(VI_MODE_COMMAND, get_current_doc_sci());
+				accumulator_clear(&ctx);
+			}
 		}
 	}
 
@@ -403,7 +406,9 @@ static gboolean on_editor_notify(GObject *object, GeanyEditor *editor,
 	if (!state.vi_enabled || !sci || state.vi_mode != VI_MODE_COMMAND)
 		return FALSE;
 
-	//TODO: not when there's a selection
+	if (sci_get_selected_text_length(sci) > 0)
+		return FALSE;
+
 	/* this makes sure that when we click behind the end of line in command mode,
 	 * the cursor is not placed BEHIND the last character but ON the last character */
 	if (nt->nmhdr.code == SCN_UPDATEUI && nt->updated == SC_UPDATE_SELECTION)

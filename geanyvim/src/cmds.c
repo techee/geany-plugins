@@ -21,6 +21,7 @@
 #endif
 
 #include <geanyplugin.h>
+#include <gdk/gdkkeysyms.h>
 #include <ctype.h>
 
 #include "state.h"
@@ -28,24 +29,39 @@
 #include "utils.h"
 
 
-/* state commands */
+typedef struct
+{
+	/* current Scintilla object */
+	ScintillaObject *sci;
+	/* number preceding command */
+	gint num;
+} CmdParams;
 
-void state_cmd_enter_cmdline_mode(CmdContext *c, CmdParams *p)
+
+typedef void (*Cmd)(CmdContext *c, CmdParams *p);
+
+
+static void state_cmd_enter_cmdline_mode(CmdContext *c, CmdParams *p)
 {
 	set_vi_mode(VI_MODE_CMDLINE, p->sci);
 }
 
-void state_cmd_enter_insert_mode(CmdContext *c, CmdParams *p)
+static void state_cmd_enter_insert_mode(CmdContext *c, CmdParams *p)
 {
 	set_vi_mode(VI_MODE_INSERT, p->sci);
 }
 
-void state_cmd_enter_replace_mode(CmdContext *c, CmdParams *p)
+static void state_cmd_enter_replace_mode(CmdContext *c, CmdParams *p)
 {
 	set_vi_mode(VI_MODE_REPLACE, p->sci);
 }
 
-void state_cmd_enter_insert_mode_after(CmdContext *c, CmdParams *p)
+static void state_cmd_enter_visual_mode(CmdContext *c, CmdParams *p)
+{
+	set_vi_mode(VI_MODE_VISUAL, p->sci);
+}
+
+static void state_cmd_enter_insert_mode_after(CmdContext *c, CmdParams *p)
 {
 	gint pos = sci_get_current_position(p->sci);
 	gint end_pos = sci_get_line_end_position(p->sci, sci_get_current_line(p->sci));
@@ -55,7 +71,7 @@ void state_cmd_enter_insert_mode_after(CmdContext *c, CmdParams *p)
 	state_cmd_enter_insert_mode(c, p);
 }
 
-void state_cmd_enter_insert_mode_line_start(CmdContext *c, CmdParams *p)
+static void state_cmd_enter_insert_mode_line_start(CmdContext *c, CmdParams *p)
 {
 	gint pos, line;
 	sci_send_command(p->sci, SCI_HOME);
@@ -71,20 +87,20 @@ void state_cmd_enter_insert_mode_line_start(CmdContext *c, CmdParams *p)
 	state_cmd_enter_insert_mode(c, p);
 }
 
-void state_cmd_enter_insert_mode_line_end(CmdContext *c, CmdParams *p)
+static void state_cmd_enter_insert_mode_line_end(CmdContext *c, CmdParams *p)
 {
 	sci_send_command(p->sci, SCI_LINEEND);
 	state_cmd_enter_insert_mode(c, p);
 }
 
-void state_cmd_enter_insert_mode_next_line(CmdContext *c, CmdParams *p)
+static void state_cmd_enter_insert_mode_next_line(CmdContext *c, CmdParams *p)
 {
 	sci_send_command(p->sci, SCI_LINEEND);
 	sci_send_command(p->sci, SCI_NEWLINE);
 	state_cmd_enter_insert_mode(c, p);
 }
 
-void state_cmd_enter_insert_mode_prev_line(CmdContext *c, CmdParams *p)
+static void state_cmd_enter_insert_mode_prev_line(CmdContext *c, CmdParams *p)
 {
 	sci_send_command(p->sci, SCI_HOME);
 	sci_send_command(p->sci, SCI_NEWLINE);
@@ -92,44 +108,41 @@ void state_cmd_enter_insert_mode_prev_line(CmdContext *c, CmdParams *p)
 	state_cmd_enter_insert_mode(c, p);
 }
 
-void state_cmd_enter_insert_mode_clear_line(CmdContext *c, CmdParams *p)
+static void state_cmd_enter_insert_mode_clear_line(CmdContext *c, CmdParams *p)
 {
 	sci_send_command(p->sci, SCI_DELLINELEFT);
 	sci_send_command(p->sci, SCI_DELLINERIGHT);
 	state_cmd_enter_insert_mode(c, p);
 }
 
-void state_cmd_enter_insert_mode_clear_right(CmdContext *c, CmdParams *p)
+static void state_cmd_enter_insert_mode_clear_right(CmdContext *c, CmdParams *p)
 {
 	sci_send_command(p->sci, SCI_DELLINERIGHT);
 	state_cmd_enter_insert_mode(c, p);
 }
 
-void state_cmd_enter_insert_mode_delete_char(CmdContext *c, CmdParams *p)
+static void state_cmd_enter_insert_mode_delete_char(CmdContext *c, CmdParams *p)
 {
 	gint pos = sci_get_current_position(p->sci);
 	SSM(p->sci, SCI_DELETERANGE, pos, 1);
 	state_cmd_enter_insert_mode(c, p);
 }
 
-
-/* normal commands */
-
-void cmd_page_up(CmdContext *c, CmdParams *p)
+static void cmd_page_up(CmdContext *c, CmdParams *p)
 {
 	gint i;
 	for (i = 0; i < p->num; i++)
 		sci_send_command(p->sci, SCI_PAGEUP);
 }
 
-void cmd_page_down(CmdContext *c, CmdParams *p)
+static void cmd_page_down(CmdContext *c, CmdParams *p)
 {
 	gint i;
 	for (i = 0; i < p->num; i++)
 		sci_send_command(p->sci, SCI_PAGEDOWN);
 }
 
-void cmd_move_caret_left(CmdContext *c, CmdParams *p)
+static void cmd_move_caret_left(CmdContext *c, CmdParams *p)
 {
 	gint pos = sci_get_current_position(p->sci);
 	gint start_pos = sci_get_position_from_line(p->sci, sci_get_current_line(p->sci));
@@ -138,7 +151,7 @@ void cmd_move_caret_left(CmdContext *c, CmdParams *p)
 		sci_send_command(p->sci, SCI_CHARLEFT);
 }
 
-void cmd_move_caret_right(CmdContext *c, CmdParams *p)
+static void cmd_move_caret_right(CmdContext *c, CmdParams *p)
 {
 	gint pos = sci_get_current_position(p->sci);
 	gint end_pos = sci_get_line_end_position(p->sci, sci_get_current_line(p->sci));
@@ -147,21 +160,21 @@ void cmd_move_caret_right(CmdContext *c, CmdParams *p)
 		sci_send_command(p->sci, SCI_CHARRIGHT);
 }
 
-void cmd_move_caret_up(CmdContext *c, CmdParams *p)
+static void cmd_move_caret_up(CmdContext *c, CmdParams *p)
 {
 	gint i;
 	for (i = 0; i < p->num; i++)
 		sci_send_command(p->sci, SCI_LINEUP);
 }
 
-void cmd_move_caret_down(CmdContext *c, CmdParams *p)
+static void cmd_move_caret_down(CmdContext *c, CmdParams *p)
 {
 	gint i;
 	for (i = 0; i < p->num; i++)
 		sci_send_command(p->sci, SCI_LINEDOWN);
 }
 
-void cmd_undo(CmdContext *c, CmdParams *p)
+static void cmd_undo(CmdContext *c, CmdParams *p)
 {
 	gint i;
 	for (i = 0; i < p->num; i++)
@@ -173,7 +186,7 @@ void cmd_undo(CmdContext *c, CmdParams *p)
 	}
 }
 
-void cmd_redo(CmdContext *c, CmdParams *p)
+static void cmd_redo(CmdContext *c, CmdParams *p)
 {
 	gint i;
 	for (i = 0; i < p->num; i++)
@@ -185,14 +198,14 @@ void cmd_redo(CmdContext *c, CmdParams *p)
 	}
 }
 
-void cmd_copy_line(CmdContext *c, CmdParams *p)
+static void cmd_copy_line(CmdContext *c, CmdParams *p)
 {
 	gint start = sci_get_position_from_line(p->sci, sci_get_current_line(p->sci));
 	gint end = sci_get_position_from_line(p->sci, sci_get_current_line(p->sci) + p->num);
 	SSM(p->sci, SCI_COPYRANGE, start, end);
 }
 
-void cmd_paste(CmdContext *c, CmdParams *p)
+static void cmd_paste(CmdContext *c, CmdParams *p)
 {
 	gint pos = sci_get_position_from_line(p->sci, sci_get_current_line(p->sci)+1);
 	gint i;
@@ -202,14 +215,14 @@ void cmd_paste(CmdContext *c, CmdParams *p)
 	sci_set_current_position(p->sci, pos, TRUE);
 }
 
-void cmd_delete_line(CmdContext *c, CmdParams *p)
+static void cmd_delete_line(CmdContext *c, CmdParams *p)
 {
 	gint start = sci_get_position_from_line(p->sci, sci_get_current_line(p->sci));
 	gint end = sci_get_position_from_line(p->sci, sci_get_current_line(p->sci) + p->num);
 	SSM(p->sci, SCI_DELETERANGE, start, end-start);
 }
 
-void cmd_search(CmdContext *c, CmdParams *p)
+static void cmd_search(CmdContext *c, CmdParams *p)
 {
 	gboolean forward = TRUE;
 	char last;
@@ -227,7 +240,32 @@ void cmd_search(CmdContext *c, CmdParams *p)
 		perform_search(p->sci, c, forward);
 }
 
-void cmd_delete_char(CmdContext *c, CmdParams *p)
+static void search_current(CmdContext *c, CmdParams *p, gboolean next)
+{
+	gchar *word = get_current_word(p->sci);
+	g_free(c->search_text);
+	if (!word)
+		c->search_text = NULL;
+	else
+	{
+		const gchar *prefix = next ? "/" : "?";
+		c->search_text = g_strconcat(prefix, word, NULL);
+	}
+	g_free(word);
+	cmd_search(c, p);
+}
+
+static void cmd_search_current_next(CmdContext *c, CmdParams *p)
+{
+	search_current(c, p, TRUE);
+}
+
+static void cmd_search_current_prev(CmdContext *c, CmdParams *p)
+{
+	search_current(c, p, FALSE);
+}
+
+static void cmd_delete_char(CmdContext *c, CmdParams *p)
 {
 	gint pos = sci_get_current_position(p->sci);
 	gint i;
@@ -235,7 +273,7 @@ void cmd_delete_char(CmdContext *c, CmdParams *p)
 		SSM(p->sci, SCI_DELETERANGE, pos, 1);
 }
 
-void cmd_delete_char_back(CmdContext *c, CmdParams *p)
+static void cmd_delete_char_back(CmdContext *c, CmdParams *p)
 {
 	gint pos = sci_get_current_position(p->sci);
 	gint i;
@@ -243,7 +281,7 @@ void cmd_delete_char_back(CmdContext *c, CmdParams *p)
 		SSM(p->sci, SCI_DELETERANGE, pos-1, 1);
 }
 
-void cmd_goto_line(CmdContext *c, CmdParams *p)
+static void cmd_goto_line(CmdContext *c, CmdParams *p)
 {
 	gint line_num = sci_get_line_count(p->sci);
 	gint num = p->num > line_num ? line_num : p->num;
@@ -253,7 +291,7 @@ void cmd_goto_line(CmdContext *c, CmdParams *p)
 	sci_set_current_position(p->sci, pos, TRUE);
 }
 
-void cmd_goto_line_last(CmdContext *c, CmdParams *p)
+static void cmd_goto_line_last(CmdContext *c, CmdParams *p)
 {
 	gint line_num = sci_get_line_count(p->sci);
 	/* override default line number to the end of file when number not entered */
@@ -261,7 +299,7 @@ void cmd_goto_line_last(CmdContext *c, CmdParams *p)
 	cmd_goto_line(c, p);
 }
 
-void cmd_join_lines(CmdContext *c, CmdParams *p)
+static void cmd_join_lines(CmdContext *c, CmdParams *p)
 {
 	gint line = sci_get_current_line(p->sci);
 	gint next_line_pos = sci_get_position_from_line(p->sci, line+p->num);
@@ -271,40 +309,40 @@ void cmd_join_lines(CmdContext *c, CmdParams *p)
 	SSM(p->sci, SCI_LINESJOIN, 0, 0);
 }
 
-void cmd_goto_next_word(CmdContext *c, CmdParams *p)
+static void cmd_goto_next_word(CmdContext *c, CmdParams *p)
 {
 	gint i;
 	for (i = 0; i < p->num; i++)
 		sci_send_command(p->sci, SCI_WORDRIGHT);
 }
 
-void cmd_goto_next_word_end(CmdContext *c, CmdParams *p)
+static void cmd_goto_next_word_end(CmdContext *c, CmdParams *p)
 {
 	gint i;
 	for (i = 0; i < p->num; i++)
 		sci_send_command(p->sci, SCI_WORDRIGHTEND);
 }
 
-void cmd_goto_previous_word(CmdContext *c, CmdParams *p)
+static void cmd_goto_previous_word(CmdContext *c, CmdParams *p)
 {
 	gint i;
 	for (i = 0; i < p->num; i++)
 		sci_send_command(p->sci, SCI_WORDLEFT);
 }
 
-void cmd_goto_previous_word_end(CmdContext *c, CmdParams *p)
+static void cmd_goto_previous_word_end(CmdContext *c, CmdParams *p)
 {
 	gint i;
 	for (i = 0; i < p->num; i++)
 		sci_send_command(p->sci, SCI_WORDLEFTEND);
 }
 
-void cmd_goto_line_start(CmdContext *c, CmdParams *p)
+static void cmd_goto_line_start(CmdContext *c, CmdParams *p)
 {
 	sci_send_command(p->sci, SCI_HOME);
 }
 
-void cmd_goto_line_end(CmdContext *c, CmdParams *p)
+static void cmd_goto_line_end(CmdContext *c, CmdParams *p)
 {
 	gint i;
 	for (i = 0; i < p->num; i++)
@@ -315,7 +353,7 @@ void cmd_goto_line_end(CmdContext *c, CmdParams *p)
 	}
 }
 
-void cmd_goto_matching_brace(CmdContext *c, CmdParams *p)
+static void cmd_goto_matching_brace(CmdContext *c, CmdParams *p)
 {
 	gint pos = sci_get_current_position(p->sci);
 	pos = SSM(p->sci, SCI_BRACEMATCH, pos, 0);
@@ -323,7 +361,7 @@ void cmd_goto_matching_brace(CmdContext *c, CmdParams *p)
 		sci_set_current_position(p->sci, pos, TRUE);
 }
 
-void cmd_goto_doc_percentage(CmdContext *c, CmdParams *p)
+static void cmd_goto_doc_percentage(CmdContext *c, CmdParams *p)
 {
 	gint line_num = sci_get_line_count(p->sci);
 	gint pos;
@@ -336,14 +374,14 @@ void cmd_goto_doc_percentage(CmdContext *c, CmdParams *p)
 	sci_set_current_position(p->sci, pos, TRUE);
 }
 
-void cmd_goto_screen_top(CmdContext *c, CmdParams *p)
+static void cmd_goto_screen_top(CmdContext *c, CmdParams *p)
 {
 	gint top = SSM(p->sci, SCI_GETFIRSTVISIBLELINE, 0, 0);
 	gint pos = sci_get_position_from_line(p->sci, top+p->num-1);
 	sci_set_current_position(p->sci, pos, TRUE);
 }
 
-void cmd_goto_screen_middle(CmdContext *c, CmdParams *p)
+static void cmd_goto_screen_middle(CmdContext *c, CmdParams *p)
 {
 	gint top = SSM(p->sci, SCI_GETFIRSTVISIBLELINE, 0, 0);
 	gint count = SSM(p->sci, SCI_LINESONSCREEN, 0, 0);
@@ -351,7 +389,7 @@ void cmd_goto_screen_middle(CmdContext *c, CmdParams *p)
 	sci_set_current_position(p->sci, pos, TRUE);
 }
 
-void cmd_goto_screen_bottom(CmdContext *c, CmdParams *p)
+static void cmd_goto_screen_bottom(CmdContext *c, CmdParams *p)
 {
 	gint top = SSM(p->sci, SCI_GETFIRSTVISIBLELINE, 0, 0);
 	gint count = SSM(p->sci, SCI_LINESONSCREEN, 0, 0);
@@ -359,7 +397,7 @@ void cmd_goto_screen_bottom(CmdContext *c, CmdParams *p)
 	sci_set_current_position(p->sci, pos, TRUE);
 }
 
-void cmd_replace_char(CmdContext *c, CmdParams *p)
+static void cmd_replace_char(CmdContext *c, CmdParams *p)
 {
 	gint pos = sci_get_current_position(p->sci);
 	gchar *repl = c->accumulator + accumulator_len(c) - 1;
@@ -369,7 +407,7 @@ void cmd_replace_char(CmdContext *c, CmdParams *p)
 	sci_replace_target(p->sci, repl, FALSE);
 }
 
-void cmd_uppercase_char(CmdContext *c, CmdParams *p)
+static void cmd_uppercase_char(CmdContext *c, CmdParams *p)
 {
 	//TODO: for some reason we don't get the same cursor position after undoing
 	gint pos = sci_get_current_position(p->sci);
@@ -381,7 +419,7 @@ void cmd_uppercase_char(CmdContext *c, CmdParams *p)
 	sci_send_command(p->sci, SCI_CHARRIGHT);
 }
 
-void cmd_indent(CmdContext *c, CmdParams *p)
+static void cmd_indent(CmdContext *c, CmdParams *p)
 {
 	gint pos = sci_get_current_position(p->sci);
 	gint i;
@@ -397,7 +435,7 @@ void cmd_indent(CmdContext *c, CmdParams *p)
 	sci_set_current_position(p->sci, pos, FALSE);
 }
 
-void cmd_unindent(CmdContext *c, CmdParams *p)
+static void cmd_unindent(CmdContext *c, CmdParams *p)
 {
 	gint pos = sci_get_current_position(p->sci);
 	gint i;
@@ -411,4 +449,200 @@ void cmd_unindent(CmdContext *c, CmdParams *p)
 		sci_send_command(p->sci, SCI_LINEDOWN);
 	}
 	sci_set_current_position(p->sci, pos, FALSE);
+}
+
+
+/******************************************************************************/
+
+
+typedef struct {
+	Cmd cmd;
+	guint first_key;
+	guint second_key;
+	guint first_modif;
+	guint second_modif;
+	gboolean param;
+} CmdDef;
+
+
+CmdDef cmds[] = {
+	/* enter cmdline mode */
+	{state_cmd_enter_cmdline_mode, GDK_KEY_colon, 0, 0, 0, FALSE},
+	{state_cmd_enter_cmdline_mode, GDK_KEY_slash, 0, 0, 0, FALSE},
+	{state_cmd_enter_cmdline_mode, GDK_KEY_question, 0, 0, 0, FALSE},
+	/* enter insert mode */
+	{state_cmd_enter_insert_mode, GDK_KEY_i, 0, 0, 0, FALSE},
+	{state_cmd_enter_insert_mode_after, GDK_KEY_a, 0, 0, 0, FALSE},
+	{state_cmd_enter_insert_mode_line_start, GDK_KEY_I, 0, 0, 0, FALSE},
+	{state_cmd_enter_insert_mode_line_end, GDK_KEY_A, 0, 0, 0, FALSE},//not correct pos
+	{state_cmd_enter_insert_mode_next_line, GDK_KEY_o, 0, 0, 0, FALSE},
+	{state_cmd_enter_insert_mode_clear_line, GDK_KEY_S, 0, 0, 0, FALSE},
+	{state_cmd_enter_insert_mode_clear_line, GDK_KEY_c, GDK_KEY_c, 0, 0, FALSE},
+	{state_cmd_enter_insert_mode_prev_line, GDK_KEY_O, 0, 0, 0, FALSE},
+	{state_cmd_enter_insert_mode_clear_right, GDK_KEY_C, 0, 0, 0, FALSE},
+	{state_cmd_enter_insert_mode_delete_char, GDK_KEY_s, 0, 0, 0, FALSE},
+	/* enter replace mode */
+	{state_cmd_enter_replace_mode, GDK_KEY_R, 0, 0, 0, FALSE},
+	/* enter visual mode */
+	{state_cmd_enter_visual_mode, GDK_KEY_v, 0, 0, 0, FALSE},
+
+	/* movement */
+	{cmd_page_up, GDK_KEY_Page_Up, 0, 0, 0, FALSE},
+	{cmd_page_down, GDK_KEY_Page_Down, 0, 0, 0, FALSE},
+	{cmd_move_caret_left, GDK_KEY_Left, 0, 0, 0, FALSE},
+	{cmd_move_caret_left, GDK_KEY_leftarrow, 0, 0, 0, FALSE},
+	{cmd_move_caret_left, GDK_KEY_h, 0, 0, 0, FALSE},
+	{cmd_move_caret_right, GDK_KEY_Right, 0, 0, 0, FALSE},//should stay within line when using N variant
+	{cmd_move_caret_right, GDK_KEY_rightarrow, 0, 0, 0, FALSE},
+	{cmd_move_caret_right, GDK_KEY_l, 0, 0, 0, FALSE},
+	{cmd_move_caret_down, GDK_KEY_Down, 0, 0, 0, FALSE},
+	{cmd_move_caret_down, GDK_KEY_downarrow, 0, 0, 0, FALSE},
+	{cmd_move_caret_down, GDK_KEY_j, 0, 0, 0, FALSE},
+	{cmd_move_caret_up, GDK_KEY_Up, 0, 0, 0, FALSE},
+	{cmd_move_caret_up, GDK_KEY_uparrow, 0, 0, 0, FALSE},
+	{cmd_move_caret_up, GDK_KEY_k, 0, 0, 0, FALSE},
+	{cmd_goto_line_last, GDK_KEY_G, 0, 0, 0, FALSE},
+	{cmd_goto_line, GDK_KEY_g, GDK_KEY_g, 0, 0, FALSE},
+	{cmd_goto_next_word, GDK_KEY_w, 0, 0, 0, FALSE},
+	{cmd_goto_next_word, GDK_KEY_W, 0, 0, 0, FALSE},
+	{cmd_goto_next_word_end, GDK_KEY_e, 0, 0, 0, FALSE},
+	{cmd_goto_next_word_end, GDK_KEY_E, 0, 0, 0, FALSE},
+	{cmd_goto_previous_word, GDK_KEY_b, 0, 0, 0, FALSE},
+	{cmd_goto_previous_word_end, GDK_KEY_B, 0, 0, 0, FALSE},
+	{cmd_goto_line_end, GDK_KEY_dollar, 0, 0, 0, FALSE},
+	{cmd_goto_line_start, GDK_KEY_0, 0, 0, 0, FALSE}, //requires special handling
+	{cmd_goto_screen_top, GDK_KEY_H, 0, 0, 0, FALSE},
+	{cmd_goto_screen_middle, GDK_KEY_M, 0, 0, 0, FALSE},
+	{cmd_goto_screen_bottom, GDK_KEY_L, 0, 0, 0, FALSE},
+	{cmd_goto_doc_percentage, GDK_KEY_percent, 0, 0, 0, FALSE}, //the same key like below
+	{cmd_goto_matching_brace, GDK_KEY_percent, 0, 0, 0, FALSE},
+
+	/* copy/paste */
+	{cmd_copy_line, GDK_KEY_y, GDK_KEY_y, 0, 0, FALSE},
+	{cmd_paste, GDK_KEY_p, 0, 0, 0, FALSE},
+
+	/* undo/redo */
+	{cmd_undo, GDK_KEY_U, 0, 0, 0, FALSE},
+	{cmd_undo, GDK_KEY_u, 0, 0, 0, FALSE},
+	{cmd_redo, GDK_KEY_r, 0, GDK_CONTROL_MASK, 0, FALSE},
+
+	/* search */
+	{cmd_search, GDK_KEY_n, 0, 0, 0, FALSE},
+	{cmd_search, GDK_KEY_N, 0, 0, 0, FALSE},
+	{cmd_search_current_next, GDK_KEY_asterisk, 0, 0, 0, FALSE},
+	{cmd_search_current_prev, GDK_KEY_numbersign, 0, 0, 0, FALSE},
+
+	/* deletion */
+	{cmd_delete_line, GDK_KEY_D, 0, 0, 0, FALSE},
+	{cmd_delete_line, GDK_KEY_d, GDK_KEY_d, 0, 0, FALSE},
+	{cmd_delete_char, GDK_KEY_x, 0, 0, 0, FALSE},
+	{cmd_delete_char_back, GDK_KEY_X, 0, 0, 0, FALSE},
+
+	/* modification */
+	{cmd_join_lines, GDK_KEY_J, 0, 0, 0, FALSE},
+	{cmd_uppercase_char, GDK_KEY_asciitilde, 0, 0, 0, FALSE},//not correct position when undoing
+	{cmd_unindent, GDK_KEY_less, GDK_KEY_less, 0, 0, FALSE},
+	{cmd_indent, GDK_KEY_greater, GDK_KEY_greater, 0, 0, FALSE},
+	{cmd_replace_char, GDK_KEY_r, 0, 0, 0, TRUE},
+
+	{NULL, 0, 0, 0, 0, FALSE}
+};
+
+
+static void perform_cmd(Cmd cmd, ScintillaObject *sci, CmdContext *ctx, gint cmd_len)
+{
+	CmdParams param;
+	param.sci = sci;
+	param.num = accumulator_get_int(ctx, cmd_len, 1);
+
+	sci_start_undo_action(sci);
+	cmd(ctx, &param);
+	accumulator_clear(ctx);
+	clamp_cursor_pos(sci);
+	sci_end_undo_action(sci);
+}
+
+
+gboolean process_event_cmd_mode(GdkEventKey *event, ScintillaObject *sci, CmdContext *ctx)
+{
+	gint i;
+	gchar lastc = accumulator_previous_char(ctx);
+
+	/* we are interested only in Ctrl presses - Alt is not used in Vim and
+	 * shift is included in letter capitalisation implicitly */
+	guint event_modif = event->state & GDK_CONTROL_MASK;
+
+	// commands such as rc or fc (replace char c, find char c) which are specified
+	// by the previous character and current character is used as their parameter
+	if (lastc != '\0' && !isdigit(lastc))
+	{
+		for (i = 0; cmds[i].cmd != NULL; i++)
+		{
+			CmdDef *cmd = &cmds[i];
+			gchar utf8[4];
+			gunichar key = gdk_keyval_to_unicode(cmd->first_key);
+			g_unichar_to_utf8(key, utf8);
+			if (cmd->second_key == 0 && cmd->param && lastc == utf8[0])
+			{
+				perform_cmd(cmd->cmd, sci, ctx, 2);
+				return TRUE;
+			}
+		}
+	}
+
+	// 2-letter commands
+	if (lastc != '\0' && !isdigit(lastc))
+	{
+		for (i = 0; cmds[i].cmd != NULL; i++)
+		{
+			CmdDef *cmd = &cmds[i];
+			gchar utf8[4];
+			gunichar key = gdk_keyval_to_unicode(cmd->first_key);
+			g_unichar_to_utf8(key, utf8);
+			if (cmd->second_key != 0 && event->keyval == cmd->second_key &&
+				(event_modif & cmd->second_modif || event_modif == cmd->second_modif) &&
+				lastc == utf8[0] && !cmd->param)
+			{
+				perform_cmd(cmd->cmd, sci, ctx, 2);
+				return TRUE;
+			}
+		}
+	}
+
+	// 1-letter commands
+	for (i = 0; cmds[i].cmd != NULL; i++)
+	{
+		CmdDef *cmd = &cmds[i];
+		if (cmd->second_key == 0 && event->keyval == cmd->first_key &&
+			(event_modif & cmd->first_modif || event_modif == cmd->first_modif) &&
+			!cmd->param)
+		{
+			// now solve some quirks manually
+			if (event->keyval == GDK_KEY_0)
+			{
+				// 0 jumps to the beginning of line only when not preceded
+				// by another number in which case we want to add it to the accumulator
+				if (!isdigit(accumulator_previous_char(ctx)))
+				{
+					perform_cmd(cmd->cmd, sci, ctx, 1);
+					return TRUE;
+				}
+			}
+			else if (event->keyval == GDK_KEY_percent)
+			{
+				Cmd c= cmd_goto_matching_brace;
+				if (accumulator_len(ctx) > 1 && accumulator_get_int(ctx, 1, -1) != -1)
+					c = cmd_goto_doc_percentage;
+				perform_cmd(c, sci, ctx, 1);
+				return TRUE;
+			}
+			else
+			{
+				perform_cmd(cmd->cmd, sci, ctx, 1);
+				return TRUE;
+			}
+		}
+	}
+
+	return FALSE;
 }

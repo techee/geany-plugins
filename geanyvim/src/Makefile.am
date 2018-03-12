@@ -9,9 +9,7 @@ geanyvim_la_SOURCES = \
 	cmds.h \
 	cmds.c \
 	utils.h \
-	utils.c \
-	switch.h \
-	switch.c
+	utils.c
     
 geanyvim_la_CPPFLAGS = $(AM_CPPFLAGS) \
 	-DG_LOG_DOMAIN=\"GeanyVim\"
