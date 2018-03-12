@@ -34,8 +34,6 @@
 #define CONF_GROUP "Settings"
 #define CONF_VI_MODE "vi_mode"
 
-#define SSM(s, m, w, l) scintilla_send_message(s, m, w, l)
-
 GeanyPlugin *geany_plugin;
 GeanyData *geany_data;
 
@@ -50,14 +48,12 @@ PLUGIN_SET_TRANSLATABLE_INFO(
 	"Jiří Techet <techet@gmail.com>"
 )
 
-
 enum
 {
 	KB_TOGGLE_VIM_MODE,
 	KB_PERFORM_VIM_COMMAND,
 	KB_COUNT
 };
-
 
 struct
 {

@@ -41,37 +41,37 @@ typedef struct
 typedef void (*Cmd)(CmdContext *c, CmdParams *p);
 
 
-static void state_cmd_enter_cmdline_mode(CmdContext *c, CmdParams *p)
+static void cmd_mode_cmdline(CmdContext *c, CmdParams *p)
 {
 	set_vi_mode(VI_MODE_CMDLINE, p->sci);
 }
 
-static void state_cmd_enter_insert_mode(CmdContext *c, CmdParams *p)
+static void cmd_mode_insert(CmdContext *c, CmdParams *p)
 {
 	set_vi_mode(VI_MODE_INSERT, p->sci);
 }
 
-static void state_cmd_enter_replace_mode(CmdContext *c, CmdParams *p)
+static void cmd_mode_replace(CmdContext *c, CmdParams *p)
 {
 	set_vi_mode(VI_MODE_REPLACE, p->sci);
 }
 
-static void state_cmd_enter_visual_mode(CmdContext *c, CmdParams *p)
+static void cmd_mode_visual(CmdContext *c, CmdParams *p)
 {
 	set_vi_mode(VI_MODE_VISUAL, p->sci);
 }
 
-static void state_cmd_enter_insert_mode_after(CmdContext *c, CmdParams *p)
+static void cmd_mode_insert_after(CmdContext *c, CmdParams *p)
 {
 	gint pos = sci_get_current_position(p->sci);
 	gint end_pos = sci_get_line_end_position(p->sci, sci_get_current_line(p->sci));
 	if (pos < end_pos)
 		sci_send_command(p->sci, SCI_CHARRIGHT);
 
-	state_cmd_enter_insert_mode(c, p);
+	cmd_mode_insert(c, p);
 }
 
-static void state_cmd_enter_insert_mode_line_start(CmdContext *c, CmdParams *p)
+static void cmd_mode_insert_line_start(CmdContext *c, CmdParams *p)
 {
 	gint pos, line;
 	sci_send_command(p->sci, SCI_HOME);
@@ -84,65 +84,65 @@ static void state_cmd_enter_insert_mode_line_start(CmdContext *c, CmdParams *p)
 		pos++;
 	}
 	sci_set_current_position(p->sci, pos, TRUE);
-	state_cmd_enter_insert_mode(c, p);
+	cmd_mode_insert(c, p);
 }
 
-static void state_cmd_enter_insert_mode_line_end(CmdContext *c, CmdParams *p)
+static void cmd_mode_insert_line_end(CmdContext *c, CmdParams *p)
 {
 	sci_send_command(p->sci, SCI_LINEEND);
-	state_cmd_enter_insert_mode(c, p);
+	cmd_mode_insert(c, p);
 }
 
-static void state_cmd_enter_insert_mode_next_line(CmdContext *c, CmdParams *p)
+static void cmd_mode_insert_next_line(CmdContext *c, CmdParams *p)
 {
 	sci_send_command(p->sci, SCI_LINEEND);
 	sci_send_command(p->sci, SCI_NEWLINE);
-	state_cmd_enter_insert_mode(c, p);
+	cmd_mode_insert(c, p);
 }
 
-static void state_cmd_enter_insert_mode_prev_line(CmdContext *c, CmdParams *p)
+static void cmd_mode_insert_prev_line(CmdContext *c, CmdParams *p)
 {
 	sci_send_command(p->sci, SCI_HOME);
 	sci_send_command(p->sci, SCI_NEWLINE);
 	sci_send_command(p->sci, SCI_LINEUP);
-	state_cmd_enter_insert_mode(c, p);
+	cmd_mode_insert(c, p);
 }
 
-static void state_cmd_enter_insert_mode_clear_line(CmdContext *c, CmdParams *p)
+static void cmd_mode_insert_clear_line(CmdContext *c, CmdParams *p)
 {
 	sci_send_command(p->sci, SCI_DELLINELEFT);
 	sci_send_command(p->sci, SCI_DELLINERIGHT);
-	state_cmd_enter_insert_mode(c, p);
+	cmd_mode_insert(c, p);
 }
 
-static void state_cmd_enter_insert_mode_clear_right(CmdContext *c, CmdParams *p)
+static void cmd_mode_insert_clear_right(CmdContext *c, CmdParams *p)
 {
 	sci_send_command(p->sci, SCI_DELLINERIGHT);
-	state_cmd_enter_insert_mode(c, p);
+	cmd_mode_insert(c, p);
 }
 
-static void state_cmd_enter_insert_mode_delete_char(CmdContext *c, CmdParams *p)
+static void cmd_mode_insert_delete_char(CmdContext *c, CmdParams *p)
 {
 	gint pos = sci_get_current_position(p->sci);
 	SSM(p->sci, SCI_DELETERANGE, pos, 1);
-	state_cmd_enter_insert_mode(c, p);
+	cmd_mode_insert(c, p);
 }
 
-static void cmd_page_up(CmdContext *c, CmdParams *p)
+static void cmd_goto_page_up(CmdContext *c, CmdParams *p)
 {
 	gint i;
 	for (i = 0; i < p->num; i++)
 		sci_send_command(p->sci, SCI_PAGEUP);
 }
 
-static void cmd_page_down(CmdContext *c, CmdParams *p)
+static void cmd_goto_page_down(CmdContext *c, CmdParams *p)
 {
 	gint i;
 	for (i = 0; i < p->num; i++)
 		sci_send_command(p->sci, SCI_PAGEDOWN);
 }
 
-static void cmd_move_caret_left(CmdContext *c, CmdParams *p)
+static void cmd_goto_left(CmdContext *c, CmdParams *p)
 {
 	gint pos = sci_get_current_position(p->sci);
 	gint start_pos = sci_get_position_from_line(p->sci, sci_get_current_line(p->sci));
@@ -151,7 +151,7 @@ static void cmd_move_caret_left(CmdContext *c, CmdParams *p)
 		sci_send_command(p->sci, SCI_CHARLEFT);
 }
 
-static void cmd_move_caret_right(CmdContext *c, CmdParams *p)
+static void cmd_goto_right(CmdContext *c, CmdParams *p)
 {
 	gint pos = sci_get_current_position(p->sci);
 	gint end_pos = sci_get_line_end_position(p->sci, sci_get_current_line(p->sci));
@@ -160,14 +160,14 @@ static void cmd_move_caret_right(CmdContext *c, CmdParams *p)
 		sci_send_command(p->sci, SCI_CHARRIGHT);
 }
 
-static void cmd_move_caret_up(CmdContext *c, CmdParams *p)
+static void cmd_goto_up(CmdContext *c, CmdParams *p)
 {
 	gint i;
 	for (i = 0; i < p->num; i++)
 		sci_send_command(p->sci, SCI_LINEUP);
 }
 
-static void cmd_move_caret_down(CmdContext *c, CmdParams *p)
+static void cmd_goto_down(CmdContext *c, CmdParams *p)
 {
 	gint i;
 	for (i = 0; i < p->num; i++)
@@ -227,9 +227,6 @@ static void cmd_search(CmdContext *c, CmdParams *p)
 	gboolean forward = TRUE;
 	char last;
 	gint i;
-
-	if (!c->accumulator)
-		return;
 
 	last = accumulator_current_char(c);
 
@@ -467,40 +464,40 @@ typedef struct {
 
 CmdDef cmds[] = {
 	/* enter cmdline mode */
-	{state_cmd_enter_cmdline_mode, GDK_KEY_colon, 0, 0, 0, FALSE},
-	{state_cmd_enter_cmdline_mode, GDK_KEY_slash, 0, 0, 0, FALSE},
-	{state_cmd_enter_cmdline_mode, GDK_KEY_question, 0, 0, 0, FALSE},
+	{cmd_mode_cmdline, GDK_KEY_colon, 0, 0, 0, FALSE},
+	{cmd_mode_cmdline, GDK_KEY_slash, 0, 0, 0, FALSE},
+	{cmd_mode_cmdline, GDK_KEY_question, 0, 0, 0, FALSE},
 	/* enter insert mode */
-	{state_cmd_enter_insert_mode, GDK_KEY_i, 0, 0, 0, FALSE},
-	{state_cmd_enter_insert_mode_after, GDK_KEY_a, 0, 0, 0, FALSE},
-	{state_cmd_enter_insert_mode_line_start, GDK_KEY_I, 0, 0, 0, FALSE},
-	{state_cmd_enter_insert_mode_line_end, GDK_KEY_A, 0, 0, 0, FALSE},//not correct pos
-	{state_cmd_enter_insert_mode_next_line, GDK_KEY_o, 0, 0, 0, FALSE},
-	{state_cmd_enter_insert_mode_clear_line, GDK_KEY_S, 0, 0, 0, FALSE},
-	{state_cmd_enter_insert_mode_clear_line, GDK_KEY_c, GDK_KEY_c, 0, 0, FALSE},
-	{state_cmd_enter_insert_mode_prev_line, GDK_KEY_O, 0, 0, 0, FALSE},
-	{state_cmd_enter_insert_mode_clear_right, GDK_KEY_C, 0, 0, 0, FALSE},
-	{state_cmd_enter_insert_mode_delete_char, GDK_KEY_s, 0, 0, 0, FALSE},
+	{cmd_mode_insert, GDK_KEY_i, 0, 0, 0, FALSE},
+	{cmd_mode_insert_after, GDK_KEY_a, 0, 0, 0, FALSE},
+	{cmd_mode_insert_line_start, GDK_KEY_I, 0, 0, 0, FALSE},
+	{cmd_mode_insert_line_end, GDK_KEY_A, 0, 0, 0, FALSE},//not correct pos
+	{cmd_mode_insert_next_line, GDK_KEY_o, 0, 0, 0, FALSE},
+	{cmd_mode_insert_clear_line, GDK_KEY_S, 0, 0, 0, FALSE},
+	{cmd_mode_insert_clear_line, GDK_KEY_c, GDK_KEY_c, 0, 0, FALSE},
+	{cmd_mode_insert_prev_line, GDK_KEY_O, 0, 0, 0, FALSE},
+	{cmd_mode_insert_clear_right, GDK_KEY_C, 0, 0, 0, FALSE},
+	{cmd_mode_insert_delete_char, GDK_KEY_s, 0, 0, 0, FALSE},
 	/* enter replace mode */
-	{state_cmd_enter_replace_mode, GDK_KEY_R, 0, 0, 0, FALSE},
+	{cmd_mode_replace, GDK_KEY_R, 0, 0, 0, FALSE},
 	/* enter visual mode */
-	{state_cmd_enter_visual_mode, GDK_KEY_v, 0, 0, 0, FALSE},
+	{cmd_mode_visual, GDK_KEY_v, 0, 0, 0, FALSE},
 
 	/* movement */
-	{cmd_page_up, GDK_KEY_Page_Up, 0, 0, 0, FALSE},
-	{cmd_page_down, GDK_KEY_Page_Down, 0, 0, 0, FALSE},
-	{cmd_move_caret_left, GDK_KEY_Left, 0, 0, 0, FALSE},
-	{cmd_move_caret_left, GDK_KEY_leftarrow, 0, 0, 0, FALSE},
-	{cmd_move_caret_left, GDK_KEY_h, 0, 0, 0, FALSE},
-	{cmd_move_caret_right, GDK_KEY_Right, 0, 0, 0, FALSE},//should stay within line when using N variant
-	{cmd_move_caret_right, GDK_KEY_rightarrow, 0, 0, 0, FALSE},
-	{cmd_move_caret_right, GDK_KEY_l, 0, 0, 0, FALSE},
-	{cmd_move_caret_down, GDK_KEY_Down, 0, 0, 0, FALSE},
-	{cmd_move_caret_down, GDK_KEY_downarrow, 0, 0, 0, FALSE},
-	{cmd_move_caret_down, GDK_KEY_j, 0, 0, 0, FALSE},
-	{cmd_move_caret_up, GDK_KEY_Up, 0, 0, 0, FALSE},
-	{cmd_move_caret_up, GDK_KEY_uparrow, 0, 0, 0, FALSE},
-	{cmd_move_caret_up, GDK_KEY_k, 0, 0, 0, FALSE},
+	{cmd_goto_page_up, GDK_KEY_Page_Up, 0, 0, 0, FALSE},
+	{cmd_goto_page_down, GDK_KEY_Page_Down, 0, 0, 0, FALSE},
+	{cmd_goto_left, GDK_KEY_Left, 0, 0, 0, FALSE},
+	{cmd_goto_left, GDK_KEY_leftarrow, 0, 0, 0, FALSE},
+	{cmd_goto_left, GDK_KEY_h, 0, 0, 0, FALSE},
+	{cmd_goto_right, GDK_KEY_Right, 0, 0, 0, FALSE},//should stay within line when using N variant
+	{cmd_goto_right, GDK_KEY_rightarrow, 0, 0, 0, FALSE},
+	{cmd_goto_right, GDK_KEY_l, 0, 0, 0, FALSE},
+	{cmd_goto_down, GDK_KEY_Down, 0, 0, 0, FALSE},
+	{cmd_goto_down, GDK_KEY_downarrow, 0, 0, 0, FALSE},
+	{cmd_goto_down, GDK_KEY_j, 0, 0, 0, FALSE},
+	{cmd_goto_up, GDK_KEY_Up, 0, 0, 0, FALSE},
+	{cmd_goto_up, GDK_KEY_uparrow, 0, 0, 0, FALSE},
+	{cmd_goto_up, GDK_KEY_k, 0, 0, 0, FALSE},
 	{cmd_goto_line_last, GDK_KEY_G, 0, 0, 0, FALSE},
 	{cmd_goto_line, GDK_KEY_g, GDK_KEY_g, 0, 0, FALSE},
 	{cmd_goto_next_word, GDK_KEY_w, 0, 0, 0, FALSE},
