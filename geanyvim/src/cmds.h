@@ -20,6 +20,7 @@
 #define __GEANYVIM_CMDS_H__
 
 #include <glib.h>
+#include <geanyplugin.h>
 
 typedef struct
 {

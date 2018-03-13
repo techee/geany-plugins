@@ -20,7 +20,6 @@
 #define __GEANYVIM_UTILS_H__
 
 #include <glib.h>
-#include <geanyplugin.h>
 
 #include "cmds.h"
 

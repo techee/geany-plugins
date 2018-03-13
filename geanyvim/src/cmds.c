@@ -66,7 +66,7 @@ static void cmd_mode_insert_after(CmdContext *c, CmdParams *p)
 	gint pos = sci_get_current_position(p->sci);
 	gint end_pos = sci_get_line_end_position(p->sci, sci_get_current_line(p->sci));
 	if (pos < end_pos)
-		sci_send_command(p->sci, SCI_CHARRIGHT);
+		SSM(p->sci, SCI_CHARRIGHT, 0, 0);
 
 	cmd_mode_insert(c, p);
 }
@@ -74,7 +74,7 @@ static void cmd_mode_insert_after(CmdContext *c, CmdParams *p)
 static void cmd_mode_insert_line_start(CmdContext *c, CmdParams *p)
 {
 	gint pos, line;
-	sci_send_command(p->sci, SCI_HOME);
+	SSM(p->sci, SCI_HOME, 0, 0);
 	pos = sci_get_current_position(p->sci);
 	line = sci_get_current_line(p->sci);
 	while (isspace(sci_get_char_at(p->sci, pos)))
@@ -89,35 +89,35 @@ static void cmd_mode_insert_line_start(CmdContext *c, CmdParams *p)
 
 static void cmd_mode_insert_line_end(CmdContext *c, CmdParams *p)
 {
-	sci_send_command(p->sci, SCI_LINEEND);
+	SSM(p->sci, SCI_LINEEND, 0, 0);
 	cmd_mode_insert(c, p);
 }
 
 static void cmd_mode_insert_next_line(CmdContext *c, CmdParams *p)
 {
-	sci_send_command(p->sci, SCI_LINEEND);
-	sci_send_command(p->sci, SCI_NEWLINE);
+	SSM(p->sci, SCI_LINEEND, 0, 0);
+	SSM(p->sci, SCI_NEWLINE, 0, 0);
 	cmd_mode_insert(c, p);
 }
 
 static void cmd_mode_insert_prev_line(CmdContext *c, CmdParams *p)
 {
-	sci_send_command(p->sci, SCI_HOME);
-	sci_send_command(p->sci, SCI_NEWLINE);
-	sci_send_command(p->sci, SCI_LINEUP);
+	SSM(p->sci, SCI_HOME, 0, 0);
+	SSM(p->sci, SCI_NEWLINE, 0, 0);
+	SSM(p->sci, SCI_LINEUP, 0, 0);
 	cmd_mode_insert(c, p);
 }
 
 static void cmd_mode_insert_clear_line(CmdContext *c, CmdParams *p)
 {
-	sci_send_command(p->sci, SCI_DELLINELEFT);
-	sci_send_command(p->sci, SCI_DELLINERIGHT);
+	SSM(p->sci, SCI_DELLINELEFT, 0, 0);
+	SSM(p->sci, SCI_DELLINERIGHT, 0, 0);
 	cmd_mode_insert(c, p);
 }
 
 static void cmd_mode_insert_clear_right(CmdContext *c, CmdParams *p)
 {
-	sci_send_command(p->sci, SCI_DELLINERIGHT);
+	SSM(p->sci, SCI_DELLINERIGHT, 0, 0);
 	cmd_mode_insert(c, p);
 }
 
@@ -132,14 +132,14 @@ static void cmd_goto_page_up(CmdContext *c, CmdParams *p)
 {
 	gint i;
 	for (i = 0; i < p->num; i++)
-		sci_send_command(p->sci, SCI_PAGEUP);
+		SSM(p->sci, SCI_PAGEUP, 0, 0);
 }
 
 static void cmd_goto_page_down(CmdContext *c, CmdParams *p)
 {
 	gint i;
 	for (i = 0; i < p->num; i++)
-		sci_send_command(p->sci, SCI_PAGEDOWN);
+		SSM(p->sci, SCI_PAGEDOWN, 0, 0);
 }
 
 static void cmd_goto_left(CmdContext *c, CmdParams *p)
@@ -148,7 +148,7 @@ static void cmd_goto_left(CmdContext *c, CmdParams *p)
 	gint start_pos = sci_get_position_from_line(p->sci, sci_get_current_line(p->sci));
 	gint i;
 	for (i = 0; i < p->num && pos > start_pos; i++)
-		sci_send_command(p->sci, SCI_CHARLEFT);
+		SSM(p->sci, SCI_CHARLEFT, 0, 0);
 }
 
 static void cmd_goto_right(CmdContext *c, CmdParams *p)
@@ -157,21 +157,21 @@ static void cmd_goto_right(CmdContext *c, CmdParams *p)
 	gint end_pos = sci_get_line_end_position(p->sci, sci_get_current_line(p->sci));
 	gint i;
 	for (i = 0; i < p->num && pos < end_pos - 1; i++)
-		sci_send_command(p->sci, SCI_CHARRIGHT);
+		SSM(p->sci, SCI_CHARRIGHT, 0, 0);
 }
 
 static void cmd_goto_up(CmdContext *c, CmdParams *p)
 {
 	gint i;
 	for (i = 0; i < p->num; i++)
-		sci_send_command(p->sci, SCI_LINEUP);
+		SSM(p->sci, SCI_LINEUP, 0, 0);
 }
 
 static void cmd_goto_down(CmdContext *c, CmdParams *p)
 {
 	gint i;
 	for (i = 0; i < p->num; i++)
-		sci_send_command(p->sci, SCI_LINEDOWN);
+		SSM(p->sci, SCI_LINEDOWN, 0, 0);
 }
 
 static void cmd_undo(CmdContext *c, CmdParams *p)
@@ -310,33 +310,33 @@ static void cmd_goto_next_word(CmdContext *c, CmdParams *p)
 {
 	gint i;
 	for (i = 0; i < p->num; i++)
-		sci_send_command(p->sci, SCI_WORDRIGHT);
+		SSM(p->sci, SCI_WORDRIGHT, 0, 0);
 }
 
 static void cmd_goto_next_word_end(CmdContext *c, CmdParams *p)
 {
 	gint i;
 	for (i = 0; i < p->num; i++)
-		sci_send_command(p->sci, SCI_WORDRIGHTEND);
+		SSM(p->sci, SCI_WORDRIGHTEND, 0, 0);
 }
 
 static void cmd_goto_previous_word(CmdContext *c, CmdParams *p)
 {
 	gint i;
 	for (i = 0; i < p->num; i++)
-		sci_send_command(p->sci, SCI_WORDLEFT);
+		SSM(p->sci, SCI_WORDLEFT, 0, 0);
 }
 
 static void cmd_goto_previous_word_end(CmdContext *c, CmdParams *p)
 {
 	gint i;
 	for (i = 0; i < p->num; i++)
-		sci_send_command(p->sci, SCI_WORDLEFTEND);
+		SSM(p->sci, SCI_WORDLEFTEND, 0, 0);
 }
 
 static void cmd_goto_line_start(CmdContext *c, CmdParams *p)
 {
-	sci_send_command(p->sci, SCI_HOME);
+	SSM(p->sci, SCI_HOME, 0, 0);
 }
 
 static void cmd_goto_line_end(CmdContext *c, CmdParams *p)
@@ -344,7 +344,7 @@ static void cmd_goto_line_end(CmdContext *c, CmdParams *p)
 	gint i;
 	for (i = 0; i < p->num; i++)
 	{
-		sci_send_command(p->sci, SCI_LINEEND);
+		SSM(p->sci, SCI_LINEEND, 0, 0);
 		if (i != p->num - 1)
 			sci_set_current_position(p->sci, sci_get_current_position(p->sci) + 1, TRUE);
 	}
@@ -413,7 +413,7 @@ static void cmd_uppercase_char(CmdContext *c, CmdParams *p)
 	sci_set_target_start(p->sci, pos);
 	sci_set_target_end(p->sci, pos + 1);
 	sci_replace_target(p->sci, upper, FALSE);
-	sci_send_command(p->sci, SCI_CHARRIGHT);
+	SSM(p->sci, SCI_CHARRIGHT, 0, 0);
 }
 
 static void cmd_indent(CmdContext *c, CmdParams *p)
@@ -423,11 +423,11 @@ static void cmd_indent(CmdContext *c, CmdParams *p)
 
 	for (i = 0; i < p->num; i++)
 	{
-		sci_send_command(p->sci, SCI_HOME);
-		sci_send_command(p->sci, SCI_TAB);
+		SSM(p->sci, SCI_HOME, 0, 0);
+		SSM(p->sci, SCI_TAB, 0, 0);
 		if (i == 0)
 			pos = sci_get_current_position(p->sci);
-		sci_send_command(p->sci, SCI_LINEDOWN);
+		SSM(p->sci, SCI_LINEDOWN, 0, 0);
 	}
 	sci_set_current_position(p->sci, pos, FALSE);
 }
@@ -439,11 +439,11 @@ static void cmd_unindent(CmdContext *c, CmdParams *p)
 
 	for (i = 0; i < p->num; i++)
 	{
-		sci_send_command(p->sci, SCI_HOME);
-		sci_send_command(p->sci, SCI_BACKTAB);
+		SSM(p->sci, SCI_HOME, 0, 0);
+		SSM(p->sci, SCI_BACKTAB, 0, 0);
 		if (i == 0)
 			pos = sci_get_current_position(p->sci);
-		sci_send_command(p->sci, SCI_LINEDOWN);
+		SSM(p->sci, SCI_LINEDOWN, 0, 0);
 	}
 	sci_set_current_position(p->sci, pos, FALSE);
 }

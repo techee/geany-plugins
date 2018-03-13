@@ -19,7 +19,6 @@
 #ifndef __GEANYVIM_STATE_H__
 #define __GEANYVIM_STATE_H__
 
-#include <gtk/gtk.h>
 
 typedef enum {
 	VI_MODE_COMMAND,
