@@ -139,7 +139,8 @@ void set_vi_mode(ViMode mode, ScintillaObject *sci)
 			break;
 		case VI_MODE_CMDLINE:
 		{
-			const gchar *val = ctx.accumulator + strlen(ctx.accumulator) - 1;
+			KeyPress *kp = kp_current(&ctx);
+			gchar val[2] = {kp_to_char(kp), '\0'};
 			gtk_widget_show(vi_widgets.prompt);
 			gtk_entry_set_text(GTK_ENTRY(vi_widgets.entry), val);
 			gtk_editable_set_position(GTK_EDITABLE(vi_widgets.entry), 1);
@@ -350,8 +351,9 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 
 	if (state.vi_mode == VI_MODE_COMMAND)
 	{
-		accumulator_append(&ctx, event->string);
-		if (process_event_cmd_mode(event, sci, &ctx))
+		KeyPress *kp = kp_from_event_key(event);
+		kp_append(&ctx, kp);
+		if (process_event_cmd_mode(sci, &ctx))
 			leave_onetime_vi_mode();
 	}
 	else
@@ -366,13 +368,12 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 					sci_send_command(sci, SCI_CHARLEFT);
 				leave_onetime_vi_mode();
 				set_vi_mode(VI_MODE_COMMAND, get_current_doc_sci());
-				accumulator_clear(&ctx);
+				kp_clear(&ctx);
 			}
 		}
 	}
 
-	printf("key: %d, state: %d\n", event->keyval, event->state);
-	printf("accumulator: %s\n", ctx.accumulator);
+	//printf("key: %d, state: %d\n", event->keyval, event->state);
 
 	return consumed;
 }

@@ -225,12 +225,12 @@ static void cmd_delete_line(CmdContext *c, CmdParams *p)
 static void cmd_search(CmdContext *c, CmdParams *p)
 {
 	gboolean forward = TRUE;
-	char last;
+	KeyPress *last;
 	gint i;
 
-	last = accumulator_current_char(c);
+	last = kp_current(c);
 
-	if (last == 'N')
+	if (last->key == GDK_KEY_N)
 		forward = FALSE;
 
 	for (i = 0; i < p->num; i++)
@@ -292,7 +292,7 @@ static void cmd_goto_line_last(CmdContext *c, CmdParams *p)
 {
 	gint line_num = sci_get_line_count(p->sci);
 	/* override default line number to the end of file when number not entered */
-	p->num = accumulator_get_int(c, 1, line_num);
+	p->num = kp_get_int(c, 1, line_num);
 	cmd_goto_line(c, p);
 }
 
@@ -397,7 +397,8 @@ static void cmd_goto_screen_bottom(CmdContext *c, CmdParams *p)
 static void cmd_replace_char(CmdContext *c, CmdParams *p)
 {
 	gint pos = sci_get_current_position(p->sci);
-	gchar *repl = c->accumulator + accumulator_len(c) - 1;
+	KeyPress *kp = kp_current(c);
+	gchar repl[2] = {kp_to_char(kp), '\0'};
 
 	sci_set_target_start(p->sci, pos);
 	sci_set_target_end(p->sci, pos + 1);
@@ -550,36 +551,30 @@ static void perform_cmd(Cmd cmd, ScintillaObject *sci, CmdContext *ctx, gint cmd
 {
 	CmdParams param;
 	param.sci = sci;
-	param.num = accumulator_get_int(ctx, cmd_len, 1);
+	param.num = kp_get_int(ctx, cmd_len, 1);
 
 	sci_start_undo_action(sci);
 	cmd(ctx, &param);
-	accumulator_clear(ctx);
+	kp_clear(ctx);
 	clamp_cursor_pos(sci);
 	sci_end_undo_action(sci);
 }
 
 
-gboolean process_event_cmd_mode(GdkEventKey *event, ScintillaObject *sci, CmdContext *ctx)
+gboolean process_event_cmd_mode(ScintillaObject *sci, CmdContext *ctx)
 {
 	gint i;
-	gchar lastc = accumulator_previous_char(ctx);
-
-	/* we are interested only in Ctrl presses - Alt is not used in Vim and
-	 * shift is included in letter capitalisation implicitly */
-	guint event_modif = event->state & GDK_CONTROL_MASK;
+	KeyPress *curr = kp_current(ctx);
+	KeyPress *prev = kp_previous(ctx);
 
 	// commands such as rc or fc (replace char c, find char c) which are specified
 	// by the previous character and current character is used as their parameter
-	if (lastc != '\0' && !isdigit(lastc))
+	if (prev != NULL && !kp_isdigit(prev))
 	{
 		for (i = 0; cmds[i].cmd != NULL; i++)
 		{
 			CmdDef *cmd = &cmds[i];
-			gchar utf8[4];
-			gunichar key = gdk_keyval_to_unicode(cmd->first_key);
-			g_unichar_to_utf8(key, utf8);
-			if (cmd->second_key == 0 && cmd->param && lastc == utf8[0])
+			if (cmd->second_key == 0 && cmd->param && prev->key == cmd->first_key)
 			{
 				perform_cmd(cmd->cmd, sci, ctx, 2);
 				return TRUE;
@@ -588,17 +583,14 @@ gboolean process_event_cmd_mode(GdkEventKey *event, ScintillaObject *sci, CmdCon
 	}
 
 	// 2-letter commands
-	if (lastc != '\0' && !isdigit(lastc))
+	if (prev != NULL && !kp_isdigit(prev))
 	{
 		for (i = 0; cmds[i].cmd != NULL; i++)
 		{
 			CmdDef *cmd = &cmds[i];
-			gchar utf8[4];
-			gunichar key = gdk_keyval_to_unicode(cmd->first_key);
-			g_unichar_to_utf8(key, utf8);
-			if (cmd->second_key != 0 && event->keyval == cmd->second_key &&
-				(event_modif & cmd->second_modif || event_modif == cmd->second_modif) &&
-				lastc == utf8[0] && !cmd->param)
+			if (cmd->second_key != 0 && curr->key == cmd->second_key &&
+				(curr->modif & cmd->second_modif || curr->modif == cmd->second_modif) &&
+				prev->key == cmd->first_key && !cmd->param)
 			{
 				perform_cmd(cmd->cmd, sci, ctx, 2);
 				return TRUE;
@@ -610,25 +602,25 @@ gboolean process_event_cmd_mode(GdkEventKey *event, ScintillaObject *sci, CmdCon
 	for (i = 0; cmds[i].cmd != NULL; i++)
 	{
 		CmdDef *cmd = &cmds[i];
-		if (cmd->second_key == 0 && event->keyval == cmd->first_key &&
-			(event_modif & cmd->first_modif || event_modif == cmd->first_modif) &&
+		if (cmd->second_key == 0 && curr->key == cmd->first_key &&
+			(curr->modif & cmd->first_modif || curr->modif == cmd->first_modif) &&
 			!cmd->param)
 		{
 			// now solve some quirks manually
-			if (event->keyval == GDK_KEY_0)
+			if (curr->key == GDK_KEY_0)
 			{
 				// 0 jumps to the beginning of line only when not preceded
 				// by another number in which case we want to add it to the accumulator
-				if (!isdigit(accumulator_previous_char(ctx)))
+				if (prev == NULL || !kp_isdigit(prev))
 				{
 					perform_cmd(cmd->cmd, sci, ctx, 1);
 					return TRUE;
 				}
 			}
-			else if (event->keyval == GDK_KEY_percent)
+			else if (curr->key == GDK_KEY_percent)
 			{
-				Cmd c= cmd_goto_matching_brace;
-				if (accumulator_len(ctx) > 1 && accumulator_get_int(ctx, 1, -1) != -1)
+				Cmd c = cmd_goto_matching_brace;
+				if (kp_len(ctx) > 1 && kp_get_int(ctx, 1, -1) != -1)
 					c = cmd_goto_doc_percentage;
 				perform_cmd(c, sci, ctx, 1);
 				return TRUE;

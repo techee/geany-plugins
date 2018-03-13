@@ -21,6 +21,7 @@
 #endif
 
 #include <ctype.h>
+#include <gdk/gdkkeysyms.h>
 
 #include "utils.h"
 
@@ -30,69 +31,115 @@ ScintillaObject *get_current_doc_sci(void)
 	return doc != NULL ? doc->editor->sci : NULL;
 }
 
-void accumulator_append(CmdContext *ctx, const gchar *val)
+gchar kp_to_char(KeyPress *kp)
 {
-	if (!ctx->accumulator)
-		ctx->accumulator = g_strdup(val);
-	else
-		SETPTR(ctx->accumulator, g_strconcat(ctx->accumulator, val, NULL));
+	gchar utf8[5];
+	gunichar key = gdk_keyval_to_unicode(kp->key);
+	g_unichar_to_utf8(key, utf8);
+	return utf8[0];
 }
 
-void accumulator_clear(CmdContext *ctx)
+static gint kp_todigit(KeyPress *kp)
 {
-	g_free(ctx->accumulator);
-	ctx->accumulator = NULL;
-}
-
-guint accumulator_len(CmdContext *ctx)
-{
-	if (!ctx->accumulator)
-		return 0;
-	return strlen(ctx->accumulator);
-}
-
-gchar accumulator_current_char(CmdContext *ctx)
-{
-	guint len = accumulator_len(ctx);
-	if (len > 0)
-		return ctx->accumulator[len-1];
-	return '\0';
-}
-
-gchar accumulator_previous_char(CmdContext *ctx)
-{
-	guint len = accumulator_len(ctx);
-	if (len > 1)
-		return ctx->accumulator[len-2];
-	return '\0';
-}
-
-gint accumulator_get_int(CmdContext *ctx, gint start_pos, gint default_val)
-{
-	gchar *s = g_strdup(ctx->accumulator);
-	gint end = accumulator_len(ctx) - start_pos - 1;
-	gint start = end + 1;
-	gint val, i;
-
-	for (i = end; i >= 0; i--)
+	switch (kp->key)
 	{
-		if (!isdigit(s[i]))
+		case GDK_KEY_0:
+			return 0;
+		case GDK_KEY_1:
+			return 1;
+		case GDK_KEY_2:
+			return 2;
+		case GDK_KEY_3:
+			return 3;
+		case GDK_KEY_4:
+			return 4;
+		case GDK_KEY_5:
+			return 5;
+		case GDK_KEY_6:
+			return 6;
+		case GDK_KEY_7:
+			return 7;
+		case GDK_KEY_8:
+			return 8;
+		case GDK_KEY_9:
+			return 9;
+	}
+	return -1;
+}
+
+gboolean kp_isdigit(KeyPress *kp)
+{
+	return kp_todigit(kp) != -1;
+}
+
+KeyPress *kp_from_event_key(GdkEventKey *ev)
+{
+	KeyPress *kp = g_new0(KeyPress, 1);
+	kp->key = ev->keyval;
+	/* we are interested only in Ctrl presses - Alt is not used in Vim and
+	 * shift is included in letter capitalisation implicitly */
+	kp->modif = ev->state & GDK_CONTROL_MASK;
+	return kp;
+}
+
+void kp_append(CmdContext *ctx, KeyPress *kp)
+{
+	ctx->kp = g_slist_prepend(ctx->kp, kp);
+}
+
+void kp_clear(CmdContext *ctx)
+{
+	g_slist_free_full(ctx->kp, g_free);
+	ctx->kp = NULL;
+}
+
+guint kp_len(CmdContext *ctx)
+{
+	return g_slist_length(ctx->kp);
+}
+
+KeyPress *kp_current(CmdContext *ctx)
+{
+	return g_slist_nth_data(ctx->kp, 0);
+}
+
+KeyPress *kp_previous(CmdContext *ctx)
+{
+	return g_slist_nth_data(ctx->kp, 1);
+}
+
+gint kp_get_int(CmdContext *ctx, gint start_pos, gint default_val)
+{
+	gint res = 0;
+	gint i = 0;
+	GSList *pos = g_slist_nth(ctx->kp, start_pos);
+
+	GSList *num_list = NULL;
+	while (pos != NULL)
+	{
+		if (kp_isdigit(pos->data))
+			num_list = g_slist_prepend(num_list, pos->data);
+		else
 			break;
-		start = i;
+		pos = g_slist_next(pos);
 	}
 
-	if (end - start < 0)
-		val = default_val;
-	else
+	if (!num_list)
+		return default_val;
+
+	pos = num_list;
+	while (pos != NULL)
 	{
-		s[end + 1] = '\0';
-		val = g_ascii_strtoll(s + start, NULL, 10);
+		res = res * 10 + kp_todigit(pos->data);
+		pos = g_slist_next(pos);
+		i++;
+		// some sanity check
+		if (res > 1000000)
+			break;
 	}
 
-	g_free(s);
-	return val;
+	return res;
 }
-
 
 void clamp_cursor_pos(ScintillaObject *sci)
 {

@@ -25,12 +25,15 @@
 
 #define SSM(s, m, w, l) scintilla_send_message(s, m, w, l)
 
-void accumulator_append(CmdContext *ctx, const gchar *val);
-void accumulator_clear(CmdContext *ctx);
-guint accumulator_len(CmdContext *ctx);
-gchar accumulator_current_char(CmdContext *ctx);
-gchar accumulator_previous_char(CmdContext *ctx);
-gint accumulator_get_int(CmdContext *ctx, gint start_pos, gint default_val);
+KeyPress *kp_from_event_key(GdkEventKey *ev);
+void kp_append(CmdContext *ctx, KeyPress *kp);
+void kp_clear(CmdContext *ctx);
+guint kp_len(CmdContext *ctx);
+KeyPress *kp_current(CmdContext *ctx);
+KeyPress *kp_previous(CmdContext *ctx);
+gint kp_get_int(CmdContext *ctx, gint start_pos, gint default_val);
+gchar kp_to_char(KeyPress *kp);
+gboolean kp_isdigit(KeyPress *kp);
 
 ScintillaObject *get_current_doc_sci(void);
 gchar *get_current_word(ScintillaObject *sci);

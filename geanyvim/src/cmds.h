@@ -22,16 +22,24 @@
 #include <glib.h>
 #include <geanyplugin.h>
 
+
+typedef struct
+{
+	guint key;
+	guint modif;
+} KeyPress;
+
+
 typedef struct
 {
 	/* the last full search command, including '/' or '?' */
 	gchar *search_text;
 
-	/* input accumulated over time (e.g. for commands like 100dd) */
-	gchar *accumulator;
+	/* key presses accumulated over time (e.g. for commands like 100dd) */
+	GSList *kp;
 } CmdContext;
 
 
-gboolean process_event_cmd_mode(GdkEventKey *event, ScintillaObject *sci, CmdContext *ctx);
+gboolean process_event_cmd_mode(ScintillaObject *sci, CmdContext *ctx);
 
 #endif
