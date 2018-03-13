@@ -455,10 +455,10 @@ static void cmd_unindent(CmdContext *c, CmdParams *p)
 
 typedef struct {
 	Cmd cmd;
-	guint first_key;
-	guint second_key;
-	guint first_modif;
-	guint second_modif;
+	guint key1;
+	guint key2;
+	guint modif1;
+	guint modif2;
 	gboolean param;
 } CmdDef;
 
@@ -561,6 +561,12 @@ static void perform_cmd(Cmd cmd, ScintillaObject *sci, CmdContext *ctx, gint cmd
 }
 
 
+static gboolean key_equals(KeyPress *kp, guint key, guint modif)
+{
+	return kp->key == key &&
+		(kp->modif & modif || kp->modif == modif);
+}
+
 gboolean process_event_cmd_mode(ScintillaObject *sci, CmdContext *ctx)
 {
 	gint i;
@@ -574,7 +580,8 @@ gboolean process_event_cmd_mode(ScintillaObject *sci, CmdContext *ctx)
 		for (i = 0; cmds[i].cmd != NULL; i++)
 		{
 			CmdDef *cmd = &cmds[i];
-			if (cmd->second_key == 0 && cmd->param && prev->key == cmd->first_key)
+			if (cmd->key2 == 0 && cmd->param &&
+				key_equals(prev, cmd->key1, cmd->modif1))
 			{
 				perform_cmd(cmd->cmd, sci, ctx, 2);
 				return TRUE;
@@ -588,9 +595,9 @@ gboolean process_event_cmd_mode(ScintillaObject *sci, CmdContext *ctx)
 		for (i = 0; cmds[i].cmd != NULL; i++)
 		{
 			CmdDef *cmd = &cmds[i];
-			if (cmd->second_key != 0 && curr->key == cmd->second_key &&
-				(curr->modif & cmd->second_modif || curr->modif == cmd->second_modif) &&
-				prev->key == cmd->first_key && !cmd->param)
+			if (cmd->key2 != 0 && !cmd->param &&
+				key_equals(curr, cmd->key2, cmd->modif2) &&
+				key_equals(prev, cmd->key1, cmd->modif1))
 			{
 				perform_cmd(cmd->cmd, sci, ctx, 2);
 				return TRUE;
@@ -602,9 +609,8 @@ gboolean process_event_cmd_mode(ScintillaObject *sci, CmdContext *ctx)
 	for (i = 0; cmds[i].cmd != NULL; i++)
 	{
 		CmdDef *cmd = &cmds[i];
-		if (cmd->second_key == 0 && curr->key == cmd->first_key &&
-			(curr->modif & cmd->first_modif || curr->modif == cmd->first_modif) &&
-			!cmd->param)
+		if (cmd->key2 == 0 && !cmd->param &&
+			key_equals(curr, cmd->key1, cmd->modif1))
 		{
 			// now solve some quirks manually
 			if (curr->key == GDK_KEY_0)
