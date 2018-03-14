@@ -86,7 +86,7 @@ struct
 
 CmdContext ctx =
 {
-	NULL, NULL
+	NULL, NULL, NULL
 };
 
 
@@ -139,7 +139,7 @@ void set_vi_mode(ViMode mode, ScintillaObject *sci)
 			break;
 		case VI_MODE_CMDLINE:
 		{
-			KeyPress *kp = kp_current(&ctx);
+			KeyPress *kp = g_slist_nth_data(ctx.kpl, 0);
 			gchar val[2] = {kp_to_char(kp), '\0'};
 			gtk_widget_show(vi_widgets.prompt);
 			gtk_entry_set_text(GTK_ENTRY(vi_widgets.entry), val);
@@ -352,7 +352,7 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 	if (state.vi_mode == VI_MODE_COMMAND)
 	{
 		KeyPress *kp = kp_from_event_key(event);
-		kp_append(&ctx, kp);
+		ctx.kpl = g_slist_prepend(ctx.kpl, kp);
 		if (process_event_cmd_mode(sci, &ctx))
 			leave_onetime_vi_mode();
 	}
@@ -368,7 +368,8 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 					sci_send_command(sci, SCI_CHARLEFT);
 				leave_onetime_vi_mode();
 				set_vi_mode(VI_MODE_COMMAND, get_current_doc_sci());
-				kp_clear(&ctx);
+				g_slist_free_full(ctx.kpl, g_free);
+				ctx.kpl = NULL;
 			}
 		}
 	}

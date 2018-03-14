@@ -82,37 +82,24 @@ KeyPress *kp_from_event_key(GdkEventKey *ev)
 	return kp;
 }
 
-void kp_append(CmdContext *ctx, KeyPress *kp)
+static KeyPress *kpl_copy_elem(KeyPress *src, gpointer data)
 {
-	ctx->kp = g_slist_prepend(ctx->kp, kp);
+	KeyPress *kp = g_new0(KeyPress, 1);
+	kp->key = src->key;
+	kp->modif = src->modif;
+	return kp;
 }
 
-void kp_clear(CmdContext *ctx)
+KpList *kpl_copy(KpList *kpl)
 {
-	g_slist_free_full(ctx->kp, g_free);
-	ctx->kp = NULL;
+	return g_slist_copy_deep(kpl, (GCopyFunc)kpl_copy_elem, NULL);
 }
 
-guint kp_len(CmdContext *ctx)
-{
-	return g_slist_length(ctx->kp);
-}
-
-KeyPress *kp_current(CmdContext *ctx)
-{
-	return g_slist_nth_data(ctx->kp, 0);
-}
-
-KeyPress *kp_previous(CmdContext *ctx)
-{
-	return g_slist_nth_data(ctx->kp, 1);
-}
-
-gint kp_get_int(CmdContext *ctx, gint start_pos, gint default_val)
+gint kp_get_int(KpList *kpl, gint start_pos, gint default_val)
 {
 	gint res = 0;
 	gint i = 0;
-	GSList *pos = g_slist_nth(ctx->kp, start_pos);
+	GSList *pos = g_slist_nth(kpl, start_pos);
 
 	GSList *num_list = NULL;
 	while (pos != NULL)

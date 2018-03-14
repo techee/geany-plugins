@@ -26,14 +26,11 @@
 #define SSM(s, m, w, l) scintilla_send_message(s, m, w, l)
 
 KeyPress *kp_from_event_key(GdkEventKey *ev);
-void kp_append(CmdContext *ctx, KeyPress *kp);
-void kp_clear(CmdContext *ctx);
-guint kp_len(CmdContext *ctx);
-KeyPress *kp_current(CmdContext *ctx);
-KeyPress *kp_previous(CmdContext *ctx);
-gint kp_get_int(CmdContext *ctx, gint start_pos, gint default_val);
 gchar kp_to_char(KeyPress *kp);
 gboolean kp_isdigit(KeyPress *kp);
+
+KpList *kpl_copy(KpList *kpl);
+gint kp_get_int(KpList *kpl, gint start_pos, gint default_val);
 
 ScintillaObject *get_current_doc_sci(void);
 gchar *get_current_word(ScintillaObject *sci);

@@ -228,7 +228,7 @@ static void cmd_search(CmdContext *c, CmdParams *p)
 	KeyPress *last;
 	gint i;
 
-	last = kp_current(c);
+	last = g_slist_nth_data(c->kpl, 0);
 
 	if (last->key == GDK_KEY_N)
 		forward = FALSE;
@@ -292,7 +292,7 @@ static void cmd_goto_line_last(CmdContext *c, CmdParams *p)
 {
 	gint line_num = sci_get_line_count(p->sci);
 	/* override default line number to the end of file when number not entered */
-	p->num = kp_get_int(c, 1, line_num);
+	p->num = kp_get_int(c->kpl, 1, line_num);
 	cmd_goto_line(c, p);
 }
 
@@ -397,7 +397,7 @@ static void cmd_goto_screen_bottom(CmdContext *c, CmdParams *p)
 static void cmd_replace_char(CmdContext *c, CmdParams *p)
 {
 	gint pos = sci_get_current_position(p->sci);
-	KeyPress *kp = kp_current(c);
+	KeyPress *kp = g_slist_nth_data(c->kpl, 0);
 	gchar repl[2] = {kp_to_char(kp), '\0'};
 
 	sci_set_target_start(p->sci, pos);
@@ -449,6 +449,10 @@ static void cmd_unindent(CmdContext *c, CmdParams *p)
 	sci_set_current_position(p->sci, pos, FALSE);
 }
 
+static void cmd_repeat_last_command(CmdContext *c, CmdParams *p)
+{
+	// fake
+}
 
 /******************************************************************************/
 
@@ -543,6 +547,9 @@ CmdDef cmds[] = {
 	{cmd_indent, GDK_KEY_greater, GDK_KEY_greater, 0, 0, FALSE},
 	{cmd_replace_char, GDK_KEY_r, 0, 0, 0, TRUE},
 
+	/* special */
+	{cmd_repeat_last_command, GDK_KEY_period, 0, 0, 0, FALSE},
+
 	{NULL, 0, 0, 0, 0, FALSE}
 };
 
@@ -551,11 +558,25 @@ static void perform_cmd(Cmd cmd, ScintillaObject *sci, CmdContext *ctx, gint cmd
 {
 	CmdParams param;
 	param.sci = sci;
-	param.num = kp_get_int(ctx, cmd_len, 1);
+	param.num = kp_get_int(ctx->kpl, cmd_len, 1);
 
 	sci_start_undo_action(sci);
-	cmd(ctx, &param);
-	kp_clear(ctx);
+	if (cmd == cmd_repeat_last_command)
+	{
+		g_slist_free_full(ctx->kpl, g_free);
+		ctx->kpl = kpl_copy(ctx->prev_kpl);
+		if (ctx->kpl)
+			process_event_cmd_mode(sci, ctx);
+		g_slist_free_full(ctx->kpl, g_free);
+		ctx->kpl = NULL;
+	}
+	else
+	{
+		cmd(ctx, &param);
+		g_slist_free_full(ctx->kpl, g_free);
+		ctx->prev_kpl = ctx->kpl;
+		ctx->kpl = NULL;
+	}
 	clamp_cursor_pos(sci);
 	sci_end_undo_action(sci);
 }
@@ -570,8 +591,8 @@ static gboolean key_equals(KeyPress *kp, guint key, guint modif)
 gboolean process_event_cmd_mode(ScintillaObject *sci, CmdContext *ctx)
 {
 	gint i;
-	KeyPress *curr = kp_current(ctx);
-	KeyPress *prev = kp_previous(ctx);
+	KeyPress *curr = g_slist_nth_data(ctx->kpl, 0);
+	KeyPress *prev = g_slist_nth_data(ctx->kpl, 1);
 
 	// commands such as rc or fc (replace char c, find char c) which are specified
 	// by the previous character and current character is used as their parameter
@@ -626,7 +647,7 @@ gboolean process_event_cmd_mode(ScintillaObject *sci, CmdContext *ctx)
 			else if (curr->key == GDK_KEY_percent)
 			{
 				Cmd c = cmd_goto_matching_brace;
-				if (kp_len(ctx) > 1 && kp_get_int(ctx, 1, -1) != -1)
+				if (g_slist_length(ctx->kpl) > 1 && kp_get_int(ctx->kpl, 1, -1) != -1)
 					c = cmd_goto_doc_percentage;
 				perform_cmd(c, sci, ctx, 1);
 				return TRUE;
