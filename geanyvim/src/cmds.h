@@ -36,14 +36,9 @@ typedef struct
 {
 	/* the last full search command, including '/' or '?' */
 	gchar *search_text;
-
-	/* key presses accumulated over time (e.g. for commands like 100dd) */
-	KpList *kpl;
-
-	KpList *prev_kpl;
 } CmdContext;
 
 
-gboolean process_event_cmd_mode(ScintillaObject *sci, CmdContext *ctx);
+gboolean process_event_cmd_mode(ScintillaObject *sci, CmdContext *ctx, KpList *kpl, KpList *prev_kpl, gboolean *is_repeat);
 
 #endif

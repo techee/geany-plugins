@@ -33,8 +33,12 @@ typedef struct
 {
 	/* current Scintilla object */
 	ScintillaObject *sci;
-	/* number preceding command */
+	/* number preceding command - defaults to 1 when not present */
 	gint num;
+	/* determines if the command was preceded by number */
+	gboolean num_present;
+	/* last key press */
+	KeyPress *last_kp;
 } CmdParams;
 
 
@@ -225,12 +229,9 @@ static void cmd_delete_line(CmdContext *c, CmdParams *p)
 static void cmd_search(CmdContext *c, CmdParams *p)
 {
 	gboolean forward = TRUE;
-	KeyPress *last;
 	gint i;
 
-	last = g_slist_nth_data(c->kpl, 0);
-
-	if (last->key == GDK_KEY_N)
+	if (p->last_kp->key == GDK_KEY_N)
 		forward = FALSE;
 
 	for (i = 0; i < p->num; i++)
@@ -291,8 +292,7 @@ static void cmd_goto_line(CmdContext *c, CmdParams *p)
 static void cmd_goto_line_last(CmdContext *c, CmdParams *p)
 {
 	gint line_num = sci_get_line_count(p->sci);
-	/* override default line number to the end of file when number not entered */
-	p->num = kp_get_int(c->kpl, 1, line_num);
+	p->num = p->num_present ? p->num : line_num;
 	cmd_goto_line(c, p);
 }
 
@@ -397,8 +397,7 @@ static void cmd_goto_screen_bottom(CmdContext *c, CmdParams *p)
 static void cmd_replace_char(CmdContext *c, CmdParams *p)
 {
 	gint pos = sci_get_current_position(p->sci);
-	KeyPress *kp = g_slist_nth_data(c->kpl, 0);
-	gchar repl[2] = {kp_to_char(kp), '\0'};
+	gchar repl[2] = {kp_to_char(p->last_kp), '\0'};
 
 	sci_set_target_start(p->sci, pos);
 	sci_set_target_end(p->sci, pos + 1);
@@ -554,45 +553,17 @@ CmdDef cmds[] = {
 };
 
 
-static void perform_cmd(Cmd cmd, ScintillaObject *sci, CmdContext *ctx, gint cmd_len)
-{
-	CmdParams param;
-	param.sci = sci;
-	param.num = kp_get_int(ctx->kpl, cmd_len, 1);
-
-	sci_start_undo_action(sci);
-	if (cmd == cmd_repeat_last_command)
-	{
-		g_slist_free_full(ctx->kpl, g_free);
-		ctx->kpl = kpl_copy(ctx->prev_kpl);
-		if (ctx->kpl)
-			process_event_cmd_mode(sci, ctx);
-		g_slist_free_full(ctx->kpl, g_free);
-		ctx->kpl = NULL;
-	}
-	else
-	{
-		cmd(ctx, &param);
-		g_slist_free_full(ctx->kpl, g_free);
-		ctx->prev_kpl = ctx->kpl;
-		ctx->kpl = NULL;
-	}
-	clamp_cursor_pos(sci);
-	sci_end_undo_action(sci);
-}
-
-
 static gboolean key_equals(KeyPress *kp, guint key, guint modif)
 {
-	return kp->key == key &&
-		(kp->modif & modif || kp->modif == modif);
+	return kp->key == key && (kp->modif & modif || kp->modif == modif);
 }
 
-gboolean process_event_cmd_mode(ScintillaObject *sci, CmdContext *ctx)
+
+static CmdDef *get_cmd_to_run(GSList *kpl)
 {
 	gint i;
-	KeyPress *curr = g_slist_nth_data(ctx->kpl, 0);
-	KeyPress *prev = g_slist_nth_data(ctx->kpl, 1);
+	KeyPress *curr = g_slist_nth_data(kpl, 0);
+	KeyPress *prev = g_slist_nth_data(kpl, 1);
 
 	// commands such as rc or fc (replace char c, find char c) which are specified
 	// by the previous character and current character is used as their parameter
@@ -602,11 +573,8 @@ gboolean process_event_cmd_mode(ScintillaObject *sci, CmdContext *ctx)
 		{
 			CmdDef *cmd = &cmds[i];
 			if (cmd->key2 == 0 && cmd->param &&
-				key_equals(prev, cmd->key1, cmd->modif1))
-			{
-				perform_cmd(cmd->cmd, sci, ctx, 2);
-				return TRUE;
-			}
+					key_equals(prev, cmd->key1, cmd->modif1))
+				return cmd;
 		}
 	}
 
@@ -617,12 +585,9 @@ gboolean process_event_cmd_mode(ScintillaObject *sci, CmdContext *ctx)
 		{
 			CmdDef *cmd = &cmds[i];
 			if (cmd->key2 != 0 && !cmd->param &&
-				key_equals(curr, cmd->key2, cmd->modif2) &&
-				key_equals(prev, cmd->key1, cmd->modif1))
-			{
-				perform_cmd(cmd->cmd, sci, ctx, 2);
-				return TRUE;
-			}
+					key_equals(curr, cmd->key2, cmd->modif2) &&
+					key_equals(prev, cmd->key1, cmd->modif1))
+				return cmd;
 		}
 	}
 
@@ -639,26 +604,62 @@ gboolean process_event_cmd_mode(ScintillaObject *sci, CmdContext *ctx)
 				// 0 jumps to the beginning of line only when not preceded
 				// by another number in which case we want to add it to the accumulator
 				if (prev == NULL || !kp_isdigit(prev))
-				{
-					perform_cmd(cmd->cmd, sci, ctx, 1);
-					return TRUE;
-				}
+					return cmd;
 			}
 			else if (curr->key == GDK_KEY_percent)
 			{
 				Cmd c = cmd_goto_matching_brace;
-				if (g_slist_length(ctx->kpl) > 1 && kp_get_int(ctx->kpl, 1, -1) != -1)
+				gboolean num_present;
+				kpl_get_int(kpl, 1, 1, &num_present);
+				if (num_present)
 					c = cmd_goto_doc_percentage;
-				perform_cmd(c, sci, ctx, 1);
-				return TRUE;
+				if (cmd->cmd == c)
+					return cmd;
 			}
 			else
-			{
-				perform_cmd(cmd->cmd, sci, ctx, 1);
-				return TRUE;
-			}
+				return cmd;
 		}
 	}
 
-	return FALSE;
+	return NULL;
+}
+
+
+static void perform_cmd(CmdDef *def, ScintillaObject *sci, CmdContext *ctx, KpList *kpl)
+{
+	CmdParams param;
+	gboolean num_present;
+
+	param.sci = sci;
+	param.num = kpl_get_int(kpl, def->key2 != 0 ? 2 : 1, 1, &num_present);
+	param.num_present = num_present;
+	param.last_kp = g_slist_nth_data(kpl, 0);
+
+	sci_start_undo_action(sci);
+	def->cmd(ctx, &param);
+	clamp_cursor_pos(sci);
+	sci_end_undo_action(sci);
+}
+
+
+gboolean process_event_cmd_mode(ScintillaObject *sci, CmdContext *ctx, KpList *kpl, KpList *prev_kpl, gboolean *is_repeat)
+{
+	CmdDef *def = get_cmd_to_run(kpl);
+
+	*is_repeat = FALSE;
+	if (!def)
+		return FALSE;
+
+	*is_repeat = def->cmd == cmd_repeat_last_command;
+	if (*is_repeat)
+	{
+		kpl = prev_kpl;
+		def = get_cmd_to_run(kpl);
+		if (!def)
+			return FALSE;
+	}
+
+	perform_cmd(def, sci, ctx, kpl);
+
+	return TRUE;
 }

@@ -74,11 +74,34 @@ gboolean kp_isdigit(KeyPress *kp)
 
 KeyPress *kp_from_event_key(GdkEventKey *ev)
 {
-	KeyPress *kp = g_new0(KeyPress, 1);
+	KeyPress *kp;
+	guint k = ev->keyval;
+
+	switch (k)
+	{
+		case GDK_KEY_Shift_L:
+		case GDK_KEY_Shift_R:
+		case GDK_KEY_Control_L: 
+		case GDK_KEY_Control_R:
+		case GDK_KEY_Caps_Lock:
+		case GDK_KEY_Shift_Lock:
+		case GDK_KEY_Meta_L:
+		case GDK_KEY_Meta_R:
+		case GDK_KEY_Alt_L:
+		case GDK_KEY_Alt_R:
+		case GDK_KEY_Super_L:
+		case GDK_KEY_Super_R:
+		case GDK_KEY_Hyper_L:
+		case GDK_KEY_Hyper_R:
+			return NULL;
+	}
+
+	kp = g_new0(KeyPress, 1);
 	kp->key = ev->keyval;
 	/* we are interested only in Ctrl presses - Alt is not used in Vim and
 	 * shift is included in letter capitalisation implicitly */
 	kp->modif = ev->state & GDK_CONTROL_MASK;
+
 	return kp;
 }
 
@@ -95,13 +118,29 @@ KpList *kpl_copy(KpList *kpl)
 	return g_slist_copy_deep(kpl, (GCopyFunc)kpl_copy_elem, NULL);
 }
 
-gint kp_get_int(KpList *kpl, gint start_pos, gint default_val)
+void kpl_printf(KpList *kpl)
+{
+	kpl = g_slist_reverse(kpl);
+	GSList *pos = kpl;
+	printf("kpl: ");
+	while (pos != NULL)
+	{
+		KeyPress *kp = pos->data;
+		printf("%c", kp_to_char(kp));
+		pos = g_slist_next(pos);
+	}
+	printf("\n");
+	kpl = g_slist_reverse(kpl);
+}
+
+gint kpl_get_int(KpList *kpl, gint start_pos, gint default_val, gboolean *present)
 {
 	gint res = 0;
 	gint i = 0;
 	GSList *pos = g_slist_nth(kpl, start_pos);
-
 	GSList *num_list = NULL;
+
+	*present = FALSE;
 	while (pos != NULL)
 	{
 		if (kp_isdigit(pos->data))
@@ -125,6 +164,7 @@ gint kp_get_int(KpList *kpl, gint start_pos, gint default_val)
 			break;
 	}
 
+	*present = TRUE;
 	return res;
 }
 
