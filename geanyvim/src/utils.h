@@ -29,9 +29,9 @@ KeyPress *kp_from_event_key(GdkEventKey *ev);
 gchar kp_to_char(KeyPress *kp);
 gboolean kp_isdigit(KeyPress *kp);
 
-KpList *kpl_copy(KpList *kpl);
-gint kpl_get_int(KpList *kpl, gint start_pos, gint default_val, gboolean *present);
-void kpl_printf(KpList *kpl);
+GSList *kpl_copy(GSList *kpl);
+gint kpl_get_int(GSList *kpl, GSList **ret);
+void kpl_printf(GSList *kpl);
 
 ScintillaObject *get_current_doc_sci(void);
 gchar *get_current_word(ScintillaObject *sci);

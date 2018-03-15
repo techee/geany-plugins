@@ -113,12 +113,12 @@ static KeyPress *kpl_copy_elem(KeyPress *src, gpointer data)
 	return kp;
 }
 
-KpList *kpl_copy(KpList *kpl)
+GSList *kpl_copy(GSList *kpl)
 {
 	return g_slist_copy_deep(kpl, (GCopyFunc)kpl_copy_elem, NULL);
 }
 
-void kpl_printf(KpList *kpl)
+void kpl_printf(GSList *kpl)
 {
 	kpl = g_slist_reverse(kpl);
 	GSList *pos = kpl;
@@ -126,21 +126,23 @@ void kpl_printf(KpList *kpl)
 	while (pos != NULL)
 	{
 		KeyPress *kp = pos->data;
-		printf("%c", kp_to_char(kp));
+		printf("%c<%d>", kp_to_char(kp), kp->key);
 		pos = g_slist_next(pos);
 	}
 	printf("\n");
 	kpl = g_slist_reverse(kpl);
 }
 
-gint kpl_get_int(KpList *kpl, gint start_pos, gint default_val, gboolean *present)
+gint kpl_get_int(GSList *kpl, GSList **new_kpl)
 {
 	gint res = 0;
 	gint i = 0;
-	GSList *pos = g_slist_nth(kpl, start_pos);
+	GSList *pos = kpl;
 	GSList *num_list = NULL;
 
-	*present = FALSE;
+	if (new_kpl != NULL)
+		*new_kpl = kpl;
+
 	while (pos != NULL)
 	{
 		if (kp_isdigit(pos->data))
@@ -151,7 +153,10 @@ gint kpl_get_int(KpList *kpl, gint start_pos, gint default_val, gboolean *presen
 	}
 
 	if (!num_list)
-		return default_val;
+		return -1;
+
+	if (new_kpl != NULL)
+		*new_kpl = pos;
 
 	pos = num_list;
 	while (pos != NULL)
@@ -164,7 +169,6 @@ gint kpl_get_int(KpList *kpl, gint start_pos, gint default_val, gboolean *presen
 			break;
 	}
 
-	*present = TRUE;
 	return res;
 }
 

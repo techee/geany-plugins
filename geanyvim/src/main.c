@@ -80,9 +80,9 @@ struct
 	/* vi mode */
 	ViMode vi_mode;
 	/* key presses accumulated over time (e.g. for commands like 100dd) */
-	KpList *kpl;
+	GSList *kpl;
 	/* kpl of the previous command (used for repeating last command) */
-	KpList *prev_kpl;
+	GSList *prev_kpl;
 
 } state =
 {

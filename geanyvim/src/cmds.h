@@ -30,8 +30,6 @@ typedef struct
 } KeyPress;
 
 
-typedef GSList KpList;
-
 typedef struct
 {
 	/* the last full search command, including '/' or '?' */
@@ -39,6 +37,6 @@ typedef struct
 } CmdContext;
 
 
-gboolean process_event_cmd_mode(ScintillaObject *sci, CmdContext *ctx, KpList *kpl, KpList *prev_kpl, gboolean *is_repeat);
+gboolean process_event_cmd_mode(ScintillaObject *sci, CmdContext *ctx, GSList *kpl, GSList *prev_kpl, gboolean *is_repeat);
 
 #endif
