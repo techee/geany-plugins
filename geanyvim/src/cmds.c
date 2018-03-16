@@ -667,6 +667,7 @@ static void perform_cmd(CmdDef *def, ScintillaObject *sci, CmdContext *ctx, GSLi
 	param.last_kp = g_slist_nth_data(kpl, 0);
 	param.pos = sci_get_current_position(sci);
 	param.sel_len = 0;
+	param.line = sci_get_current_line(sci);
 
 	sci_start_undo_action(sci);
 
