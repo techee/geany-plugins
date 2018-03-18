@@ -41,6 +41,8 @@ typedef struct
 	KeyPress *last_kp;
 	/* current position in scintilla */
 	gint pos;
+	/* selection start or selection made by movement command */
+	gint sel_start;
 	/* selection length or selection made by movement command */
 	gint sel_len;
 	/* current line in scintilla */
@@ -443,7 +445,7 @@ static void cmd_unindent(CmdContext *c, CmdParams *p)
 
 static void cmd_range_delete(CmdContext *c, CmdParams *p)
 {
-	SSM(p->sci, SCI_DELETERANGE, p->pos, p->sel_len);
+	SSM(p->sci, SCI_DELETERANGE, p->sel_start, p->sel_len);
 }
 
 static void cmd_repeat_last_command(CmdContext *c, CmdParams *p)
@@ -459,6 +461,11 @@ static void cmd_swap_anchor(CmdContext *c, CmdParams *p)
 	SSM(p->sci, SCI_SETCURRENTPOS, anchor, 0);
 }
 
+static void cmd_exit_visual(CmdContext *c, CmdParams *p)
+{
+	SSM(p->sci, SCI_SETEMPTYSELECTION, p->pos, 0);
+	set_vi_mode(VI_MODE_COMMAND);
+}
 
 /******************************************************************************/
 
@@ -503,6 +510,9 @@ typedef struct {
 	{cmd_goto_screen_bottom, GDK_KEY_L, 0, 0, 0, FALSE}, \
 	{cmd_goto_doc_percentage, GDK_KEY_percent, 0, 0, 0, FALSE}, \
 	{cmd_goto_matching_brace, GDK_KEY_percent, 0, 0, 0, FALSE},
+
+#define RANGE_CMDS \
+	{cmd_range_delete, GDK_KEY_d, 0, 0, 0, FALSE},
 
 
 CmdDef movement_cmds[] = {
@@ -560,9 +570,6 @@ CmdDef cmd_mode_cmds[] = {
 	{cmd_indent, GDK_KEY_greater, GDK_KEY_greater, 0, 0, FALSE},
 	{cmd_replace_char, GDK_KEY_r, 0, 0, 0, TRUE},
 
-	/* special */
-	{cmd_repeat_last_command, GDK_KEY_period, 0, 0, 0, FALSE},
-
 	MOVEMENT_CMDS
 
 	{NULL, 0, 0, 0, 0, FALSE}
@@ -570,15 +577,20 @@ CmdDef cmd_mode_cmds[] = {
 
 CmdDef vis_mode_cmds[] = {
 	{cmd_swap_anchor, GDK_KEY_o, 0, 0, 0, FALSE},
+	{cmd_exit_visual, GDK_KEY_v, 0, 0, 0, FALSE},
 	MOVEMENT_CMDS
 	{NULL, 0, 0, 0, 0, FALSE}
 };
 
 CmdDef range_cmds[] = {
-	{cmd_range_delete, GDK_KEY_d, 0, 0, 0, FALSE},
+	RANGE_CMDS
 	{NULL, 0, 0, 0, 0, FALSE}
 };
 
+CmdDef repeat_cmds[] = {
+	{cmd_repeat_last_command, GDK_KEY_period, 0, 0, 0, FALSE},
+	{NULL, 0, 0, 0, 0, FALSE}
+};
 
 static gboolean is_in_cmd_group(CmdDef *cmds, CmdDef *def)
 {
@@ -673,19 +685,18 @@ static void perform_cmd(CmdDef *def, ScintillaObject *sci, CmdContext *ctx, GSLi
 	gint num = kpl_get_int(top, &top);
 	gboolean num_present = num != -1;
 	CmdParams param;
-	gint orig_pos;
 
 	param.sci = sci;
 	param.num = num_present ? num : 1;
 	param.num_present = num_present;
 	param.last_kp = g_slist_nth_data(kpl, 0);
 	param.pos = sci_get_current_position(sci);
-	param.sel_len = 0;
+	param.sel_start = SSM(sci, SCI_GETSELECTIONSTART, 0, 0);
+	param.sel_len = sci_get_selected_text_length(sci);
 	param.line = sci_get_current_line(sci);
 
 	sci_start_undo_action(sci);
 
-	orig_pos = sci_get_current_position(sci);
 	def->cmd(ctx, &param);
 
 	ViMode mode = get_vi_mode();
@@ -698,21 +709,18 @@ static void perform_cmd(CmdDef *def, ScintillaObject *sci, CmdContext *ctx, GSLi
 			{
 				gint new_pos = sci_get_current_position(sci);
 
-				sci_set_current_position(sci, orig_pos, FALSE);
+				sci_set_current_position(sci, param.pos, FALSE);
 
 				param.num = 1;
 				param.num_present = FALSE;
 				param.last_kp = g_slist_nth_data(top, 0);
-				param.pos = MIN(new_pos, orig_pos);
-				param.sel_len = ABS(new_pos - orig_pos);
+				param.sel_start = MIN(new_pos, param.pos);
+				param.sel_len = ABS(new_pos - param.pos);
+				
 				def->cmd(ctx, &param);
 			}
 		}
 		clamp_cursor_pos(sci);
-	}
-	else if (mode == VI_MODE_VISUAL)
-	{
-		//SSM(sci, SCI_SETANCHOR, ctx->vis_mode_anchor, 0);
 	}
 	sci_end_undo_action(sci);
 }
@@ -720,13 +728,19 @@ static void perform_cmd(CmdDef *def, ScintillaObject *sci, CmdContext *ctx, GSLi
 
 gboolean process_event_cmd_mode(ScintillaObject *sci, CmdContext *ctx, GSList *kpl, GSList *prev_kpl, gboolean *is_repeat)
 {
-	CmdDef *def = get_cmd_to_run(kpl, cmd_mode_cmds);
+	CmdDef *def = get_cmd_to_run(kpl, repeat_cmds);
 
-	*is_repeat = FALSE;
+	*is_repeat = def != NULL;
+
+	if (!def && sci_get_selected_text_length(sci) > 0)
+		def = get_cmd_to_run(kpl, range_cmds);
+
+	if (!def)
+		def = get_cmd_to_run(kpl, cmd_mode_cmds);
+
 	if (!def)
 		return FALSE;
 
-	*is_repeat = def->cmd == cmd_repeat_last_command;
 	if (*is_repeat)
 	{
 		kpl = prev_kpl;
@@ -743,12 +757,22 @@ gboolean process_event_cmd_mode(ScintillaObject *sci, CmdContext *ctx, GSList *k
 gboolean process_event_vis_mode(ScintillaObject *sci, CmdContext *ctx, GSList *kpl)
 {
 	CmdDef *def = get_cmd_to_run(kpl, vis_mode_cmds);
+	gboolean end_visual_mode = FALSE;
 
-	kpl_printf(kpl);
+	if (!def)
+	{
+		def = get_cmd_to_run(kpl, range_cmds);
+		if (def)
+			end_visual_mode = TRUE;
+	}
+
 	if (!def)
 		return FALSE;
 
 	perform_cmd(def, sci, ctx, kpl);
+
+	if (end_visual_mode)
+		set_vi_mode(VI_MODE_COMMAND);
 
 	return TRUE;
 }
