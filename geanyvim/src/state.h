@@ -29,6 +29,7 @@ typedef enum {
 } ViMode;
 
 
-void set_vi_mode(ViMode mode, ScintillaObject *sci);
+void set_vi_mode(ViMode mode);
+ViMode get_vi_mode(void);
 
 #endif

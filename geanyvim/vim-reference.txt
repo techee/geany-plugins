@@ -1,4 +1,4 @@
-This file was copied from
+This file was copied from https://www.cmrr.umn.edu/~strupp/vim-3.0.refcard.html
 
 VIM Reference Card
 

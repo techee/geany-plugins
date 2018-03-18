@@ -91,7 +91,7 @@ struct
 
 CmdContext ctx =
 {
-	NULL, NULL, NULL
+	NULL
 };
 
 
@@ -118,8 +118,12 @@ static const gchar *get_mode_name(ViMode vi_mode)
 	return "";
 }
 
+ViMode get_vi_mode(void)
+{
+	return state.vi_mode;
+}
 
-void set_vi_mode(ViMode mode, ScintillaObject *sci)
+static void set_vi_mode_full(ViMode mode, ScintillaObject *sci)
 {
 	if (!sci)
 		return;
@@ -160,12 +164,18 @@ void set_vi_mode(ViMode mode, ScintillaObject *sci)
 			SSM(sci, SCI_SETCARETSTYLE, CARETSTYLE_LINE, 0);
 			break;
 		case VI_MODE_VISUAL:
+			SSM(sci, SCI_SETCARETSTYLE, CARETSTYLE_LINE, 0);
+			SSM(sci, SCI_SETSELECTIONMODE, SC_SEL_STREAM, 0);
 			break;
 	}
 
 	ui_set_statusbar(FALSE, "Vim Mode: -- %s --", get_mode_name(state.vi_mode));
 }
 
+void set_vi_mode(ViMode mode)
+{
+	set_vi_mode_full(mode, get_current_doc_sci());
+}
 
 static void leave_onetime_vi_mode()
 {
@@ -173,7 +183,7 @@ static void leave_onetime_vi_mode()
 	{
 		state.vi_enabled = FALSE;
 		state.vi_onetime = FALSE;
-		set_vi_mode(VI_MODE_COMMAND, get_current_doc_sci());
+		set_vi_mode(VI_MODE_COMMAND);
 	}
 }
 
@@ -182,7 +192,6 @@ static void close_prompt()
 {
 	leave_onetime_vi_mode();
 	gtk_widget_hide(vi_widgets.prompt);
-	set_vi_mode(VI_MODE_COMMAND, get_current_doc_sci());
 }
 
 
@@ -311,7 +320,7 @@ static void on_toggle_vim_mode(void)
 {
 	state.vi_enabled = gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(vi_widgets.toggle_vi_item));
 	state.vi_onetime = FALSE;
-	set_vi_mode(VI_MODE_COMMAND, get_current_doc_sci());
+	set_vi_mode(VI_MODE_COMMAND);
 	if (!state.vi_enabled)
 		ui_set_statusbar(FALSE, "Vim Mode Disabled");
 	save_config();
@@ -333,7 +342,7 @@ static gboolean on_perform_vim_command(GeanyKeyBinding *kb, guint key_id, gpoint
 	{
 		state.vi_onetime = TRUE;
 		state.vi_enabled = TRUE;
-		set_vi_mode(VI_MODE_COMMAND, get_current_doc_sci());
+		set_vi_mode(VI_MODE_COMMAND);
 	}
 
 	return TRUE;
@@ -353,7 +362,21 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 
 	consumed = state.vi_mode == VI_MODE_COMMAND;
 
-	if (state.vi_mode == VI_MODE_COMMAND)
+	if (event->keyval == GDK_KEY_Escape && state.vi_mode != VI_MODE_COMMAND)
+	{
+		if (!SSM(sci, SCI_AUTOCACTIVE, 0, 0) && !SSM(sci, SCI_CALLTIPACTIVE, 0, 0))
+		{
+			gint pos = sci_get_current_position(sci);
+			gint start_pos = sci_get_position_from_line(sci, sci_get_current_line(sci));
+			if (pos > start_pos)
+				sci_send_command(sci, SCI_CHARLEFT);
+			leave_onetime_vi_mode();
+			set_vi_mode(VI_MODE_COMMAND);
+			g_slist_free_full(state.kpl, g_free);
+			state.kpl = NULL;
+		}
+	}
+	else if (state.vi_mode == VI_MODE_COMMAND || state.vi_mode == VI_MODE_VISUAL)
 	{
 		KeyPress *kp = kp_from_event_key(event);
 		if (kp)
@@ -364,34 +387,29 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 			//printf("key: %d, state: %d\n", event->keyval, event->state);
 			//kpl_printf(state.kpl);
 			//kpl_printf(state.prev_kpl);
-			if (process_event_cmd_mode(sci, &ctx, state.kpl, state.prev_kpl, &is_repeat_command))
+			if (state.vi_mode == VI_MODE_COMMAND)
 			{
-				leave_onetime_vi_mode();
-				if (is_repeat_command)
-					g_slist_free_full(state.kpl, g_free);
-				else
+				if (process_event_cmd_mode(sci, &ctx, state.kpl, state.prev_kpl, &is_repeat_command))
 				{
-					g_slist_free_full(state.prev_kpl, g_free);
-					state.prev_kpl = state.kpl;
+					leave_onetime_vi_mode();
+					if (is_repeat_command)
+						g_slist_free_full(state.kpl, g_free);
+					else
+					{
+						g_slist_free_full(state.prev_kpl, g_free);
+						state.prev_kpl = state.kpl;
+					}
+					state.kpl = NULL;
 				}
-				state.kpl = NULL;
 			}
-		}
-	}
-	else
-	{
-		if (event->keyval == GDK_KEY_Escape)
-		{
-			if (!SSM(sci, SCI_AUTOCACTIVE, 0, 0) && !SSM(sci, SCI_CALLTIPACTIVE, 0, 0))
+			else if (state.vi_mode == VI_MODE_VISUAL)
 			{
-				gint pos = sci_get_current_position(sci);
-				gint start_pos = sci_get_position_from_line(sci, sci_get_current_line(sci));
-				if (pos > start_pos)
-					sci_send_command(sci, SCI_CHARLEFT);
-				leave_onetime_vi_mode();
-				set_vi_mode(VI_MODE_COMMAND, get_current_doc_sci());
-				g_slist_free_full(state.kpl, g_free);
-				state.kpl = NULL;
+				if (process_event_vis_mode(sci, &ctx, state.kpl))
+				{
+					g_slist_free_full(state.kpl, g_free);
+					state.kpl = NULL;
+				}
+				consumed = TRUE;
 			}
 		}
 	}
@@ -402,9 +420,9 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 
 static void on_doc_open(G_GNUC_UNUSED GObject *obj, GeanyDocument *doc,
 		G_GNUC_UNUSED gpointer user_data)
-{
+	{
 	g_return_if_fail(doc != NULL);
-	set_vi_mode(state.vi_mode, doc->editor->sci);
+	set_vi_mode_full(state.vi_mode, doc->editor->sci);
 }
 
 
@@ -412,7 +430,7 @@ static void on_doc_activate(G_GNUC_UNUSED GObject *obj, GeanyDocument *doc,
 		G_GNUC_UNUSED gpointer user_data)
 {
 	g_return_if_fail(doc != NULL);
-	set_vi_mode(state.vi_mode, doc->editor->sci);
+	set_vi_mode_full(state.vi_mode, doc->editor->sci);
 }
 
 
@@ -499,7 +517,7 @@ void plugin_init(GeanyData *data)
 
 	gtk_widget_show_all(frame);
 
-	set_vi_mode(VI_MODE_COMMAND, get_current_doc_sci());
+	set_vi_mode(VI_MODE_COMMAND);
 }
 
 
