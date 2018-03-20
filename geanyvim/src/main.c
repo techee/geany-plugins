@@ -168,9 +168,14 @@ static void set_vi_mode_full(ViMode mode, ScintillaObject *sci)
 			SSM(sci, SCI_SETCARETSTYLE, CARETSTYLE_LINE, 0);
 			break;
 		case VI_MODE_VISUAL:
-			SSM(sci, SCI_SETSELECTIONMODE, SC_SEL_STREAM, 0);
-			/* select the char over which the box caret is displayed */
-			SSM(sci, SCI_CHARRIGHT, 0, 0);
+			/* Even with block-style caret, scintilla's caret behaves differently
+			 * from how vim behaves - it always behaves as if the caret is before
+			 * the character it's placed on. With visual mode we'd need selection
+			 * to go behind the caret but we cannot achieve this. Visual mode
+			 * simply won't behave as vim's visual mode in this respect. Use
+			 * line caret here which makes it more clear what's being selected. */
+			SSM(sci, SCI_SETCARETSTYLE, CARETSTYLE_LINE, 0);
+			ctx.sel_anchor = sci_get_current_position(sci);
 			break;
 	}
 }

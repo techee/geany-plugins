@@ -155,16 +155,24 @@ static void cmd_goto_left(CmdContext *c, CmdParams *p)
 {
 	gint i;
 	gint start_pos = sci_get_position_from_line(p->sci, p->line);
-	for (i = 0; i < p->num && p->pos > start_pos; i++)
-		SSM(p->sci, SCI_CHARLEFT, 0, 0);
+	gint pos = sci_get_current_position(p->sci);
+	for (i = 0; i < p->num && pos > start_pos; i++)
+	{
+		pos--;
+		sci_set_current_position(p->sci, pos, FALSE);
+	}
 }
 
 static void cmd_goto_right(CmdContext *c, CmdParams *p)
 {
 	gint i;
 	gint end_pos = sci_get_line_end_position(p->sci, p->line);
-	for (i = 0; i < p->num && p->pos < end_pos; i++)
-		SSM(p->sci, SCI_CHARRIGHT, 0, 0);
+	gint pos = sci_get_current_position(p->sci);
+	for (i = 0; i < p->num && pos < end_pos; i++)
+	{
+		pos++;
+		sci_set_current_position(p->sci, pos, FALSE);
+	}
 }
 
 static void cmd_goto_up(CmdContext *c, CmdParams *p)
@@ -506,10 +514,9 @@ static void cmd_repeat_last_command(CmdContext *c, CmdParams *p)
 
 static void cmd_swap_anchor(CmdContext *c, CmdParams *p)
 {
-	gint pos = SSM(p->sci, SCI_GETCURRENTPOS, 0, 0);
-	gint anchor = SSM(p->sci, SCI_GETANCHOR, 0, 0);
-	SSM(p->sci, SCI_SETANCHOR, pos, 0);
-	SSM(p->sci, SCI_SETCURRENTPOS, anchor, 0);
+	gint anchor = c->sel_anchor;
+	c->sel_anchor = SSM(p->sci, SCI_GETCURRENTPOS, 0, 0);
+	sci_set_current_position(p->sci, anchor, FALSE);
 }
 
 static void cmd_exit_visual(CmdContext *c, CmdParams *p)
@@ -715,7 +722,6 @@ static CmdDef *get_cmd_to_run(GSList *kpl, CmdDef *cmds, gboolean have_selection
 			((cmd->needs_selection && have_selection) || !cmd->needs_selection) &&
 			key_equals(curr, cmd->key1, cmd->modif1))
 		{
-			printf("%d %d\n", cmd->needs_selection, have_selection);
 			// now solve some quirks manually
 			if (curr->key == GDK_KEY_0)
 			{
@@ -820,11 +826,15 @@ gboolean process_event_cmd_mode(ScintillaObject *sci, CmdContext *ctx, GSList *k
 gboolean process_event_vis_mode(ScintillaObject *sci, CmdContext *ctx, GSList *kpl)
 {
 	CmdDef *def = get_cmd_to_run(kpl, vis_mode_cmds, TRUE);
+	gint pos;
 
 	if (!def)
 		return FALSE;
 
 	perform_cmd(def, sci, ctx, kpl);
+
+	pos = sci_get_current_position(sci);
+	SSM(sci, SCI_SETSEL, ctx->sel_anchor, pos);
 
 	return TRUE;
 }

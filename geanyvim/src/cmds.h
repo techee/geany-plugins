@@ -36,6 +36,8 @@ typedef struct
 	gchar *search_text;
 	/* whether the last copy was in line-copy-mode (like yy) or selection mode */
 	gboolean line_copy;
+	/* selection anchor - selection is between anchor and caret */
+	gint sel_anchor;
 } CmdContext;
 
 
