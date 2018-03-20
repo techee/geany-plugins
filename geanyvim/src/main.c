@@ -91,7 +91,7 @@ struct
 
 CmdContext ctx =
 {
-	NULL
+	NULL, FALSE
 };
 
 
@@ -137,6 +137,9 @@ static void set_vi_mode_full(ViMode mode, ScintillaObject *sci)
 		return;
 	}
 
+	if (mode != state.vi_mode)
+		ui_set_statusbar(FALSE, "Vim Mode: -- %s --", get_mode_name(mode));
+
 	state.vi_mode = mode;
 
 	switch (mode)
@@ -144,6 +147,7 @@ static void set_vi_mode_full(ViMode mode, ScintillaObject *sci)
 		case VI_MODE_COMMAND:
 			SSM(sci, SCI_SETOVERTYPE, 0, 0);
 			SSM(sci, SCI_SETCARETSTYLE, CARETSTYLE_BLOCK, 0);
+			SSM(sci, SCI_CANCEL, 0, 0);
 			clamp_cursor_pos(sci);
 			break;
 		case VI_MODE_CMDLINE:
@@ -164,12 +168,11 @@ static void set_vi_mode_full(ViMode mode, ScintillaObject *sci)
 			SSM(sci, SCI_SETCARETSTYLE, CARETSTYLE_LINE, 0);
 			break;
 		case VI_MODE_VISUAL:
-			SSM(sci, SCI_SETCARETSTYLE, CARETSTYLE_LINE, 0);
 			SSM(sci, SCI_SETSELECTIONMODE, SC_SEL_STREAM, 0);
+			/* select the char over which the box caret is displayed */
+			SSM(sci, SCI_CHARRIGHT, 0, 0);
 			break;
 	}
-
-	ui_set_statusbar(FALSE, "Vim Mode: -- %s --", get_mode_name(state.vi_mode));
 }
 
 void set_vi_mode(ViMode mode)

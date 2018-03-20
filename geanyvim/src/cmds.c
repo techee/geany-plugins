@@ -209,16 +209,30 @@ static void cmd_copy_line(CmdContext *c, CmdParams *p)
 	gint start = sci_get_position_from_line(p->sci, p->line);
 	gint end = sci_get_position_from_line(p->sci, p->line + p->num);
 	SSM(p->sci, SCI_COPYRANGE, start, end);
+	c->line_copy = TRUE;
 }
 
 static void cmd_paste(CmdContext *c, CmdParams *p)
 {
+	gint pos;
 	gint i;
-	gint pos = sci_get_position_from_line(p->sci, p->line+1);
+
+	if (c->line_copy)
+		pos = sci_get_position_from_line(p->sci, p->line+1);
+	else
+	{
+		pos = p->pos;
+		if (p->pos < SSM(p->sci, SCI_GETLINEENDPOSITION, p->line, 0))
+			pos = p->pos+1;
+	}
+
 	sci_set_current_position(p->sci, pos, TRUE);
 	for (i = 0; i < p->num; i++)
 		SSM(p->sci, SCI_PASTE, 0, 0);
-	sci_set_current_position(p->sci, pos, TRUE);
+	if (c->line_copy)
+		sci_set_current_position(p->sci, pos, TRUE);
+	else
+		SSM(p->sci, SCI_CHARLEFT, 0, 0);
 }
 
 static void cmd_delete_line(CmdContext *c, CmdParams *p)
@@ -401,13 +415,17 @@ static void cmd_replace_char(CmdContext *c, CmdParams *p)
 	sci_replace_target(p->sci, repl, FALSE);
 }
 
-static void cmd_uppercase_char(CmdContext *c, CmdParams *p)
+static void cmd_switch_case_char(CmdContext *c, CmdParams *p)
 {
 	gchar upper[2] = {toupper(sci_get_char_at(p->sci, p->pos)), '\0'};
+	gchar lower[2] = {tolower(sci_get_char_at(p->sci, p->pos)), '\0'};
+	gchar *replacement = lower;
 
 	sci_set_target_start(p->sci, p->pos);
 	sci_set_target_end(p->sci, p->pos + 1);
-	sci_replace_target(p->sci, upper, FALSE);
+	if (islower(sci_get_char_at(p->sci, p->pos)))
+		replacement = upper;
+	sci_replace_target(p->sci, replacement, FALSE);
 	SSM(p->sci, SCI_CHARRIGHT, 0, 0);
 }
 
@@ -446,6 +464,19 @@ static void cmd_unindent(CmdContext *c, CmdParams *p)
 static void cmd_range_delete(CmdContext *c, CmdParams *p)
 {
 	SSM(p->sci, SCI_DELETERANGE, p->sel_start, p->sel_len);
+	set_vi_mode(VI_MODE_COMMAND);
+}
+
+static void cmd_range_copy(CmdContext *c, CmdParams *p)
+{
+	SSM(p->sci, SCI_COPYRANGE, p->sel_start, p->sel_start + p->sel_len);
+	set_vi_mode(VI_MODE_COMMAND);
+	SSM(p->sci, SCI_SETCURRENTPOS, p->sel_start, 0);
+	c->line_copy = FALSE;
+}
+
+static void cmd_range_change(CmdContext *c, CmdParams *p)
+{
 }
 
 static void cmd_repeat_last_command(CmdContext *c, CmdParams *p)
@@ -477,120 +508,128 @@ typedef struct {
 	guint modif1;
 	guint modif2;
 	gboolean param;
+	gboolean needs_selection;
 } CmdDef;
 
 
 #define MOVEMENT_CMDS \
-	{cmd_goto_page_up, GDK_KEY_Page_Up, 0, 0, 0, FALSE}, \
-	{cmd_goto_page_down, GDK_KEY_Page_Down, 0, 0, 0, FALSE}, \
-	{cmd_goto_left, GDK_KEY_Left, 0, 0, 0, FALSE}, \
-	{cmd_goto_left, GDK_KEY_leftarrow, 0, 0, 0, FALSE}, \
-	{cmd_goto_left, GDK_KEY_h, 0, 0, 0, FALSE}, \
-	{cmd_goto_right, GDK_KEY_Right, 0, 0, 0, FALSE}, \
-	{cmd_goto_right, GDK_KEY_rightarrow, 0, 0, 0, FALSE}, \
-	{cmd_goto_right, GDK_KEY_l, 0, 0, 0, FALSE}, \
-	{cmd_goto_down, GDK_KEY_Down, 0, 0, 0, FALSE}, \
-	{cmd_goto_down, GDK_KEY_downarrow, 0, 0, 0, FALSE}, \
-	{cmd_goto_down, GDK_KEY_j, 0, 0, 0, FALSE}, \
-	{cmd_goto_up, GDK_KEY_Up, 0, 0, 0, FALSE}, \
-	{cmd_goto_up, GDK_KEY_uparrow, 0, 0, 0, FALSE}, \
-	{cmd_goto_up, GDK_KEY_k, 0, 0, 0, FALSE}, \
-	{cmd_goto_line_last, GDK_KEY_G, 0, 0, 0, FALSE}, \
-	{cmd_goto_line, GDK_KEY_g, GDK_KEY_g, 0, 0, FALSE}, \
-	{cmd_goto_next_word, GDK_KEY_w, 0, 0, 0, FALSE}, \
-	{cmd_goto_next_word, GDK_KEY_W, 0, 0, 0, FALSE}, \
-	{cmd_goto_next_word_end, GDK_KEY_e, 0, 0, 0, FALSE}, \
-	{cmd_goto_next_word_end, GDK_KEY_E, 0, 0, 0, FALSE}, \
-	{cmd_goto_previous_word, GDK_KEY_b, 0, 0, 0, FALSE}, \
-	{cmd_goto_previous_word_end, GDK_KEY_B, 0, 0, 0, FALSE}, \
-	{cmd_goto_line_end, GDK_KEY_dollar, 0, 0, 0, FALSE}, \
-	{cmd_goto_line_start, GDK_KEY_0, 0, 0, 0, FALSE}, \
-	{cmd_goto_screen_top, GDK_KEY_H, 0, 0, 0, FALSE}, \
-	{cmd_goto_screen_middle, GDK_KEY_M, 0, 0, 0, FALSE}, \
-	{cmd_goto_screen_bottom, GDK_KEY_L, 0, 0, 0, FALSE}, \
-	{cmd_goto_doc_percentage, GDK_KEY_percent, 0, 0, 0, FALSE}, \
-	{cmd_goto_matching_brace, GDK_KEY_percent, 0, 0, 0, FALSE},
-
-#define RANGE_CMDS \
-	{cmd_range_delete, GDK_KEY_d, 0, 0, 0, FALSE},
-
+	{cmd_goto_page_up, GDK_KEY_Page_Up, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_goto_page_down, GDK_KEY_Page_Down, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_goto_left, GDK_KEY_Left, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_goto_left, GDK_KEY_leftarrow, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_goto_left, GDK_KEY_h, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_goto_right, GDK_KEY_Right, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_goto_right, GDK_KEY_rightarrow, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_goto_right, GDK_KEY_l, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_goto_down, GDK_KEY_Down, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_goto_down, GDK_KEY_downarrow, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_goto_down, GDK_KEY_j, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_goto_up, GDK_KEY_Up, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_goto_up, GDK_KEY_uparrow, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_goto_up, GDK_KEY_k, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_goto_line_last, GDK_KEY_G, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_goto_line, GDK_KEY_g, GDK_KEY_g, 0, 0, FALSE, FALSE}, \
+	{cmd_goto_next_word, GDK_KEY_w, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_goto_next_word, GDK_KEY_W, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_goto_next_word_end, GDK_KEY_e, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_goto_next_word_end, GDK_KEY_E, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_goto_previous_word, GDK_KEY_b, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_goto_previous_word_end, GDK_KEY_B, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_goto_line_end, GDK_KEY_dollar, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_goto_line_start, GDK_KEY_0, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_goto_screen_top, GDK_KEY_H, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_goto_screen_middle, GDK_KEY_M, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_goto_screen_bottom, GDK_KEY_L, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_goto_doc_percentage, GDK_KEY_percent, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_goto_matching_brace, GDK_KEY_percent, 0, 0, 0, FALSE, FALSE},
 
 CmdDef movement_cmds[] = {
 	MOVEMENT_CMDS
-	{NULL, 0, 0, 0, 0, FALSE}
+	{NULL, 0, 0, 0, 0, FALSE, FALSE}
 };
 
+#define RANGE_CMDS \
+	{cmd_range_delete, GDK_KEY_d, 0, 0, 0, FALSE, TRUE}, \
+	{cmd_range_copy, GDK_KEY_y, 0, 0, 0, FALSE, TRUE}, \
+	{cmd_range_change, GDK_KEY_c, 0, 0, 0, FALSE, TRUE},
+//	{cmd_range_switch_case, GDK_KEY_g, GDK_KEY_asciitilde, 0, 0, FALSE, TRUE},
+//	{cmd_range_uppercase, GDK_KEY_g, GDK_KEY_u, 0, 0, FALSE, TRUE},
+//	{cmd_range_lowercase, GDK_KEY_g, GDK_KEY_U, 0, 0, FALSE, TRUE},
+//	{cmd_range_unindent, GDK_KEY_less, 0, 0, 0, FALSE, TRUE},
+//	{cmd_range_indent, GDK_KEY_greater, 0, 0, 0, FALSE, TRUE},
 
-CmdDef cmd_mode_cmds[] = {
-	/* enter cmdline mode */
-	{cmd_mode_cmdline, GDK_KEY_colon, 0, 0, 0, FALSE},
-	{cmd_mode_cmdline, GDK_KEY_slash, 0, 0, 0, FALSE},
-	{cmd_mode_cmdline, GDK_KEY_question, 0, 0, 0, FALSE},
-	/* enter insert mode */
-	{cmd_mode_insert, GDK_KEY_i, 0, 0, 0, FALSE},
-	{cmd_mode_insert_after, GDK_KEY_a, 0, 0, 0, FALSE},
-	{cmd_mode_insert_line_start, GDK_KEY_I, 0, 0, 0, FALSE},
-	{cmd_mode_insert_line_end, GDK_KEY_A, 0, 0, 0, FALSE},//not correct pos
-	{cmd_mode_insert_next_line, GDK_KEY_o, 0, 0, 0, FALSE},
-	{cmd_mode_insert_clear_line, GDK_KEY_S, 0, 0, 0, FALSE},
-	{cmd_mode_insert_clear_line, GDK_KEY_c, GDK_KEY_c, 0, 0, FALSE},
-	{cmd_mode_insert_prev_line, GDK_KEY_O, 0, 0, 0, FALSE},
-	{cmd_mode_insert_clear_right, GDK_KEY_C, 0, 0, 0, FALSE},
-	{cmd_mode_insert_delete_char, GDK_KEY_s, 0, 0, 0, FALSE},
-	/* enter replace mode */
-	{cmd_mode_replace, GDK_KEY_R, 0, 0, 0, FALSE},
-	/* enter visual mode */
-	{cmd_mode_visual, GDK_KEY_v, 0, 0, 0, FALSE},
-
-	/* copy/paste */
-	{cmd_copy_line, GDK_KEY_y, GDK_KEY_y, 0, 0, FALSE},
-	{cmd_paste, GDK_KEY_p, 0, 0, 0, FALSE},
-
-	/* undo/redo */
-	{cmd_undo, GDK_KEY_U, 0, 0, 0, FALSE},
-	{cmd_undo, GDK_KEY_u, 0, 0, 0, FALSE},
-	{cmd_redo, GDK_KEY_r, 0, GDK_CONTROL_MASK, 0, FALSE},
-
-	/* search */
-	{cmd_search, GDK_KEY_n, 0, 0, 0, FALSE},
-	{cmd_search, GDK_KEY_N, 0, 0, 0, FALSE},
-	{cmd_search_current_next, GDK_KEY_asterisk, 0, 0, 0, FALSE},
-	{cmd_search_current_prev, GDK_KEY_numbersign, 0, 0, 0, FALSE},
-
-	/* deletion */
-	{cmd_delete_line, GDK_KEY_D, 0, 0, 0, FALSE},
-	{cmd_delete_line, GDK_KEY_d, GDK_KEY_d, 0, 0, FALSE},
-	{cmd_delete_char, GDK_KEY_x, 0, 0, 0, FALSE},
-	{cmd_delete_char_back, GDK_KEY_X, 0, 0, 0, FALSE},
-
-	/* modification */
-	{cmd_join_lines, GDK_KEY_J, 0, 0, 0, FALSE},
-	{cmd_uppercase_char, GDK_KEY_asciitilde, 0, 0, 0, FALSE},//not correct position when undoing
-	{cmd_unindent, GDK_KEY_less, GDK_KEY_less, 0, 0, FALSE},
-	{cmd_indent, GDK_KEY_greater, GDK_KEY_greater, 0, 0, FALSE},
-	{cmd_replace_char, GDK_KEY_r, 0, 0, 0, TRUE},
-
-	MOVEMENT_CMDS
-
-	{NULL, 0, 0, 0, 0, FALSE}
-};
-
-CmdDef vis_mode_cmds[] = {
-	{cmd_swap_anchor, GDK_KEY_o, 0, 0, 0, FALSE},
-	{cmd_exit_visual, GDK_KEY_v, 0, 0, 0, FALSE},
-	MOVEMENT_CMDS
-	{NULL, 0, 0, 0, 0, FALSE}
-};
 
 CmdDef range_cmds[] = {
 	RANGE_CMDS
-	{NULL, 0, 0, 0, 0, FALSE}
+	{NULL, 0, 0, 0, 0, FALSE, FALSE}
 };
 
-CmdDef repeat_cmds[] = {
-	{cmd_repeat_last_command, GDK_KEY_period, 0, 0, 0, FALSE},
-	{NULL, 0, 0, 0, 0, FALSE}
+CmdDef cmd_mode_cmds[] = {
+	/* enter cmdline mode */
+	{cmd_mode_cmdline, GDK_KEY_colon, 0, 0, 0, FALSE, FALSE},
+	{cmd_mode_cmdline, GDK_KEY_slash, 0, 0, 0, FALSE, FALSE},
+	{cmd_mode_cmdline, GDK_KEY_question, 0, 0, 0, FALSE, FALSE},
+	/* enter insert mode */
+	{cmd_mode_insert, GDK_KEY_i, 0, 0, 0, FALSE, FALSE},
+	{cmd_mode_insert_after, GDK_KEY_a, 0, 0, 0, FALSE, FALSE},
+	{cmd_mode_insert_line_start, GDK_KEY_I, 0, 0, 0, FALSE, FALSE},
+	{cmd_mode_insert_line_end, GDK_KEY_A, 0, 0, 0, FALSE, FALSE},//not correct pos
+	{cmd_mode_insert_next_line, GDK_KEY_o, 0, 0, 0, FALSE, FALSE},
+	{cmd_mode_insert_clear_line, GDK_KEY_S, 0, 0, 0, FALSE, FALSE},
+	{cmd_mode_insert_clear_line, GDK_KEY_c, GDK_KEY_c, 0, 0, FALSE, FALSE},
+	{cmd_mode_insert_prev_line, GDK_KEY_O, 0, 0, 0, FALSE, FALSE},
+	{cmd_mode_insert_clear_right, GDK_KEY_C, 0, 0, 0, FALSE, FALSE},
+	{cmd_mode_insert_delete_char, GDK_KEY_s, 0, 0, 0, FALSE, FALSE},
+	/* enter replace mode */
+	{cmd_mode_replace, GDK_KEY_R, 0, 0, 0, FALSE, FALSE},
+	/* enter visual mode */
+	{cmd_mode_visual, GDK_KEY_v, 0, 0, 0, FALSE, FALSE},
+
+	/* copy/paste */
+	{cmd_copy_line, GDK_KEY_y, GDK_KEY_y, 0, 0, FALSE, FALSE},
+	{cmd_paste, GDK_KEY_p, 0, 0, 0, FALSE, FALSE},
+
+	/* undo/redo */
+	{cmd_undo, GDK_KEY_U, 0, 0, 0, FALSE, FALSE},
+	{cmd_undo, GDK_KEY_u, 0, 0, 0, FALSE, FALSE},
+	{cmd_redo, GDK_KEY_r, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
+
+	/* search */
+	{cmd_search, GDK_KEY_n, 0, 0, 0, FALSE, FALSE},
+	{cmd_search, GDK_KEY_N, 0, 0, 0, FALSE, FALSE},
+	{cmd_search_current_next, GDK_KEY_asterisk, 0, 0, 0, FALSE, FALSE},
+	{cmd_search_current_prev, GDK_KEY_numbersign, 0, 0, 0, FALSE, FALSE},
+
+	/* deletion */
+	{cmd_delete_line, GDK_KEY_D, 0, 0, 0, FALSE, FALSE},
+	{cmd_delete_line, GDK_KEY_d, GDK_KEY_d, 0, 0, FALSE, FALSE},
+	{cmd_delete_char, GDK_KEY_x, 0, 0, 0, FALSE, FALSE},
+	{cmd_delete_char_back, GDK_KEY_X, 0, 0, 0, FALSE, FALSE},
+
+	/* modification */
+	{cmd_join_lines, GDK_KEY_J, 0, 0, 0, FALSE, FALSE},
+	{cmd_switch_case_char, GDK_KEY_asciitilde, 0, 0, 0, FALSE, FALSE},//not correct position when undoing
+	{cmd_unindent, GDK_KEY_less, GDK_KEY_less, 0, 0, FALSE, FALSE},
+	{cmd_indent, GDK_KEY_greater, GDK_KEY_greater, 0, 0, FALSE, FALSE},
+	{cmd_replace_char, GDK_KEY_r, 0, 0, 0, TRUE, FALSE},
+
+	MOVEMENT_CMDS
+	RANGE_CMDS
+
+	/* special */
+	{cmd_repeat_last_command, GDK_KEY_period, 0, 0, 0, FALSE, FALSE},
+
+	{NULL, 0, 0, 0, 0, FALSE, FALSE}
 };
+
+CmdDef vis_mode_cmds[] = {
+	{cmd_swap_anchor, GDK_KEY_o, 0, 0, 0, FALSE, FALSE},
+	{cmd_exit_visual, GDK_KEY_v, 0, 0, 0, FALSE, FALSE},
+	MOVEMENT_CMDS
+	RANGE_CMDS
+	{NULL, 0, 0, 0, 0, FALSE, FALSE}
+};
+
 
 static gboolean is_in_cmd_group(CmdDef *cmds, CmdDef *def)
 {
@@ -611,7 +650,7 @@ static gboolean key_equals(KeyPress *kp, guint key, guint modif)
 }
 
 
-static CmdDef *get_cmd_to_run(GSList *kpl, CmdDef *cmds)
+static CmdDef *get_cmd_to_run(GSList *kpl, CmdDef *cmds, gboolean have_selection)
 {
 	gint i;
 	KeyPress *curr = g_slist_nth_data(kpl, 0);
@@ -628,6 +667,7 @@ static CmdDef *get_cmd_to_run(GSList *kpl, CmdDef *cmds)
 		{
 			CmdDef *cmd = &cmds[i];
 			if (cmd->key2 == 0 && cmd->param &&
+					((cmd->needs_selection && have_selection) || !cmd->needs_selection) &&
 					key_equals(prev, cmd->key1, cmd->modif1))
 				return cmd;
 		}
@@ -640,6 +680,7 @@ static CmdDef *get_cmd_to_run(GSList *kpl, CmdDef *cmds)
 		{
 			CmdDef *cmd = &cmds[i];
 			if (cmd->key2 != 0 && !cmd->param &&
+					((cmd->needs_selection && have_selection) || !cmd->needs_selection) &&
 					key_equals(curr, cmd->key2, cmd->modif2) &&
 					key_equals(prev, cmd->key1, cmd->modif1))
 				return cmd;
@@ -651,8 +692,10 @@ static CmdDef *get_cmd_to_run(GSList *kpl, CmdDef *cmds)
 	{
 		CmdDef *cmd = &cmds[i];
 		if (cmd->key2 == 0 && !cmd->param &&
+			((cmd->needs_selection && have_selection) || !cmd->needs_selection) &&
 			key_equals(curr, cmd->key1, cmd->modif1))
 		{
+			printf("%d %d\n", cmd->needs_selection, have_selection);
 			// now solve some quirks manually
 			if (curr->key == GDK_KEY_0)
 			{
@@ -684,6 +727,7 @@ static void perform_cmd(CmdDef *def, ScintillaObject *sci, CmdContext *ctx, GSLi
 	GSList *top = g_slist_nth(kpl, def->key2 != 0 ? 2 : 1);
 	gint num = kpl_get_int(top, &top);
 	gboolean num_present = num != -1;
+	ViMode mode = get_vi_mode();
 	CmdParams param;
 
 	param.sci = sci;
@@ -692,19 +736,18 @@ static void perform_cmd(CmdDef *def, ScintillaObject *sci, CmdContext *ctx, GSLi
 	param.last_kp = g_slist_nth_data(kpl, 0);
 	param.pos = sci_get_current_position(sci);
 	param.sel_start = SSM(sci, SCI_GETSELECTIONSTART, 0, 0);
-	param.sel_len = sci_get_selected_text_length(sci);
+	param.sel_len = sci_get_selection_end(sci) - sci_get_selection_start(sci);
 	param.line = sci_get_current_line(sci);
 
 	sci_start_undo_action(sci);
 
 	def->cmd(ctx, &param);
 
-	ViMode mode = get_vi_mode();
 	if (mode == VI_MODE_COMMAND)
 	{
 		if (is_in_cmd_group(movement_cmds, def))
 		{
-			def = get_cmd_to_run(top, range_cmds);
+			def = get_cmd_to_run(top, range_cmds, TRUE);
 			if (def)
 			{
 				gint new_pos = sci_get_current_position(sci);
@@ -728,23 +771,19 @@ static void perform_cmd(CmdDef *def, ScintillaObject *sci, CmdContext *ctx, GSLi
 
 gboolean process_event_cmd_mode(ScintillaObject *sci, CmdContext *ctx, GSList *kpl, GSList *prev_kpl, gboolean *is_repeat)
 {
-	CmdDef *def = get_cmd_to_run(kpl, repeat_cmds);
+	gboolean have_selection = sci_get_selection_end(sci)-sci_get_selection_start(sci) > 0;
+	CmdDef *def = get_cmd_to_run(kpl, cmd_mode_cmds, have_selection);
 
-	*is_repeat = def != NULL;
-
-	if (!def && sci_get_selected_text_length(sci) > 0)
-		def = get_cmd_to_run(kpl, range_cmds);
-
-	if (!def)
-		def = get_cmd_to_run(kpl, cmd_mode_cmds);
-
+	*is_repeat = FALSE;
 	if (!def)
 		return FALSE;
+
+	*is_repeat = def->cmd == cmd_repeat_last_command;
 
 	if (*is_repeat)
 	{
 		kpl = prev_kpl;
-		def = get_cmd_to_run(kpl, cmd_mode_cmds);
+		def = get_cmd_to_run(kpl, cmd_mode_cmds, have_selection);
 		if (!def)
 			return FALSE;
 	}
@@ -756,23 +795,12 @@ gboolean process_event_cmd_mode(ScintillaObject *sci, CmdContext *ctx, GSList *k
 
 gboolean process_event_vis_mode(ScintillaObject *sci, CmdContext *ctx, GSList *kpl)
 {
-	CmdDef *def = get_cmd_to_run(kpl, vis_mode_cmds);
-	gboolean end_visual_mode = FALSE;
-
-	if (!def)
-	{
-		def = get_cmd_to_run(kpl, range_cmds);
-		if (def)
-			end_visual_mode = TRUE;
-	}
+	CmdDef *def = get_cmd_to_run(kpl, vis_mode_cmds, TRUE);
 
 	if (!def)
 		return FALSE;
 
 	perform_cmd(def, sci, ctx, kpl);
-
-	if (end_visual_mode)
-		set_vi_mode(VI_MODE_COMMAND);
 
 	return TRUE;
 }

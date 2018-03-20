@@ -34,6 +34,8 @@ typedef struct
 {
 	/* the last full search command, including '/' or '?' */
 	gchar *search_text;
+	/* whether the last copy was in line-copy-mode (like yy) or selection mode */
+	gboolean line_copy;
 } CmdContext;
 
 
