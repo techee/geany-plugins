@@ -76,10 +76,10 @@ static void cmd_mode_visual(CmdContext *c, CmdParams *p)
 static void cmd_mode_insert_after(CmdContext *c, CmdParams *p)
 {
 	gint end_pos = sci_get_line_end_position(p->sci, p->line);
-	if (p->pos < end_pos)
-		SSM(p->sci, SCI_CHARRIGHT, 0, 0);
 
 	cmd_mode_insert(c, p);
+	if (p->pos < end_pos)
+		SSM(p->sci, SCI_CHARRIGHT, 0, 0);
 }
 
 static void cmd_mode_insert_line_start(CmdContext *c, CmdParams *p)
@@ -477,11 +477,12 @@ static void cmd_range_copy(CmdContext *c, CmdParams *p)
 
 static void cmd_range_change(CmdContext *c, CmdParams *p)
 {
+	
 }
 
 static void cmd_repeat_last_command(CmdContext *c, CmdParams *p)
 {
-	// fake
+	// fake - handled in a special way
 }
 
 static void cmd_swap_anchor(CmdContext *c, CmdParams *p)
@@ -763,8 +764,12 @@ static void perform_cmd(CmdDef *def, ScintillaObject *sci, CmdContext *ctx, GSLi
 				def->cmd(ctx, &param);
 			}
 		}
-		clamp_cursor_pos(sci);
 	}
+
+	/* mode could have changed after performing command */
+	if (get_vi_mode() == VI_MODE_COMMAND)
+		clamp_cursor_pos(sci);
+
 	sci_end_undo_action(sci);
 }
 

@@ -450,8 +450,8 @@ static gboolean on_editor_notify(GObject *object, GeanyEditor *editor,
 
 	/* this makes sure that when we click behind the end of line in command mode,
 	 * the cursor is not placed BEHIND the last character but ON the last character */
-	if (nt->nmhdr.code == SCN_UPDATEUI && nt->updated == SC_UPDATE_SELECTION)
-		clamp_cursor_pos(sci);
+	//if (nt->nmhdr.code == SCN_UPDATEUI && nt->updated == SC_UPDATE_SELECTION)
+	//	clamp_cursor_pos(sci);
 
 	return FALSE;
 }
