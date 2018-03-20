@@ -320,8 +320,13 @@ static void cmd_goto_line(CmdContext *c, CmdParams *p)
 static void cmd_goto_line_last(CmdContext *c, CmdParams *p)
 {
 	gint line_num = sci_get_line_count(p->sci);
-	p->num = p->num_present ? p->num : line_num;
-	cmd_goto_line(c, p);
+	gint num = p->num > line_num ? line_num : p->num;
+	gint pos;
+
+	if (!p->num_present)
+		num = line_num;
+	pos = sci_get_position_from_line(p->sci, num - 1);
+	sci_set_current_position(p->sci, pos, TRUE);
 }
 
 static void cmd_join_lines(CmdContext *c, CmdParams *p)
