@@ -376,8 +376,9 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 		{
 			gint pos = sci_get_current_position(sci);
 			gint start_pos = sci_get_position_from_line(sci, sci_get_current_line(sci));
+			SSM(sci, SCI_SETEMPTYSELECTION, pos, 0);
 			if (pos > start_pos)
-				sci_send_command(sci, SCI_CHARLEFT);
+				sci_set_current_position(sci, pos-1, FALSE);
 			leave_onetime_vi_mode();
 			set_vi_mode(VI_MODE_COMMAND);
 			g_slist_free_full(state.kpl, g_free);

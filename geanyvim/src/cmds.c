@@ -826,15 +826,17 @@ gboolean process_event_cmd_mode(ScintillaObject *sci, CmdContext *ctx, GSList *k
 gboolean process_event_vis_mode(ScintillaObject *sci, CmdContext *ctx, GSList *kpl)
 {
 	CmdDef *def = get_cmd_to_run(kpl, vis_mode_cmds, TRUE);
-	gint pos;
 
 	if (!def)
 		return FALSE;
 
 	perform_cmd(def, sci, ctx, kpl);
 
-	pos = sci_get_current_position(sci);
-	SSM(sci, SCI_SETSEL, ctx->sel_anchor, pos);
+	if (get_vi_mode() == VI_MODE_VISUAL)
+	{
+		gint pos = sci_get_current_position(sci);
+		SSM(sci, SCI_SETSEL, ctx->sel_anchor, pos);
+	}
 
 	return TRUE;
 }
