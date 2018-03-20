@@ -207,8 +207,10 @@ static void cmd_redo(CmdContext *c, CmdParams *p)
 
 static void cmd_copy_line(CmdContext *c, CmdParams *p)
 {
+	gint line_num = SSM(p->sci, SCI_GETLINECOUNT, 0, 0);
+	gint num = p->line + p->num < line_num ? p->line + p->num : line_num;
 	gint start = sci_get_position_from_line(p->sci, p->line);
-	gint end = sci_get_position_from_line(p->sci, p->line + p->num);
+	gint end = sci_get_position_from_line(p->sci, num);
 	SSM(p->sci, SCI_COPYRANGE, start, end);
 	c->line_copy = TRUE;
 }
@@ -238,8 +240,10 @@ static void cmd_paste(CmdContext *c, CmdParams *p)
 
 static void cmd_delete_line(CmdContext *c, CmdParams *p)
 {
+	gint line_num = SSM(p->sci, SCI_GETLINECOUNT, 0, 0);
+	gint num = p->line + p->num < line_num ? p->line + p->num : line_num;
 	gint start = sci_get_position_from_line(p->sci, p->line);
-	gint end = sci_get_position_from_line(p->sci, p->line + p->num);
+	gint end = sci_get_position_from_line(p->sci, num);
 	SSM(p->sci, SCI_DELETERANGE, start, end-start);
 }
 
