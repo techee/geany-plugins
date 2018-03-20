@@ -84,15 +84,14 @@ static void cmd_mode_insert_after(CmdContext *c, CmdParams *p)
 
 static void cmd_mode_insert_line_start(CmdContext *c, CmdParams *p)
 {
-	gint pos = p->pos;
+	gint line_end_pos = SSM(p->sci, SCI_GETLINEENDPOSITION, p->line, 0);
+	gint pos;
+
 	SSM(p->sci, SCI_HOME, 0, 0);
-	while (isspace(sci_get_char_at(p->sci, pos)))
-	{
-		if (sci_get_line_from_position(p->sci, pos + 1) != p->line)
-			break;
+	pos = sci_get_current_position(p->sci);
+	while (isspace(sci_get_char_at(p->sci, pos)) && pos < line_end_pos)
 		pos++;
-	}
-	sci_set_current_position(p->sci, pos, TRUE);
+	sci_set_current_position(p->sci, pos, FALSE);
 	cmd_mode_insert(c, p);
 }
 
@@ -106,6 +105,8 @@ static void cmd_mode_insert_next_line(CmdContext *c, CmdParams *p)
 {
 	SSM(p->sci, SCI_LINEEND, 0, 0);
 	SSM(p->sci, SCI_NEWLINE, 0, 0);
+	// undo inserted indentation
+	SSM(p->sci, SCI_DELLINELEFT, 0, 0);
 	cmd_mode_insert(c, p);
 }
 
@@ -574,7 +575,7 @@ CmdDef cmd_mode_cmds[] = {
 	{cmd_mode_insert, GDK_KEY_i, 0, 0, 0, FALSE, FALSE},
 	{cmd_mode_insert_after, GDK_KEY_a, 0, 0, 0, FALSE, FALSE},
 	{cmd_mode_insert_line_start, GDK_KEY_I, 0, 0, 0, FALSE, FALSE},
-	{cmd_mode_insert_line_end, GDK_KEY_A, 0, 0, 0, FALSE, FALSE},//not correct pos
+	{cmd_mode_insert_line_end, GDK_KEY_A, 0, 0, 0, FALSE, FALSE},
 	{cmd_mode_insert_next_line, GDK_KEY_o, 0, 0, 0, FALSE, FALSE},
 	{cmd_mode_insert_clear_line, GDK_KEY_S, 0, 0, 0, FALSE, FALSE},
 	{cmd_mode_insert_clear_line, GDK_KEY_c, GDK_KEY_c, 0, 0, FALSE, FALSE},
