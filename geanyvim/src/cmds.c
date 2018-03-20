@@ -288,23 +288,32 @@ static void cmd_delete_char(CmdContext *c, CmdParams *p)
 {
 	gint i;
 	for (i = 0; i < p->num; i++)
+	{
+		if (SSM(p->sci, SCI_GETLINEENDPOSITION, p->line, 0) == p->pos)
+			break;
 		SSM(p->sci, SCI_DELETERANGE, p->pos, 1);
+	}
 }
 
 static void cmd_delete_char_back(CmdContext *c, CmdParams *p)
 {
 	gint i;
+	gint pos = p->pos;
+	gint line_start = SSM(p->sci, SCI_POSITIONFROMLINE, p->line, 0);
 	for (i = 0; i < p->num; i++)
-		SSM(p->sci, SCI_DELETERANGE, p->pos-1, 1);
+	{
+		if (pos == line_start)
+			break;
+		SSM(p->sci, SCI_DELETERANGE, pos-1, 1);
+		pos--;
+	}
 }
 
 static void cmd_goto_line(CmdContext *c, CmdParams *p)
 {
 	gint line_num = sci_get_line_count(p->sci);
 	gint num = p->num > line_num ? line_num : p->num;
-	gint pos;
-	
-	pos = sci_get_position_from_line(p->sci, num - 1);
+	gint pos = sci_get_position_from_line(p->sci, num - 1);
 	sci_set_current_position(p->sci, pos, TRUE);
 }
 
