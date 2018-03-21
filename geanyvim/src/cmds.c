@@ -223,18 +223,23 @@ static void cmd_copy_line(CmdContext *c, CmdParams *p)
 	c->line_copy = TRUE;
 }
 
-static void cmd_paste(CmdContext *c, CmdParams *p)
+static void cmd_paste(CmdContext *c, CmdParams *p, gboolean after)
 {
 	gint pos;
 	gint i;
 
 	if (c->line_copy)
-		pos = sci_get_position_from_line(p->sci, p->line+1);
+	{
+		if (after)
+			pos = sci_get_position_from_line(p->sci, p->line+1);
+		else
+			pos = sci_get_position_from_line(p->sci, p->line);
+	}
 	else
 	{
 		pos = p->pos;
-		if (p->pos < SSM(p->sci, SCI_GETLINEENDPOSITION, p->line, 0))
-			pos = p->pos+1;
+		if (after && pos < SSM(p->sci, SCI_GETLINEENDPOSITION, p->line, 0))
+			pos++;
 	}
 
 	sci_set_current_position(p->sci, pos, TRUE);
@@ -244,6 +249,16 @@ static void cmd_paste(CmdContext *c, CmdParams *p)
 		sci_set_current_position(p->sci, pos, TRUE);
 	else
 		SSM(p->sci, SCI_CHARLEFT, 0, 0);
+}
+
+static void cmd_paste_after(CmdContext *c, CmdParams *p)
+{
+	cmd_paste(c, p, TRUE);
+}
+
+static void cmd_paste_before(CmdContext *c, CmdParams *p)
+{
+	cmd_paste(c, p, FALSE);
 }
 
 static void cmd_delete_line(CmdContext *c, CmdParams *p)
@@ -750,11 +765,10 @@ CmdDef cmd_mode_cmds[] = {
 	/* copy/paste */
 	{cmd_copy_line, GDK_KEY_y, GDK_KEY_y, 0, 0, FALSE, FALSE},
 	{cmd_copy_line, GDK_KEY_Y, 0, 0, 0, FALSE, FALSE},
-	{cmd_paste, GDK_KEY_p, 0, 0, 0, FALSE, FALSE},
-	/* TODO: P - paste after */
+	{cmd_paste_after, GDK_KEY_p, 0, 0, 0, FALSE, FALSE},
+	{cmd_paste_before, GDK_KEY_P, 0, 0, 0, FALSE, FALSE},
 
 	/* changing text */
-	/* enter replace mode */
 	{cmd_mode_replace, GDK_KEY_R, 0, 0, 0, FALSE, FALSE},
 	{cmd_mode_insert_clear_line, GDK_KEY_c, GDK_KEY_c, 0, 0, FALSE, FALSE},
 	{cmd_mode_insert_clear_line, GDK_KEY_S, 0, 0, 0, FALSE, FALSE},
