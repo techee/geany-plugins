@@ -71,6 +71,8 @@ struct
 {
 	/* caret style used by Geany we can revert to when disabling vi mode */
 	gint default_caret_style;
+	/* caret period used by Geany we can revert to when disabling vi mode */
+	gint default_caret_period;
 
 	/* whether vi mode is enabled or disabled */
 	gboolean vi_enabled; 
@@ -87,7 +89,7 @@ struct
 	gint num;
 } state =
 {
-	-1, TRUE, FALSE, VI_MODE_COMMAND, NULL, NULL
+	-1, -1, TRUE, FALSE, VI_MODE_COMMAND, NULL, NULL, 1
 };
 
 CmdContext ctx =
@@ -137,11 +139,15 @@ static void set_vi_mode_full(ViMode mode, ScintillaObject *sci)
 		return;
 
 	if (state.default_caret_style == -1)
+	{
 		state.default_caret_style = SSM(sci, SCI_GETCARETSTYLE, 0, 0);
+		state.default_caret_period = SSM(sci, SCI_GETCARETPERIOD, 0, 0);
+	}
 
 	if (!state.vi_enabled)
 	{
 		SSM(sci, SCI_SETCARETSTYLE, state.default_caret_style, 0);
+		SSM(sci, SCI_SETCARETPERIOD, state.default_caret_period, 0);
 		return;
 	}
 
@@ -155,16 +161,19 @@ static void set_vi_mode_full(ViMode mode, ScintillaObject *sci)
 		case VI_MODE_COMMAND:
 			SSM(sci, SCI_SETOVERTYPE, 0, 0);
 			SSM(sci, SCI_SETCARETSTYLE, CARETSTYLE_BLOCK, 0);
+			SSM(sci, SCI_SETCARETPERIOD, 0, 0);
 			SSM(sci, SCI_CANCEL, 0, 0);
 			clamp_cursor_pos(sci);
 			break;
 		case VI_MODE_INSERT:
 			SSM(sci, SCI_SETOVERTYPE, 0, 0);
 			SSM(sci, SCI_SETCARETSTYLE, CARETSTYLE_LINE, 0);
+			SSM(sci, SCI_SETCARETPERIOD, state.default_caret_period, 0);
 			break;
 		case VI_MODE_REPLACE:
 			SSM(sci, SCI_SETOVERTYPE, 1, 0);
 			SSM(sci, SCI_SETCARETSTYLE, CARETSTYLE_LINE, 0);
+			SSM(sci, SCI_SETCARETPERIOD, state.default_caret_period, 0);
 			break;
 		case VI_MODE_VISUAL:
 			SSM(sci, SCI_SETOVERTYPE, 0, 0);
@@ -175,6 +184,7 @@ static void set_vi_mode_full(ViMode mode, ScintillaObject *sci)
 			 * simply won't behave as vim's visual mode in this respect. Use
 			 * line caret here which makes it more clear what's being selected. */
 			SSM(sci, SCI_SETCARETSTYLE, CARETSTYLE_LINE, 0);
+			SSM(sci, SCI_SETCARETPERIOD, 0, 0);
 			ctx.sel_anchor = sci_get_current_position(sci);
 			break;
 	}
@@ -544,6 +554,7 @@ void plugin_cleanup(void)
 		{
 			ScintillaObject *sci = documents[i]->editor->sci;
 			SSM(sci, SCI_SETCARETSTYLE, state.default_caret_style, 0);
+			SSM(sci, SCI_SETCARETPERIOD, state.default_caret_period, 0);
 		}
 	}
 
