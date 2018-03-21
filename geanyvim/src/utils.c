@@ -222,7 +222,7 @@ void perform_search(ScintillaObject *sci, CmdContext *ctx, gboolean forward)
 	}
 	else
 	{
-		ttf.chrg.cpMin = pos - 1;
+		ttf.chrg.cpMin = pos;
 		ttf.chrg.cpMax = 0;
 	}
 

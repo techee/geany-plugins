@@ -91,7 +91,7 @@ struct
 
 CmdContext ctx =
 {
-	NULL, FALSE
+	NULL, NULL, FALSE, 0
 };
 
 
@@ -100,7 +100,7 @@ static const gchar *get_mode_name(ViMode vi_mode)
 	switch (vi_mode)
 	{
 		case VI_MODE_COMMAND:
-			return "COMMAND";
+			return "";
 			break;
 		case VI_MODE_INSERT:
 			return "INSERT";
@@ -111,9 +111,6 @@ static const gchar *get_mode_name(ViMode vi_mode)
 		case VI_MODE_VISUAL:
 			return "VISUAL";
 			break;
-		case VI_MODE_CMDLINE:
-			return "CMDLINE";
-			break;
 	}
 	return "";
 }
@@ -121,6 +118,15 @@ static const gchar *get_mode_name(ViMode vi_mode)
 ViMode get_vi_mode(void)
 {
 	return state.vi_mode;
+}
+
+void enter_cmdline_mode(void)
+{
+	KeyPress *kp = g_slist_nth_data(state.kpl, 0);
+	gchar val[2] = {kp_to_char(kp), '\0'};
+	gtk_widget_show(vi_widgets.prompt);
+	gtk_entry_set_text(GTK_ENTRY(vi_widgets.entry), val);
+	gtk_editable_set_position(GTK_EDITABLE(vi_widgets.entry), 1);
 }
 
 static void set_vi_mode_full(ViMode mode, ScintillaObject *sci)
@@ -150,15 +156,6 @@ static void set_vi_mode_full(ViMode mode, ScintillaObject *sci)
 			SSM(sci, SCI_CANCEL, 0, 0);
 			clamp_cursor_pos(sci);
 			break;
-		case VI_MODE_CMDLINE:
-		{
-			KeyPress *kp = g_slist_nth_data(state.kpl, 0);
-			gchar val[2] = {kp_to_char(kp), '\0'};
-			gtk_widget_show(vi_widgets.prompt);
-			gtk_entry_set_text(GTK_ENTRY(vi_widgets.entry), val);
-			gtk_editable_set_position(GTK_EDITABLE(vi_widgets.entry), 1);
-			break;
-		}
 		case VI_MODE_INSERT:
 			SSM(sci, SCI_SETOVERTYPE, 0, 0);
 			SSM(sci, SCI_SETCARETSTYLE, CARETSTYLE_LINE, 0);
@@ -168,6 +165,7 @@ static void set_vi_mode_full(ViMode mode, ScintillaObject *sci)
 			SSM(sci, SCI_SETCARETSTYLE, CARETSTYLE_LINE, 0);
 			break;
 		case VI_MODE_VISUAL:
+			SSM(sci, SCI_SETOVERTYPE, 0, 0);
 			/* Even with block-style caret, scintilla's caret behaves differently
 			 * from how vim behaves - it always behaves as if the caret is before
 			 * the character it's placed on. With visual mode we'd need selection
@@ -240,6 +238,11 @@ static void perform_command(const gchar *cmd)
 			g_free(ctx.search_text);
 			ctx.search_text = g_strdup(cmd);
 			perform_search(sci, &ctx, TRUE);
+			if (get_vi_mode() == VI_MODE_VISUAL)
+			{
+				gint pos = sci_get_current_position(sci);
+				SSM(sci, SCI_SETSEL, ctx.sel_anchor, pos);
+			}
 			break;
 	}
 }

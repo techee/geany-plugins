@@ -22,13 +22,13 @@
 
 typedef enum {
 	VI_MODE_COMMAND,
-	VI_MODE_CMDLINE,
-	VI_MODE_INSERT,
 	VI_MODE_VISUAL,
+	VI_MODE_INSERT,
 	VI_MODE_REPLACE,
 } ViMode;
 
 
+void enter_cmdline_mode(void);
 void set_vi_mode(ViMode mode);
 ViMode get_vi_mode(void);
 

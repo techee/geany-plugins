@@ -55,7 +55,7 @@ typedef void (*Cmd)(CmdContext *c, CmdParams *p);
 
 static void cmd_mode_cmdline(CmdContext *c, CmdParams *p)
 {
-	set_vi_mode(VI_MODE_CMDLINE);
+	enter_cmdline_mode();
 }
 
 static void cmd_mode_insert(CmdContext *c, CmdParams *p)
@@ -449,6 +449,93 @@ static void cmd_replace_char(CmdContext *c, CmdParams *p)
 	sci_replace_target(p->sci, repl, FALSE);
 }
 
+static void cmd_find_char(CmdContext *c, CmdParams *p, gboolean invert)
+{
+	struct Sci_TextToFind ttf;
+	gboolean forward;
+	gint pos = p->pos;
+	gint i;
+
+	if (!c->search_char)
+		return;
+
+	forward = c->search_char[0] == 'f' || c->search_char[0] == 't';
+	forward = forward != invert;
+	ttf.lpstrText = c->search_char + 1;
+
+	for (i = 0; i < p->num; i++)
+	{
+		gint new_pos;
+
+		if (forward)
+		{
+			ttf.chrg.cpMin = pos + 1;
+			ttf.chrg.cpMax = SSM(p->sci, SCI_GETLINEENDPOSITION, p->line, 0);
+		}
+		else
+		{
+			ttf.chrg.cpMin = pos;
+			ttf.chrg.cpMax = SSM(p->sci, SCI_POSITIONFROMLINE, p->line, 0);
+		}
+
+		new_pos = sci_find_text(p->sci, 0, &ttf);
+		if (new_pos < 0)
+			break;
+		pos = new_pos;
+	}
+
+	if (pos >= 0)
+	{
+		if (c->search_char[0] == 't')
+			pos--;
+		else if (c->search_char[0] == 'T')
+			pos++;
+		sci_set_current_position(p->sci, pos, FALSE);
+	}
+}
+
+static void cmd_find_next_char(CmdContext *c, CmdParams *p)
+{
+	gchar to_find[3] = {'f', kp_to_char(p->last_kp), '\0'};
+	g_free(c->search_char);
+	c->search_char = g_strdup(to_find);
+	cmd_find_char(c, p, FALSE);
+}
+
+static void cmd_find_prev_char(CmdContext *c, CmdParams *p)
+{
+	gchar to_find[3] = {'F', kp_to_char(p->last_kp), '\0'};
+	g_free(c->search_char);
+	c->search_char = g_strdup(to_find);
+	cmd_find_char(c, p, FALSE);
+}
+
+static void cmd_find_next_char_before(CmdContext *c, CmdParams *p)
+{
+	gchar to_find[3] = {'t', kp_to_char(p->last_kp), '\0'};
+	g_free(c->search_char);
+	c->search_char = g_strdup(to_find);
+	cmd_find_char(c, p, FALSE);
+}
+
+static void cmd_find_prev_char_before(CmdContext *c, CmdParams *p)
+{
+	gchar to_find[3] = {'T', kp_to_char(p->last_kp), '\0'};
+	g_free(c->search_char);
+	c->search_char = g_strdup(to_find);
+	cmd_find_char(c, p, FALSE);
+}
+
+static void cmd_find_char_repeat(CmdContext *c, CmdParams *p)
+{
+	cmd_find_char(c, p, FALSE);
+}
+
+static void cmd_find_char_repeat_opposite(CmdContext *c, CmdParams *p)
+{
+	cmd_find_char(c, p, TRUE);
+}
+
 static void cmd_switch_case_char(CmdContext *c, CmdParams *p)
 {
 	gchar upper[2] = {toupper(sci_get_char_at(p->sci, p->pos)), '\0'};
@@ -567,7 +654,13 @@ typedef struct {
 	{cmd_goto_line_end, GDK_KEY_dollar, 0, 0, 0, FALSE, FALSE}, \
 	{cmd_goto_line_end, GDK_KEY_End, 0, 0, 0, FALSE, FALSE}, \
 	/* TODO  - go to column */ \
-	/* TODO  - f, F, t, T, ,, ; */ \
+	/* find character */ \
+	{cmd_find_next_char, GDK_KEY_f, 0, 0, 0, TRUE, FALSE}, \
+	{cmd_find_prev_char, GDK_KEY_F, 0, 0, 0, TRUE, FALSE}, \
+	{cmd_find_next_char_before, GDK_KEY_t, 0, 0, 0, TRUE, FALSE}, \
+	{cmd_find_prev_char_before, GDK_KEY_T, 0, 0, 0, TRUE, FALSE}, \
+	{cmd_find_char_repeat, GDK_KEY_semicolon, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_find_char_repeat_opposite, GDK_KEY_comma, 0, 0, 0, FALSE, FALSE}, \
 	/* up */ \
 	{cmd_goto_up, GDK_KEY_Up, 0, 0, 0, FALSE, FALSE}, \
 	{cmd_goto_up, GDK_KEY_uparrow, 0, 0, 0, FALSE, FALSE}, \
@@ -628,6 +721,11 @@ CmdDef range_cmds[] = {
 	{NULL, 0, 0, 0, 0, FALSE, FALSE}
 };
 
+#define ENTER_CMDLINE_CMDS \
+	{cmd_mode_cmdline, GDK_KEY_colon, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_mode_cmdline, GDK_KEY_slash, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_mode_cmdline, GDK_KEY_question, 0, 0, 0, FALSE, FALSE},
+
 CmdDef cmd_mode_cmds[] = {
 	/* enter insert mode */
 	{cmd_mode_insert_after, GDK_KEY_a, 0, 0, 0, FALSE, FALSE},
@@ -638,10 +736,8 @@ CmdDef cmd_mode_cmds[] = {
 	{cmd_mode_insert_prev_line, GDK_KEY_O, 0, 0, 0, FALSE, FALSE},
 	/* enter visual mode */
 	{cmd_mode_visual, GDK_KEY_v, 0, 0, 0, FALSE, FALSE},
-	/* enter cmdline mode */
-	{cmd_mode_cmdline, GDK_KEY_colon, 0, 0, 0, FALSE, FALSE},
-	{cmd_mode_cmdline, GDK_KEY_slash, 0, 0, 0, FALSE, FALSE},
-	{cmd_mode_cmdline, GDK_KEY_question, 0, 0, 0, FALSE, FALSE},
+
+	ENTER_CMDLINE_CMDS
 
 	/* deletion */
 	{cmd_delete_char, GDK_KEY_x, 0, 0, 0, FALSE, FALSE},
@@ -696,6 +792,7 @@ CmdDef vis_mode_cmds[] = {
 	{cmd_exit_visual, GDK_KEY_v, 0, 0, 0, FALSE, FALSE},
 	MOVEMENT_CMDS
 	RANGE_CMDS
+	ENTER_CMDLINE_CMDS
 	{NULL, 0, 0, 0, 0, FALSE, FALSE}
 };
 
@@ -792,7 +889,7 @@ static CmdDef *get_cmd_to_run(GSList *kpl, CmdDef *cmds, gboolean have_selection
 
 static void perform_cmd(CmdDef *def, ScintillaObject *sci, CmdContext *ctx, GSList *kpl)
 {
-	GSList *top = g_slist_nth(kpl, def->key2 != 0 ? 2 : 1);
+	GSList *top = g_slist_nth(kpl, (def->key2 != 0 || def->param) ? 2 : 1);
 	gint num = kpl_get_int(top, &top);
 	gboolean num_present = num != -1;
 	ViMode mode = get_vi_mode();
