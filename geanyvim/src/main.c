@@ -393,7 +393,7 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 			gboolean is_repeat_command;
 
 			state.kpl = g_slist_prepend(state.kpl, kp);
-			//printf("key: %d, state: %d\n", event->keyval, event->state);
+			printf("key: %x, state: %d\n", event->keyval, event->state);
 			//kpl_printf(state.kpl);
 			//kpl_printf(state.prev_kpl);
 			if (state.vi_mode == VI_MODE_COMMAND)
