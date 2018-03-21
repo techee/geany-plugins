@@ -83,7 +83,8 @@ struct
 	GSList *kpl;
 	/* kpl of the previous command (used for repeating last command) */
 	GSList *prev_kpl;
-
+	/* number entered before performing command-line command */
+	gint num;
 } state =
 {
 	-1, TRUE, FALSE, VI_MODE_COMMAND, NULL, NULL
@@ -120,10 +121,11 @@ ViMode get_vi_mode(void)
 	return state.vi_mode;
 }
 
-void enter_cmdline_mode(void)
+void enter_cmdline_mode(gint num)
 {
 	KeyPress *kp = g_slist_nth_data(state.kpl, 0);
 	gchar val[2] = {kp_to_char(kp), '\0'};
+	state.num = num;
 	gtk_widget_show(vi_widgets.prompt);
 	gtk_entry_set_text(GTK_ENTRY(vi_widgets.entry), val);
 	gtk_editable_set_position(GTK_EDITABLE(vi_widgets.entry), 1);
@@ -237,7 +239,7 @@ static void perform_command(const gchar *cmd)
 		case '?':
 			g_free(ctx.search_text);
 			ctx.search_text = g_strdup(cmd);
-			perform_search(sci, &ctx, TRUE);
+			perform_search(sci, &ctx, state.num, FALSE);
 			if (get_vi_mode() == VI_MODE_VISUAL)
 			{
 				gint pos = sci_get_current_position(sci);

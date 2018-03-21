@@ -55,7 +55,7 @@ typedef void (*Cmd)(CmdContext *c, CmdParams *p);
 
 static void cmd_mode_cmdline(CmdContext *c, CmdParams *p)
 {
-	enter_cmdline_mode();
+	enter_cmdline_mode(p->num);
 }
 
 static void cmd_mode_insert(CmdContext *c, CmdParams *p)
@@ -255,16 +255,14 @@ static void cmd_delete_line(CmdContext *c, CmdParams *p)
 	SSM(p->sci, SCI_DELETERANGE, start, end-start);
 }
 
-static void cmd_search(CmdContext *c, CmdParams *p)
+static void cmd_search_next(CmdContext *c, CmdParams *p)
 {
-	gboolean forward = TRUE;
-	gint i;
+	gboolean invert = FALSE;
 
 	if (p->last_kp->key == GDK_KEY_N)
-		forward = FALSE;
+		invert = TRUE;
 
-	for (i = 0; i < p->num; i++)
-		perform_search(p->sci, c, forward);
+	perform_search(p->sci, c, p->num, invert);
 }
 
 static void search_current(CmdContext *c, CmdParams *p, gboolean next)
@@ -279,7 +277,7 @@ static void search_current(CmdContext *c, CmdParams *p, gboolean next)
 		c->search_text = g_strconcat(prefix, word, NULL);
 	}
 	g_free(word);
-	cmd_search(c, p);
+	perform_search(p->sci, c, p->num, FALSE);
 }
 
 static void cmd_search_current_next(CmdContext *c, CmdParams *p)
@@ -460,7 +458,7 @@ static void cmd_find_char(CmdContext *c, CmdParams *p, gboolean invert)
 		return;
 
 	forward = c->search_char[0] == 'f' || c->search_char[0] == 't';
-	forward = forward != invert;
+	forward = !forward != !invert;
 	ttf.lpstrText = c->search_char + 1;
 
 	for (i = 0; i < p->num; i++)
@@ -773,8 +771,8 @@ CmdDef cmd_mode_cmds[] = {
 	{cmd_redo, GDK_KEY_r, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
 
 	/* search */
-	{cmd_search, GDK_KEY_n, 0, 0, 0, FALSE, FALSE},
-	{cmd_search, GDK_KEY_N, 0, 0, 0, FALSE, FALSE},
+	{cmd_search_next, GDK_KEY_n, 0, 0, 0, FALSE, FALSE},
+	{cmd_search_next, GDK_KEY_N, 0, 0, 0, FALSE, FALSE},
 	{cmd_search_current_next, GDK_KEY_asterisk, 0, 0, 0, FALSE, FALSE},
 	{cmd_search_current_prev, GDK_KEY_numbersign, 0, 0, 0, FALSE, FALSE},
 
@@ -889,11 +887,21 @@ static CmdDef *get_cmd_to_run(GSList *kpl, CmdDef *cmds, gboolean have_selection
 
 static void perform_cmd(CmdDef *def, ScintillaObject *sci, CmdContext *ctx, GSList *kpl)
 {
-	GSList *top = g_slist_nth(kpl, (def->key2 != 0 || def->param) ? 2 : 1);
-	gint num = kpl_get_int(top, &top);
-	gboolean num_present = num != -1;
-	ViMode mode = get_vi_mode();
+	GSList *top;
+	gint num;
+	gint cmd_len = 0;
+	gboolean num_present;
 	CmdParams param;
+
+	if (def->key1 != 0)
+		cmd_len++;
+	if (def->key2 != 0)
+		cmd_len++;
+	if (def->param)
+		cmd_len++;
+	top = g_slist_nth(kpl, cmd_len);
+	num = kpl_get_int(top, &top);
+	num_present = num != -1;
 
 	param.sci = sci;
 	param.num = num_present ? num : 1;
@@ -908,7 +916,7 @@ static void perform_cmd(CmdDef *def, ScintillaObject *sci, CmdContext *ctx, GSLi
 
 	def->cmd(ctx, &param);
 
-	if (mode == VI_MODE_COMMAND)
+	if (get_vi_mode() == VI_MODE_COMMAND)
 	{
 		if (is_in_cmd_group(movement_cmds, def))
 		{

@@ -201,51 +201,59 @@ gchar *get_current_word(ScintillaObject *sci)
 	return sci_get_contents_range(sci, start, end);
 }
 
-void perform_search(ScintillaObject *sci, CmdContext *ctx, gboolean forward)
+void perform_search(ScintillaObject *sci, CmdContext *c, gint num, gboolean invert)
 {
 	struct Sci_TextToFind ttf;
-	gint loc, len, pos;
+	gint pos = sci_get_current_position(sci);
+	gint len = sci_get_length(sci);
+	gboolean forward;
+	gint i;
 
-	if (!ctx->search_text)
+	if (!c->search_text)
 		return;
 
-	len = sci_get_length(sci);
-	pos = sci_get_current_position(sci);
+	forward = c->search_text[0] == '/';
+	forward = !forward != !invert;
+	ttf.lpstrText = c->search_text + 1;
 
-	forward = (ctx->search_text[0] == '/' && forward) ||
-			(ctx->search_text[0] == '?' && !forward);
-	ttf.lpstrText = ctx->search_text + 1;
-	if (forward)
+	for (i = 0; i < num; i++)
 	{
-		ttf.chrg.cpMin = pos + 1;
-		ttf.chrg.cpMax = len;
-	}
-	else
-	{
-		ttf.chrg.cpMin = pos;
-		ttf.chrg.cpMax = 0;
-	}
+		gint new_pos;
 
-	loc = sci_find_text(sci, 0, &ttf);
-	if (loc < 0)
-	{
-		/* wrap */
 		if (forward)
 		{
-			ttf.chrg.cpMin = 0;
-			ttf.chrg.cpMax = pos;
+			ttf.chrg.cpMin = pos + 1;
+			ttf.chrg.cpMax = len;
 		}
 		else
 		{
-			ttf.chrg.cpMin = len;
-			ttf.chrg.cpMax = pos;
+			ttf.chrg.cpMin = pos;
+			ttf.chrg.cpMax = 0;
 		}
 
-		loc = sci_find_text(sci, 0, &ttf);
+		new_pos = sci_find_text(sci, 0, &ttf);
+		if (new_pos < 0)
+		{
+			/* wrap */
+			if (forward)
+			{
+				ttf.chrg.cpMin = 0;
+				ttf.chrg.cpMax = pos;
+			}
+			else
+			{
+				ttf.chrg.cpMin = len;
+				ttf.chrg.cpMax = pos;
+			}
+
+			new_pos = sci_find_text(sci, 0, &ttf);
+		}
+
+		if (new_pos < 0)
+			break;
+		pos = new_pos;
 	}
 
-	if (loc >= 0)
-		sci_set_current_position(sci, loc, TRUE);
+	if (pos >= 0)
+		sci_set_current_position(sci, pos, TRUE);
 }
-
-

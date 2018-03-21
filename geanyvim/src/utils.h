@@ -37,6 +37,6 @@ ScintillaObject *get_current_doc_sci(void);
 gchar *get_current_word(ScintillaObject *sci);
 
 void clamp_cursor_pos(ScintillaObject *sci);
-void perform_search(ScintillaObject *sci, CmdContext *ctx, gboolean forward);
+void perform_search(ScintillaObject *sci, CmdContext *c, gint num, gboolean invert);
 
 #endif
