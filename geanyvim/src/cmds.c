@@ -629,29 +629,47 @@ CmdDef range_cmds[] = {
 };
 
 CmdDef cmd_mode_cmds[] = {
+	/* enter insert mode */
+	{cmd_mode_insert_after, GDK_KEY_a, 0, 0, 0, FALSE, FALSE},
+	{cmd_mode_insert_line_end, GDK_KEY_A, 0, 0, 0, FALSE, FALSE},
+	{cmd_mode_insert, GDK_KEY_i, 0, 0, 0, FALSE, FALSE},
+	{cmd_mode_insert_line_start, GDK_KEY_I, 0, 0, 0, FALSE, FALSE},
+	{cmd_mode_insert_next_line, GDK_KEY_o, 0, 0, 0, FALSE, FALSE},
+	{cmd_mode_insert_prev_line, GDK_KEY_O, 0, 0, 0, FALSE, FALSE},
+	/* enter visual mode */
+	{cmd_mode_visual, GDK_KEY_v, 0, 0, 0, FALSE, FALSE},
 	/* enter cmdline mode */
 	{cmd_mode_cmdline, GDK_KEY_colon, 0, 0, 0, FALSE, FALSE},
 	{cmd_mode_cmdline, GDK_KEY_slash, 0, 0, 0, FALSE, FALSE},
 	{cmd_mode_cmdline, GDK_KEY_question, 0, 0, 0, FALSE, FALSE},
-	/* enter insert mode */
-	{cmd_mode_insert, GDK_KEY_i, 0, 0, 0, FALSE, FALSE},
-	{cmd_mode_insert_after, GDK_KEY_a, 0, 0, 0, FALSE, FALSE},
-	{cmd_mode_insert_line_start, GDK_KEY_I, 0, 0, 0, FALSE, FALSE},
-	{cmd_mode_insert_line_end, GDK_KEY_A, 0, 0, 0, FALSE, FALSE},
-	{cmd_mode_insert_next_line, GDK_KEY_o, 0, 0, 0, FALSE, FALSE},
-	{cmd_mode_insert_clear_line, GDK_KEY_S, 0, 0, 0, FALSE, FALSE},
-	{cmd_mode_insert_clear_line, GDK_KEY_c, GDK_KEY_c, 0, 0, FALSE, FALSE},
-	{cmd_mode_insert_prev_line, GDK_KEY_O, 0, 0, 0, FALSE, FALSE},
-	{cmd_mode_insert_clear_right, GDK_KEY_C, 0, 0, 0, FALSE, FALSE},
-	{cmd_mode_insert_delete_char, GDK_KEY_s, 0, 0, 0, FALSE, FALSE},
-	/* enter replace mode */
-	{cmd_mode_replace, GDK_KEY_R, 0, 0, 0, FALSE, FALSE},
-	/* enter visual mode */
-	{cmd_mode_visual, GDK_KEY_v, 0, 0, 0, FALSE, FALSE},
+
+	/* deletion */
+	{cmd_delete_char, GDK_KEY_x, 0, 0, 0, FALSE, FALSE},
+	{cmd_delete_char, GDK_KEY_Delete, 0, 0, 0, FALSE, FALSE},
+	{cmd_delete_char_back, GDK_KEY_X, 0, 0, 0, FALSE, FALSE},
+	{cmd_delete_line, GDK_KEY_d, GDK_KEY_d, 0, 0, FALSE, FALSE},
+	/* TODO: this is not correct implementation */
+	{cmd_delete_line, GDK_KEY_D, 0, 0, 0, FALSE, FALSE},
+	/* TODO: visual version of line join */
+	{cmd_join_lines, GDK_KEY_J, 0, 0, 0, FALSE, FALSE},
 
 	/* copy/paste */
 	{cmd_copy_line, GDK_KEY_y, GDK_KEY_y, 0, 0, FALSE, FALSE},
+	{cmd_copy_line, GDK_KEY_Y, 0, 0, 0, FALSE, FALSE},
 	{cmd_paste, GDK_KEY_p, 0, 0, 0, FALSE, FALSE},
+	/* TODO: P - paste after */
+
+	/* changing text */
+	/* enter replace mode */
+	{cmd_mode_replace, GDK_KEY_R, 0, 0, 0, FALSE, FALSE},
+	{cmd_mode_insert_clear_line, GDK_KEY_c, GDK_KEY_c, 0, 0, FALSE, FALSE},
+	{cmd_mode_insert_clear_line, GDK_KEY_S, 0, 0, 0, FALSE, FALSE},
+	{cmd_mode_insert_clear_right, GDK_KEY_C, 0, 0, 0, FALSE, FALSE},
+	{cmd_mode_insert_delete_char, GDK_KEY_s, 0, 0, 0, FALSE, FALSE},
+	{cmd_replace_char, GDK_KEY_r, 0, 0, 0, TRUE, FALSE},
+	{cmd_switch_case_char, GDK_KEY_asciitilde, 0, 0, 0, FALSE, FALSE},
+	{cmd_unindent, GDK_KEY_less, GDK_KEY_less, 0, 0, FALSE, FALSE},
+	{cmd_indent, GDK_KEY_greater, GDK_KEY_greater, 0, 0, FALSE, FALSE},
 
 	/* undo/redo */
 	{cmd_undo, GDK_KEY_U, 0, 0, 0, FALSE, FALSE},
@@ -663,19 +681,6 @@ CmdDef cmd_mode_cmds[] = {
 	{cmd_search, GDK_KEY_N, 0, 0, 0, FALSE, FALSE},
 	{cmd_search_current_next, GDK_KEY_asterisk, 0, 0, 0, FALSE, FALSE},
 	{cmd_search_current_prev, GDK_KEY_numbersign, 0, 0, 0, FALSE, FALSE},
-
-	/* deletion */
-	{cmd_delete_line, GDK_KEY_D, 0, 0, 0, FALSE, FALSE},
-	{cmd_delete_line, GDK_KEY_d, GDK_KEY_d, 0, 0, FALSE, FALSE},
-	{cmd_delete_char, GDK_KEY_x, 0, 0, 0, FALSE, FALSE},
-	{cmd_delete_char_back, GDK_KEY_X, 0, 0, 0, FALSE, FALSE},
-
-	/* modification */
-	{cmd_join_lines, GDK_KEY_J, 0, 0, 0, FALSE, FALSE},
-	{cmd_switch_case_char, GDK_KEY_asciitilde, 0, 0, 0, FALSE, FALSE},//not correct position when undoing
-	{cmd_unindent, GDK_KEY_less, GDK_KEY_less, 0, 0, FALSE, FALSE},
-	{cmd_indent, GDK_KEY_greater, GDK_KEY_greater, 0, 0, FALSE, FALSE},
-	{cmd_replace_char, GDK_KEY_r, 0, 0, 0, TRUE, FALSE},
 
 	MOVEMENT_CMDS
 	RANGE_CMDS
