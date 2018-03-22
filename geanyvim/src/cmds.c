@@ -89,7 +89,7 @@ static void goto_nonempty(CmdParams *p, gint line)
 
 	while (isspace(sci_get_char_at(p->sci, pos)) && pos < line_end_pos)
 		pos = NEXT(p->sci, pos);
-	sci_set_current_position(p->sci, pos, TRUE);
+	sci_set_current_position(p->sci, pos, FALSE);
 }
 
 static void cmd_mode_insert_line_start(CmdContext *c, CmdParams *p)
@@ -142,16 +142,46 @@ static void cmd_mode_insert_delete_char(CmdContext *c, CmdParams *p)
 
 static void cmd_goto_page_up(CmdContext *c, CmdParams *p)
 {
-	gint i;
-	for (i = 0; i < p->num; i++)
-		SSM(p->sci, SCI_PAGEUP, 0, 0);
+	gint shift = SSM(p->sci, SCI_LINESONSCREEN, 0, 0) * p->num;
+	gint new_line = p->line - shift < 0 ? 0 : p->line - shift;
+	goto_nonempty(p, new_line);
+	SSM(p->sci, SCI_SETFIRSTVISIBLELINE, new_line, 0);
 }
 
 static void cmd_goto_page_down(CmdContext *c, CmdParams *p)
 {
-	gint i;
-	for (i = 0; i < p->num; i++)
-		SSM(p->sci, SCI_PAGEDOWN, 0, 0);
+	gint shift = SSM(p->sci, SCI_LINESONSCREEN, 0, 0) * p->num;
+	gint line_num = sci_get_line_count(p->sci);
+	gint new_line = p->line + shift > line_num ? line_num : p->line + shift;
+	goto_nonempty(p, new_line);
+	SSM(p->sci, SCI_SETFIRSTVISIBLELINE, new_line, 0);
+}
+
+static void cmd_goto_halfpage_up(CmdContext *c, CmdParams *p)
+{
+	gint shift = SSM(p->sci, SCI_LINESONSCREEN, 0, 0) * p->num / 2;
+	gint new_line = p->line - shift < 0 ? 0 : p->line - shift;
+	goto_nonempty(p, new_line);
+	SSM(p->sci, SCI_SETFIRSTVISIBLELINE, new_line, 0);
+}
+
+static void cmd_goto_halfpage_down(CmdContext *c, CmdParams *p)
+{
+	gint shift = SSM(p->sci, SCI_LINESONSCREEN, 0, 0) * p->num / 2;
+	gint line_num = sci_get_line_count(p->sci);
+	gint new_line = p->line + shift > line_num ? line_num : p->line + shift;
+	goto_nonempty(p, new_line);
+	SSM(p->sci, SCI_SETFIRSTVISIBLELINE, new_line, 0);
+}
+
+static void cmd_scroll_up(CmdContext *c, CmdParams *p)
+{
+	SSM(p->sci, SCI_LINESCROLL, 0, -p->num);
+}
+
+static void cmd_scroll_down(CmdContext *c, CmdParams *p)
+{
+	SSM(p->sci, SCI_LINESCROLL, 0, p->num);
 }
 
 static void cmd_goto_left(CmdContext *c, CmdParams *p)
@@ -750,9 +780,12 @@ typedef struct {
 	/* scrolling */ \
 	{cmd_goto_page_down, GDK_f, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE}, \
 	{cmd_goto_page_down, GDK_KEY_Page_Down, 0, 0, 0, FALSE, FALSE}, \
-	{cmd_goto_page_down, GDK_b, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE}, \
+	{cmd_goto_page_up, GDK_b, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE}, \
 	{cmd_goto_page_up, GDK_KEY_Page_Up, 0, 0, 0, FALSE, FALSE}, \
-	/* TODO - CTRL-E, CTRL-D, CTRL-Y, CTRL-U, zh, zl */ \
+	{cmd_goto_halfpage_down, GDK_d, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE}, \
+	{cmd_goto_halfpage_up, GDK_u, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE}, \
+	{cmd_scroll_down, GDK_e, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE}, \
+	{cmd_scroll_up, GDK_y, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE}, \
 	/* END */
 
 
@@ -784,6 +817,7 @@ CmdDef range_cmds[] = {
 
 CmdDef cmd_mode_cmds[] = {
 	/* enter insert mode */
+	/* TODO: replaying insert mode */
 	{cmd_mode_insert_after, GDK_KEY_a, 0, 0, 0, FALSE, FALSE},
 	{cmd_mode_insert_line_end, GDK_KEY_A, 0, 0, 0, FALSE, FALSE},
 	{cmd_mode_insert, GDK_KEY_i, 0, 0, 0, FALSE, FALSE},
