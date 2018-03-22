@@ -82,7 +82,7 @@ static void cmd_mode_insert_after(CmdContext *c, CmdParams *p)
 		SSM(p->sci, SCI_CHARRIGHT, 0, 0);
 }
 
-static void cmd_mode_insert_line_start(CmdContext *c, CmdParams *p)
+static void cmd_goto_line_start_nonempty(CmdContext *c, CmdParams *p)
 {
 	gint line_end_pos = SSM(p->sci, SCI_GETLINEENDPOSITION, p->line, 0);
 	gint pos;
@@ -90,8 +90,13 @@ static void cmd_mode_insert_line_start(CmdContext *c, CmdParams *p)
 	SSM(p->sci, SCI_HOME, 0, 0);
 	pos = sci_get_current_position(p->sci);
 	while (isspace(sci_get_char_at(p->sci, pos)) && pos < line_end_pos)
-		pos++;
+		pos = NEXT(p->sci, pos);
 	sci_set_current_position(p->sci, pos, FALSE);
+}
+
+static void cmd_mode_insert_line_start(CmdContext *c, CmdParams *p)
+{
+	cmd_goto_line_start_nonempty(c, p);
 	cmd_mode_insert(c, p);
 }
 
@@ -158,7 +163,7 @@ static void cmd_goto_left(CmdContext *c, CmdParams *p)
 	gint pos = sci_get_current_position(p->sci);
 	for (i = 0; i < p->num && pos > start_pos; i++)
 	{
-		pos--;
+		pos = PREV(p->sci, pos);
 		sci_set_current_position(p->sci, pos, FALSE);
 	}
 }
@@ -170,7 +175,7 @@ static void cmd_goto_right(CmdContext *c, CmdParams *p)
 	gint pos = sci_get_current_position(p->sci);
 	for (i = 0; i < p->num && pos < end_pos; i++)
 	{
-		pos++;
+		pos = NEXT(p->sci, pos);
 		sci_set_current_position(p->sci, pos, FALSE);
 	}
 }
@@ -239,7 +244,7 @@ static void cmd_paste(CmdContext *c, CmdParams *p, gboolean after)
 	{
 		pos = p->pos;
 		if (after && pos < SSM(p->sci, SCI_GETLINEENDPOSITION, p->line, 0))
-			pos++;
+			pos = NEXT(p->sci, pos);
 	}
 
 	sci_set_current_position(p->sci, pos, TRUE);
@@ -325,8 +330,8 @@ static void cmd_delete_char_back(CmdContext *c, CmdParams *p)
 	{
 		if (pos == line_start)
 			break;
-		SSM(p->sci, SCI_DELETERANGE, pos-1, 1);
-		pos--;
+		pos = PREV(p->sci, pos);
+		SSM(p->sci, SCI_DELETERANGE, pos, 1);
 	}
 }
 
@@ -406,8 +411,20 @@ static void cmd_goto_line_end(CmdContext *c, CmdParams *p)
 	{
 		SSM(p->sci, SCI_LINEEND, 0, 0);
 		if (i != p->num - 1)
-			sci_set_current_position(p->sci, sci_get_current_position(p->sci) + 1, TRUE);
+		{
+			gint pos = NEXT(p->sci, sci_get_current_position(p->sci));
+			sci_set_current_position(p->sci, pos, TRUE);
+		}
 	}
+}
+
+static void cmd_goto_column(CmdContext *c, CmdParams *p)
+{
+	gint pos = SSM(p->sci, SCI_POSITIONFROMLINE, p->line, 0);
+	gint line_end = SSM(p->sci, SCI_GETLINEENDPOSITION, p->line, 0);
+	pos = REL(p->sci, pos, p->num - 1);
+	pos = pos > line_end ? line_end : pos;
+	sci_set_current_position(p->sci, pos, TRUE);
 }
 
 static void cmd_goto_matching_brace(CmdContext *c, CmdParams *p)
@@ -433,7 +450,7 @@ static void cmd_goto_doc_percentage(CmdContext *c, CmdParams *p)
 static void cmd_goto_screen_top(CmdContext *c, CmdParams *p)
 {
 	gint top = SSM(p->sci, SCI_GETFIRSTVISIBLELINE, 0, 0);
-	gint pos = sci_get_position_from_line(p->sci, top+p->num-1);
+	gint pos = sci_get_position_from_line(p->sci, top + p->num - 1);
 	sci_set_current_position(p->sci, pos, TRUE);
 }
 
@@ -441,7 +458,7 @@ static void cmd_goto_screen_middle(CmdContext *c, CmdParams *p)
 {
 	gint top = SSM(p->sci, SCI_GETFIRSTVISIBLELINE, 0, 0);
 	gint count = SSM(p->sci, SCI_LINESONSCREEN, 0, 0);
-	gint pos = sci_get_position_from_line(p->sci, top+count/2);
+	gint pos = sci_get_position_from_line(p->sci, top + count/2);
 	sci_set_current_position(p->sci, pos, TRUE);
 }
 
@@ -449,7 +466,7 @@ static void cmd_goto_screen_bottom(CmdContext *c, CmdParams *p)
 {
 	gint top = SSM(p->sci, SCI_GETFIRSTVISIBLELINE, 0, 0);
 	gint count = SSM(p->sci, SCI_LINESONSCREEN, 0, 0);
-	gint pos = sci_get_position_from_line(p->sci, top+count-p->num);
+	gint pos = sci_get_position_from_line(p->sci, top + count - p->num);
 	sci_set_current_position(p->sci, pos, TRUE);
 }
 
@@ -458,7 +475,7 @@ static void cmd_replace_char(CmdContext *c, CmdParams *p)
 	gchar repl[2] = {kp_to_char(p->last_kp), '\0'};
 
 	sci_set_target_start(p->sci, p->pos);
-	sci_set_target_end(p->sci, p->pos + 1);
+	sci_set_target_end(p->sci, NEXT(p->sci, p->pos));
 	sci_replace_target(p->sci, repl, FALSE);
 }
 
@@ -482,7 +499,7 @@ static void cmd_find_char(CmdContext *c, CmdParams *p, gboolean invert)
 
 		if (forward)
 		{
-			ttf.chrg.cpMin = pos + 1;
+			ttf.chrg.cpMin = NEXT(p->sci, pos);
 			ttf.chrg.cpMax = SSM(p->sci, SCI_GETLINEENDPOSITION, p->line, 0);
 		}
 		else
@@ -500,9 +517,9 @@ static void cmd_find_char(CmdContext *c, CmdParams *p, gboolean invert)
 	if (pos >= 0)
 	{
 		if (c->search_char[0] == 't')
-			pos--;
+			pos = PREV(p->sci, pos);
 		else if (c->search_char[0] == 'T')
-			pos++;
+			pos = NEXT(p->sci, pos);
 		sci_set_current_position(p->sci, pos, FALSE);
 	}
 }
@@ -556,7 +573,7 @@ static void cmd_switch_case_char(CmdContext *c, CmdParams *p)
 	gchar *replacement = lower;
 
 	sci_set_target_start(p->sci, p->pos);
-	sci_set_target_end(p->sci, p->pos + 1);
+	sci_set_target_end(p->sci, NEXT(p->sci, p->pos));
 	if (islower(sci_get_char_at(p->sci, p->pos)))
 		replacement = upper;
 	sci_replace_target(p->sci, replacement, FALSE);
@@ -662,11 +679,11 @@ typedef struct {
 	/* line beginning */ \
 	{cmd_goto_line_start, GDK_KEY_0, 0, 0, 0, FALSE, FALSE}, \
 	{cmd_goto_line_start, GDK_KEY_Home, 0, 0, 0, FALSE, FALSE}, \
-	/* TODO ^ - first non-blank character on line */ \
+	{cmd_goto_line_start_nonempty, GDK_KEY_asciicircum, 0, 0, 0, FALSE, FALSE}, \
 	/* line end */ \
 	{cmd_goto_line_end, GDK_KEY_dollar, 0, 0, 0, FALSE, FALSE}, \
 	{cmd_goto_line_end, GDK_KEY_End, 0, 0, 0, FALSE, FALSE}, \
-	/* TODO  - go to column */ \
+	{cmd_goto_column, GDK_KEY_bar, 0, 0, 0, FALSE, FALSE}, \
 	/* find character */ \
 	{cmd_find_next_char, GDK_KEY_f, 0, 0, 0, TRUE, FALSE}, \
 	{cmd_find_prev_char, GDK_KEY_F, 0, 0, 0, TRUE, FALSE}, \

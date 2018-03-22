@@ -23,7 +23,11 @@
 
 #include "cmds.h"
 
-#define SSM(s, m, w, l) scintilla_send_message(s, m, w, l)
+#define SSM(s, m, w, l) scintilla_send_message((s), (m), (w), (l))
+#define NEXT(s, pos) scintilla_send_message((s), SCI_POSITIONAFTER, (pos), 0)
+#define PREV(s, pos) scintilla_send_message((s), SCI_POSITIONBEFORE, (pos), 0)
+#define REL(s, pos, rel) scintilla_send_message((s), SCI_POSITIONRELATIVE, (pos), (rel))
+
 
 KeyPress *kp_from_event_key(GdkEventKey *ev);
 gchar kp_to_char(KeyPress *kp);
