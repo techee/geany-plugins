@@ -92,9 +92,16 @@ static void goto_nonempty(CmdParams *p, gint line, gboolean scroll)
 	sci_set_current_position(p->sci, pos, scroll);
 }
 
-static void cmd_mode_insert_line_start(CmdContext *c, CmdParams *p)
+static void cmd_mode_insert_line_start_nonempty(CmdContext *c, CmdParams *p)
 {
 	goto_nonempty(p, p->line, FALSE);
+	cmd_mode_insert(c, p);
+}
+
+static void cmd_mode_insert_line_start(CmdContext *c, CmdParams *p)
+{
+	gint pos = SSM(p->sci, SCI_POSITIONFROMLINE, p->line, 0);
+	sci_set_current_position(p->sci, pos, FALSE);
 	cmd_mode_insert(c, p);
 }
 
@@ -440,6 +447,7 @@ static void cmd_goto_previous_word_end(CmdContext *c, CmdParams *p)
 	gint i;
 	for (i = 0; i < p->num; i++)
 		SSM(p->sci, SCI_WORDLEFTEND, 0, 0);
+	SSM(p->sci, SCI_CHARLEFT, 0, 0);
 }
 
 static void cmd_goto_line_start(CmdContext *c, CmdParams *p)
@@ -761,7 +769,9 @@ typedef struct {
 	{cmd_goto_next_word_end, GDK_KEY_e, 0, 0, 0, FALSE, FALSE}, \
 	{cmd_goto_next_word_end, GDK_KEY_E, 0, 0, 0, FALSE, FALSE}, \
 	{cmd_goto_previous_word, GDK_KEY_b, 0, 0, 0, FALSE, FALSE}, \
-	{cmd_goto_previous_word_end, GDK_KEY_B, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_goto_previous_word, GDK_KEY_B, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_goto_previous_word_end, GDK_KEY_g, GDK_KEY_e, 0, 0, FALSE, FALSE}, \
+	{cmd_goto_previous_word_end, GDK_KEY_g, GDK_KEY_E, 0, 0, FALSE, FALSE}, \
 	/* various motions */ \
 	{cmd_goto_matching_brace, GDK_KEY_percent, 0, 0, 0, FALSE, FALSE}, \
 	{cmd_goto_screen_top, GDK_KEY_H, 0, 0, 0, FALSE, FALSE}, \
@@ -811,7 +821,8 @@ CmdDef cmd_mode_cmds[] = {
 	{cmd_mode_insert_after, GDK_KEY_a, 0, 0, 0, FALSE, FALSE},
 	{cmd_mode_insert_line_end, GDK_KEY_A, 0, 0, 0, FALSE, FALSE},
 	{cmd_mode_insert, GDK_KEY_i, 0, 0, 0, FALSE, FALSE},
-	{cmd_mode_insert_line_start, GDK_KEY_I, 0, 0, 0, FALSE, FALSE},
+	{cmd_mode_insert_line_start_nonempty, GDK_KEY_I, 0, 0, 0, FALSE, FALSE},
+	{cmd_mode_insert_line_start, GDK_KEY_g, GDK_KEY_I, 0, 0, FALSE, FALSE},
 	{cmd_mode_insert_next_line, GDK_KEY_o, 0, 0, 0, FALSE, FALSE},
 	{cmd_mode_insert_prev_line, GDK_KEY_O, 0, 0, 0, FALSE, FALSE},
 	/* enter visual mode */
