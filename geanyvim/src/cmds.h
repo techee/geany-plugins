@@ -22,6 +22,7 @@
 #include <glib.h>
 #include <geanyplugin.h>
 
+#define INSERT_BUF_LEN 4096
 
 typedef struct
 {
@@ -40,6 +41,15 @@ typedef struct
 	gboolean line_copy;
 	/* selection anchor - selection is between anchor and caret */
 	gint sel_anchor;
+	/* number entered before performing mode-switching command */
+	gint num;
+	/* buffer used in insert/replace mode to record entered text so it can be
+	 * copied N times when e.g. 'i' is preceded by a number */
+	gchar insert_buf[INSERT_BUF_LEN];
+	gint insert_buf_len;
+	/* whether insert mode was entered using 'o' or 'O' - we need to add newlines
+	 * when copying it N times */
+	gboolean newline_insert;
 } CmdContext;
 
 

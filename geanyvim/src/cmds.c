@@ -55,7 +55,7 @@ typedef void (*Cmd)(CmdContext *c, CmdParams *p);
 
 static void cmd_mode_cmdline(CmdContext *c, CmdParams *p)
 {
-	enter_cmdline_mode(p->num);
+	enter_cmdline_mode();
 }
 
 static void cmd_mode_insert(CmdContext *c, CmdParams *p)
@@ -77,7 +77,7 @@ static void cmd_mode_insert_after(CmdContext *c, CmdParams *p)
 {
 	gint end_pos = sci_get_line_end_position(p->sci, p->line);
 
-	cmd_mode_insert(c, p);
+	set_vi_mode(VI_MODE_INSERT);
 	if (p->pos < end_pos)
 		SSM(p->sci, SCI_CHARRIGHT, 0, 0);
 }
@@ -95,20 +95,20 @@ static void goto_nonempty(CmdParams *p, gint line, gboolean scroll)
 static void cmd_mode_insert_line_start_nonempty(CmdContext *c, CmdParams *p)
 {
 	goto_nonempty(p, p->line, FALSE);
-	cmd_mode_insert(c, p);
+	set_vi_mode(VI_MODE_INSERT);
 }
 
 static void cmd_mode_insert_line_start(CmdContext *c, CmdParams *p)
 {
 	gint pos = SSM(p->sci, SCI_POSITIONFROMLINE, p->line, 0);
 	sci_set_current_position(p->sci, pos, FALSE);
-	cmd_mode_insert(c, p);
+	set_vi_mode(VI_MODE_INSERT);
 }
 
 static void cmd_mode_insert_line_end(CmdContext *c, CmdParams *p)
 {
 	SSM(p->sci, SCI_LINEEND, 0, 0);
-	cmd_mode_insert(c, p);
+	set_vi_mode(VI_MODE_INSERT);
 }
 
 static void cmd_mode_insert_next_line(CmdContext *c, CmdParams *p)
@@ -117,7 +117,8 @@ static void cmd_mode_insert_next_line(CmdContext *c, CmdParams *p)
 	SSM(p->sci, SCI_NEWLINE, 0, 0);
 	// undo inserted indentation
 	SSM(p->sci, SCI_DELLINELEFT, 0, 0);
-	cmd_mode_insert(c, p);
+	c->newline_insert = TRUE;
+	set_vi_mode(VI_MODE_INSERT);
 }
 
 static void cmd_mode_insert_prev_line(CmdContext *c, CmdParams *p)
@@ -125,26 +126,27 @@ static void cmd_mode_insert_prev_line(CmdContext *c, CmdParams *p)
 	SSM(p->sci, SCI_HOME, 0, 0);
 	SSM(p->sci, SCI_NEWLINE, 0, 0);
 	SSM(p->sci, SCI_LINEUP, 0, 0);
-	cmd_mode_insert(c, p);
+	c->newline_insert = TRUE;
+	set_vi_mode(VI_MODE_INSERT);
 }
 
 static void cmd_mode_insert_clear_line(CmdContext *c, CmdParams *p)
 {
 	SSM(p->sci, SCI_DELLINELEFT, 0, 0);
 	SSM(p->sci, SCI_DELLINERIGHT, 0, 0);
-	cmd_mode_insert(c, p);
+	set_vi_mode(VI_MODE_INSERT);
 }
 
 static void cmd_mode_insert_clear_right(CmdContext *c, CmdParams *p)
 {
 	SSM(p->sci, SCI_DELLINERIGHT, 0, 0);
-	cmd_mode_insert(c, p);
+	set_vi_mode(VI_MODE_INSERT);
 }
 
 static void cmd_mode_insert_delete_char(CmdContext *c, CmdParams *p)
 {
 	SSM(p->sci, SCI_DELETERANGE, p->pos, 1);
-	cmd_mode_insert(c, p);
+	set_vi_mode(VI_MODE_INSERT);
 }
 
 static void cmd_goto_page_up(CmdContext *c, CmdParams *p)
@@ -1003,6 +1005,9 @@ static void perform_cmd(CmdDef *def, ScintillaObject *sci, CmdContext *ctx, GSLi
 	param.sel_start = SSM(sci, SCI_GETSELECTIONSTART, 0, 0);
 	param.sel_len = sci_get_selection_end(sci) - sci_get_selection_start(sci);
 	param.line = sci_get_current_line(sci);
+
+	ctx->num = param.num;
+	ctx->newline_insert = FALSE;
 
 	sci_start_undo_action(sci);
 

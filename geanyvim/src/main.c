@@ -85,16 +85,14 @@ struct
 	GSList *kpl;
 	/* kpl of the previous command (used for repeating last command) */
 	GSList *prev_kpl;
-	/* number entered before performing command-line command */
-	gint num;
 } state =
 {
-	-1, -1, TRUE, FALSE, VI_MODE_COMMAND, NULL, NULL, 1
+	-1, -1, TRUE, FALSE, VI_MODE_COMMAND, NULL, NULL
 };
 
 CmdContext ctx =
 {
-	NULL, NULL, FALSE, 0
+	NULL, NULL, FALSE, 0, 1, "", 0
 };
 
 
@@ -123,11 +121,10 @@ ViMode get_vi_mode(void)
 	return state.vi_mode;
 }
 
-void enter_cmdline_mode(gint num)
+void enter_cmdline_mode()
 {
 	KeyPress *kp = g_slist_nth_data(state.kpl, 0);
 	gchar val[2] = {kp_to_char(kp), '\0'};
-	state.num = num;
 	gtk_widget_show(vi_widgets.prompt);
 	gtk_entry_set_text(GTK_ENTRY(vi_widgets.entry), val);
 	gtk_editable_set_position(GTK_EDITABLE(vi_widgets.entry), 1);
@@ -166,14 +163,14 @@ static void set_vi_mode_full(ViMode mode, ScintillaObject *sci)
 			clamp_cursor_pos(sci);
 			break;
 		case VI_MODE_INSERT:
-			SSM(sci, SCI_SETOVERTYPE, 0, 0);
-			SSM(sci, SCI_SETCARETSTYLE, CARETSTYLE_LINE, 0);
-			SSM(sci, SCI_SETCARETPERIOD, state.default_caret_period, 0);
-			break;
 		case VI_MODE_REPLACE:
-			SSM(sci, SCI_SETOVERTYPE, 1, 0);
+			if (mode == VI_MODE_INSERT)
+				SSM(sci, SCI_SETOVERTYPE, 0, 0);
+			else
+				SSM(sci, SCI_SETOVERTYPE, 1, 0);
 			SSM(sci, SCI_SETCARETSTYLE, CARETSTYLE_LINE, 0);
 			SSM(sci, SCI_SETCARETPERIOD, state.default_caret_period, 0);
+			ctx.insert_buf_len = 0;
 			break;
 		case VI_MODE_VISUAL:
 			SSM(sci, SCI_SETOVERTYPE, 0, 0);
@@ -249,7 +246,7 @@ static void perform_command(const gchar *cmd)
 		case '?':
 			g_free(ctx.search_text);
 			ctx.search_text = g_strdup(cmd);
-			perform_search(sci, &ctx, state.num, FALSE);
+			perform_search(sci, &ctx, ctx.num, FALSE);
 			if (get_vi_mode() == VI_MODE_VISUAL)
 			{
 				gint pos = sci_get_current_position(sci);
@@ -371,6 +368,31 @@ static gboolean on_perform_vim_command(GeanyKeyBinding *kb, guint key_id, gpoint
 	return TRUE;
 }
 
+static void repeat_insert(void)
+{
+	if ((state.vi_mode == VI_MODE_INSERT || state.vi_mode == VI_MODE_REPLACE) &&
+		ctx.num > 1 && ctx.insert_buf_len > 0)
+	{
+		ScintillaObject *sci = get_current_doc_sci();
+		gint i;
+
+		ctx.insert_buf[ctx.insert_buf_len] = '\0';
+
+		sci_start_undo_action(sci);
+		/* insert newline for 'o' and 'O' insert modes - this is recorded as
+		 * a normal keystroke and added into insert_buf so we don't have to
+		 * add newlines in the cycle below */
+		if (ctx.newline_insert)
+			SSM(sci, SCI_NEWLINE, 0, 0);
+		for (i = 0; i < ctx.num - 1; i++)
+			SSM(sci, SCI_ADDTEXT, ctx.insert_buf_len, (sptr_t) ctx.insert_buf);
+		sci_end_undo_action(sci);
+	}
+	ctx.num = 1;
+	ctx.insert_buf_len = 0;
+	ctx.newline_insert = FALSE;
+}
+
 
 static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer user_data)
 {
@@ -389,8 +411,14 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 	{
 		if (!SSM(sci, SCI_AUTOCACTIVE, 0, 0) && !SSM(sci, SCI_CALLTIPACTIVE, 0, 0))
 		{
-			gint pos = sci_get_current_position(sci);
-			gint start_pos = sci_get_position_from_line(sci, sci_get_current_line(sci));
+			gint pos;
+			gint start_pos;
+
+			//can change current position
+			repeat_insert();
+
+			pos = sci_get_current_position(sci);
+			start_pos = sci_get_position_from_line(sci, sci_get_current_line(sci));
 			SSM(sci, SCI_SETEMPTYSELECTION, pos, 0);
 			if (pos > start_pos)
 				sci_set_current_position(sci, pos-1, FALSE);
@@ -463,11 +491,28 @@ static gboolean on_editor_notify(GObject *object, GeanyEditor *editor,
 {
 	ScintillaObject *sci = get_current_doc_sci();
 
-	if (!state.vi_enabled || !sci || state.vi_mode != VI_MODE_COMMAND)
+	if (!state.vi_enabled || !sci)
 		return FALSE;
 
-	if (sci_get_selected_text_length(sci) > 0)
-		return FALSE;
+	if (nt->nmhdr.code == SCN_CHARADDED &&
+		(state.vi_mode == VI_MODE_VISUAL || state.vi_mode == VI_MODE_INSERT))
+	{
+		gchar buf[7];
+		gint len = g_unichar_to_utf8(nt->ch, buf);
+
+		if (ctx.insert_buf_len + len + 1 < INSERT_BUF_LEN)
+		{
+			gint i;
+			for (i = 0; i < len; i++)
+			{
+				ctx.insert_buf[ctx.insert_buf_len] = buf[i];
+				ctx.insert_buf_len++;
+			}
+		}
+	}
+
+	//if (sci_get_selected_text_length(sci) > 0)
+	//	return FALSE;
 
 	/* this makes sure that when we click behind the end of line in command mode,
 	 * the cursor is not placed BEHIND the last character but ON the last character */
