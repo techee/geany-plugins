@@ -220,7 +220,7 @@ static void perform_command(const gchar *cmd)
 	if (!sci)
 		return;
 
-	if (cmd == NULL || len == 1)
+	if (cmd == NULL || len == 0)
 		return;
 
 	switch (cmd[i])
@@ -244,8 +244,16 @@ static void perform_command(const gchar *cmd)
 		}
 		case '/':
 		case '?':
-			g_free(ctx.search_text);
-			ctx.search_text = g_strdup(cmd);
+			if (len == 1)
+			{
+				if (ctx.search_text && strlen(ctx.search_text) > 1)
+					ctx.search_text[0] = cmd[0];
+			}
+			else
+			{
+				g_free(ctx.search_text);
+				ctx.search_text = g_strdup(cmd);
+			}
 			perform_search(sci, &ctx, ctx.num, FALSE);
 			if (get_vi_mode() == VI_MODE_VISUAL)
 			{
