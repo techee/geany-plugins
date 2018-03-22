@@ -82,19 +82,19 @@ static void cmd_mode_insert_after(CmdContext *c, CmdParams *p)
 		SSM(p->sci, SCI_CHARRIGHT, 0, 0);
 }
 
-static void goto_nonempty(CmdParams *p, gint line)
+static void goto_nonempty(CmdParams *p, gint line, gboolean scroll)
 {
 	gint line_end_pos = SSM(p->sci, SCI_GETLINEENDPOSITION, line, 0);
 	gint pos = SSM(p->sci, SCI_POSITIONFROMLINE, line, 0);
 
 	while (isspace(sci_get_char_at(p->sci, pos)) && pos < line_end_pos)
 		pos = NEXT(p->sci, pos);
-	sci_set_current_position(p->sci, pos, FALSE);
+	sci_set_current_position(p->sci, pos, scroll);
 }
 
 static void cmd_mode_insert_line_start(CmdContext *c, CmdParams *p)
 {
-	goto_nonempty(p, p->line);
+	goto_nonempty(p, p->line, FALSE);
 	cmd_mode_insert(c, p);
 }
 
@@ -144,7 +144,7 @@ static void cmd_goto_page_up(CmdContext *c, CmdParams *p)
 {
 	gint shift = SSM(p->sci, SCI_LINESONSCREEN, 0, 0) * p->num;
 	gint new_line = p->line - shift < 0 ? 0 : p->line - shift;
-	goto_nonempty(p, new_line);
+	goto_nonempty(p, new_line, FALSE);
 	SSM(p->sci, SCI_SETFIRSTVISIBLELINE, new_line, 0);
 }
 
@@ -153,7 +153,7 @@ static void cmd_goto_page_down(CmdContext *c, CmdParams *p)
 	gint shift = SSM(p->sci, SCI_LINESONSCREEN, 0, 0) * p->num;
 	gint line_num = sci_get_line_count(p->sci);
 	gint new_line = p->line + shift > line_num ? line_num : p->line + shift;
-	goto_nonempty(p, new_line);
+	goto_nonempty(p, new_line, FALSE);
 	SSM(p->sci, SCI_SETFIRSTVISIBLELINE, new_line, 0);
 }
 
@@ -161,7 +161,7 @@ static void cmd_goto_halfpage_up(CmdContext *c, CmdParams *p)
 {
 	gint shift = SSM(p->sci, SCI_LINESONSCREEN, 0, 0) * p->num / 2;
 	gint new_line = p->line - shift < 0 ? 0 : p->line - shift;
-	goto_nonempty(p, new_line);
+	goto_nonempty(p, new_line, FALSE);
 	SSM(p->sci, SCI_SETFIRSTVISIBLELINE, new_line, 0);
 }
 
@@ -170,7 +170,7 @@ static void cmd_goto_halfpage_down(CmdContext *c, CmdParams *p)
 	gint shift = SSM(p->sci, SCI_LINESONSCREEN, 0, 0) * p->num / 2;
 	gint line_num = sci_get_line_count(p->sci);
 	gint new_line = p->line + shift > line_num ? line_num : p->line + shift;
-	goto_nonempty(p, new_line);
+	goto_nonempty(p, new_line, FALSE);
 	SSM(p->sci, SCI_SETFIRSTVISIBLELINE, new_line, 0);
 }
 
@@ -218,7 +218,7 @@ static void cmd_goto_up(CmdContext *c, CmdParams *p)
 static void cmd_goto_up_nonempty(CmdContext *c, CmdParams *p)
 {
 	cmd_goto_up(c, p);
-	goto_nonempty(p, sci_get_current_line(p->sci));
+	goto_nonempty(p, sci_get_current_line(p->sci), TRUE);
 }
 
 static void cmd_goto_down(CmdContext *c, CmdParams *p)
@@ -231,7 +231,7 @@ static void cmd_goto_down(CmdContext *c, CmdParams *p)
 static void cmd_goto_down_nonempty(CmdContext *c, CmdParams *p)
 {
 	cmd_goto_down(c, p);
-	goto_nonempty(p, sci_get_current_line(p->sci));
+	goto_nonempty(p, sci_get_current_line(p->sci), TRUE);
 }
 
 static void cmd_goto_down_one_less_nonempty(CmdContext *c, CmdParams *p)
@@ -239,7 +239,7 @@ static void cmd_goto_down_one_less_nonempty(CmdContext *c, CmdParams *p)
 	gint i;
 	for (i = 0; i < p->num - 1; i++)
 		SSM(p->sci, SCI_LINEDOWN, 0, 0);
-	goto_nonempty(p, sci_get_current_line(p->sci));
+	goto_nonempty(p, sci_get_current_line(p->sci), TRUE);
 }
 
 static void cmd_undo(CmdContext *c, CmdParams *p)
@@ -385,24 +385,19 @@ static void cmd_delete_char_back(CmdContext *c, CmdParams *p)
 
 static void cmd_goto_line(CmdContext *c, CmdParams *p)
 {
-	//TODO - should go to first non-blank character
 	gint line_num = sci_get_line_count(p->sci);
 	gint num = p->num > line_num ? line_num : p->num;
-	gint pos = sci_get_position_from_line(p->sci, num - 1);
-	sci_set_current_position(p->sci, pos, TRUE);
+	goto_nonempty(p, num - 1, TRUE);
 }
 
 static void cmd_goto_line_last(CmdContext *c, CmdParams *p)
 {
-	//TODO - should go to first non-blank character
 	gint line_num = sci_get_line_count(p->sci);
 	gint num = p->num > line_num ? line_num : p->num;
-	gint pos;
 
 	if (!p->num_present)
 		num = line_num;
-	pos = sci_get_position_from_line(p->sci, num - 1);
-	sci_set_current_position(p->sci, pos, TRUE);
+	goto_nonempty(p, num - 1, TRUE);
 }
 
 static void cmd_join_lines(CmdContext *c, CmdParams *p)
@@ -454,7 +449,7 @@ static void cmd_goto_line_start(CmdContext *c, CmdParams *p)
 
 static void cmd_goto_line_start_nonempty(CmdContext *c, CmdParams *p)
 {
-	goto_nonempty(p, p->line);
+	goto_nonempty(p, p->line, FALSE);
 }
 
 static void cmd_goto_line_end(CmdContext *c, CmdParams *p)
@@ -490,37 +485,32 @@ static void cmd_goto_matching_brace(CmdContext *c, CmdParams *p)
 static void cmd_goto_doc_percentage(CmdContext *c, CmdParams *p)
 {
 	gint line_num = sci_get_line_count(p->sci);
-	gint pos;
 
 	if (p->num > 100)
 		p->num = 100;
 
 	line_num = (line_num * p->num) / 100;
-	pos = sci_get_position_from_line(p->sci, line_num);
-	sci_set_current_position(p->sci, pos, TRUE);
+	goto_nonempty(p, line_num, TRUE);
 }
 
 static void cmd_goto_screen_top(CmdContext *c, CmdParams *p)
 {
 	gint top = SSM(p->sci, SCI_GETFIRSTVISIBLELINE, 0, 0);
-	gint pos = sci_get_position_from_line(p->sci, top + p->num - 1);
-	sci_set_current_position(p->sci, pos, TRUE);
+	goto_nonempty(p, top, FALSE);
 }
 
 static void cmd_goto_screen_middle(CmdContext *c, CmdParams *p)
 {
 	gint top = SSM(p->sci, SCI_GETFIRSTVISIBLELINE, 0, 0);
 	gint count = SSM(p->sci, SCI_LINESONSCREEN, 0, 0);
-	gint pos = sci_get_position_from_line(p->sci, top + count/2);
-	sci_set_current_position(p->sci, pos, TRUE);
+	goto_nonempty(p, top + count/2, FALSE);
 }
 
 static void cmd_goto_screen_bottom(CmdContext *c, CmdParams *p)
 {
 	gint top = SSM(p->sci, SCI_GETFIRSTVISIBLELINE, 0, 0);
 	gint count = SSM(p->sci, SCI_LINESONSCREEN, 0, 0);
-	gint pos = sci_get_position_from_line(p->sci, top + count - p->num);
-	sci_set_current_position(p->sci, pos, TRUE);
+	goto_nonempty(p, top + count - p->num, FALSE);
 }
 
 static void cmd_replace_char(CmdContext *c, CmdParams *p)
