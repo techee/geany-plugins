@@ -82,21 +82,19 @@ static void cmd_mode_insert_after(CmdContext *c, CmdParams *p)
 		SSM(p->sci, SCI_CHARRIGHT, 0, 0);
 }
 
-static void cmd_goto_line_start_nonempty(CmdContext *c, CmdParams *p)
+static void goto_nonempty(CmdParams *p, gint line)
 {
-	gint line_end_pos = SSM(p->sci, SCI_GETLINEENDPOSITION, p->line, 0);
-	gint pos;
+	gint line_end_pos = SSM(p->sci, SCI_GETLINEENDPOSITION, line, 0);
+	gint pos = SSM(p->sci, SCI_POSITIONFROMLINE, line, 0);
 
-	SSM(p->sci, SCI_HOME, 0, 0);
-	pos = sci_get_current_position(p->sci);
 	while (isspace(sci_get_char_at(p->sci, pos)) && pos < line_end_pos)
 		pos = NEXT(p->sci, pos);
-	sci_set_current_position(p->sci, pos, FALSE);
+	sci_set_current_position(p->sci, pos, TRUE);
 }
 
 static void cmd_mode_insert_line_start(CmdContext *c, CmdParams *p)
 {
-	cmd_goto_line_start_nonempty(c, p);
+	goto_nonempty(p, p->line);
 	cmd_mode_insert(c, p);
 }
 
@@ -187,11 +185,31 @@ static void cmd_goto_up(CmdContext *c, CmdParams *p)
 		SSM(p->sci, SCI_LINEUP, 0, 0);
 }
 
+static void cmd_goto_up_nonempty(CmdContext *c, CmdParams *p)
+{
+	cmd_goto_up(c, p);
+	goto_nonempty(p, sci_get_current_line(p->sci));
+}
+
 static void cmd_goto_down(CmdContext *c, CmdParams *p)
 {
 	gint i;
 	for (i = 0; i < p->num; i++)
 		SSM(p->sci, SCI_LINEDOWN, 0, 0);
+}
+
+static void cmd_goto_down_nonempty(CmdContext *c, CmdParams *p)
+{
+	cmd_goto_down(c, p);
+	goto_nonempty(p, sci_get_current_line(p->sci));
+}
+
+static void cmd_goto_down_one_less_nonempty(CmdContext *c, CmdParams *p)
+{
+	gint i;
+	for (i = 0; i < p->num - 1; i++)
+		SSM(p->sci, SCI_LINEDOWN, 0, 0);
+	goto_nonempty(p, sci_get_current_line(p->sci));
 }
 
 static void cmd_undo(CmdContext *c, CmdParams *p)
@@ -402,6 +420,11 @@ static void cmd_goto_previous_word_end(CmdContext *c, CmdParams *p)
 static void cmd_goto_line_start(CmdContext *c, CmdParams *p)
 {
 	SSM(p->sci, SCI_HOME, 0, 0);
+}
+
+static void cmd_goto_line_start_nonempty(CmdContext *c, CmdParams *p)
+{
+	goto_nonempty(p, p->line);
 }
 
 static void cmd_goto_line_end(CmdContext *c, CmdParams *p)
@@ -696,19 +719,22 @@ typedef struct {
 	{cmd_goto_up, GDK_KEY_uparrow, 0, 0, 0, FALSE, FALSE}, \
 	{cmd_goto_up, GDK_KEY_k, 0, 0, 0, FALSE, FALSE}, \
 	{cmd_goto_up, GDK_KEY_p, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE}, \
+	{cmd_goto_up_nonempty, GDK_KEY_minus, 0, 0, 0, FALSE, FALSE}, \
 	/* down */ \
 	{cmd_goto_down, GDK_KEY_Down, 0, 0, 0, FALSE, FALSE}, \
 	{cmd_goto_down, GDK_KEY_downarrow, 0, 0, 0, FALSE, FALSE}, \
 	{cmd_goto_down, GDK_KEY_j, 0, 0, 0, FALSE, FALSE}, \
 	{cmd_goto_down, GDK_KEY_j, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE}, \
 	{cmd_goto_down, GDK_KEY_n, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE}, \
-	{cmd_goto_down, GDK_KEY_Return, 0, 0, 0, FALSE, FALSE}, \
-	/* TODO  - +, -, _ */ \
+	{cmd_goto_down_nonempty, GDK_KEY_plus, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_goto_down_nonempty, GDK_KEY_m, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE}, \
+	{cmd_goto_down_nonempty, GDK_KEY_Return, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_goto_down_one_less_nonempty, GDK_KEY_underscore, 0, 0, 0, FALSE, FALSE}, \
 	/* goto line */ \
 	{cmd_goto_line_last, GDK_KEY_G, 0, 0, 0, FALSE, FALSE}, \
 	{cmd_goto_line, GDK_KEY_g, GDK_KEY_g, 0, 0, FALSE, FALSE}, \
 	{cmd_goto_doc_percentage, GDK_KEY_percent, 0, 0, 0, FALSE, FALSE}, \
-	/* goto nex/prev word */ \
+	/* goto next/prev word */ \
 	/* TODO - do properly - scintilla words differ from vim words */ \
 	{cmd_goto_next_word, GDK_KEY_w, 0, 0, 0, FALSE, FALSE}, \
 	{cmd_goto_next_word, GDK_KEY_W, 0, 0, 0, FALSE, FALSE}, \
@@ -716,7 +742,7 @@ typedef struct {
 	{cmd_goto_next_word_end, GDK_KEY_E, 0, 0, 0, FALSE, FALSE}, \
 	{cmd_goto_previous_word, GDK_KEY_b, 0, 0, 0, FALSE, FALSE}, \
 	{cmd_goto_previous_word_end, GDK_KEY_B, 0, 0, 0, FALSE, FALSE}, \
-	/* goto nex/prev word */ \
+	/* various motions */ \
 	{cmd_goto_matching_brace, GDK_KEY_percent, 0, 0, 0, FALSE, FALSE}, \
 	{cmd_goto_screen_top, GDK_KEY_H, 0, 0, 0, FALSE, FALSE}, \
 	{cmd_goto_screen_middle, GDK_KEY_M, 0, 0, 0, FALSE, FALSE}, \
