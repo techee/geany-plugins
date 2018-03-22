@@ -1011,6 +1011,9 @@ static void perform_cmd(CmdDef *def, ScintillaObject *sci, CmdContext *ctx, GSLi
 
 	sci_start_undo_action(sci);
 
+//	if (def->cmd != cmd_undo && def->cmd != cmd_redo)
+//		SSM(sci, SCI_ADDUNDOACTION, param.pos, UNDO_MAY_COALESCE);
+
 	def->cmd(ctx, &param);
 
 	if (get_vi_mode() == VI_MODE_COMMAND)

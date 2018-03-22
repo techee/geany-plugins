@@ -511,6 +511,12 @@ static gboolean on_editor_notify(GObject *object, GeanyEditor *editor,
 		}
 	}
 
+	//if (nt->nmhdr.code == SCN_MODIFIED && nt->modificationType & SC_MOD_CONTAINER)
+	//{
+	//	printf("token: %d\n", nt->token);
+	//	sci_set_current_position(sci, nt->token, TRUE);
+	//}
+
 	//if (sci_get_selected_text_length(sci) > 0)
 	//	return FALSE;
 
