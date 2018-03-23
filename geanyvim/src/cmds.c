@@ -73,6 +73,14 @@ static void cmd_mode_visual(CmdContext *c, CmdParams *p)
 	set_vi_mode(VI_MODE_VISUAL);
 }
 
+static void cmd_mode_visual_line(CmdContext *c, CmdParams *p)
+{
+	set_vi_mode(VI_MODE_VISUAL_LINE);
+	/* just to force the scintilla notification callback to be called so we can
+	 * select the current line */
+	SSM(p->sci, SCI_LINEEND, 0, 0);
+}
+
 static void cmd_mode_insert_after(CmdContext *c, CmdParams *p)
 {
 	gint end_pos = sci_get_line_end_position(p->sci, p->line);
@@ -829,6 +837,7 @@ CmdDef cmd_mode_cmds[] = {
 	{cmd_mode_insert_prev_line, GDK_KEY_O, 0, 0, 0, FALSE, FALSE},
 	/* enter visual mode */
 	{cmd_mode_visual, GDK_KEY_v, 0, 0, 0, FALSE, FALSE},
+	{cmd_mode_visual_line, GDK_KEY_V, 0, 0, 0, FALSE, FALSE},
 
 	ENTER_CMDLINE_CMDS
 

@@ -19,10 +19,13 @@
 #ifndef __GEANYVIM_STATE_H__
 #define __GEANYVIM_STATE_H__
 
+#define IS_VISUAL(m) ((m) == VI_MODE_VISUAL || (m) == VI_MODE_VISUAL_LINE || (m) == VI_MODE_VISUAL_BLOCK)
 
 typedef enum {
 	VI_MODE_COMMAND,
 	VI_MODE_VISUAL,
+	VI_MODE_VISUAL_LINE,
+	VI_MODE_VISUAL_BLOCK, //not implemented
 	VI_MODE_INSERT,
 	VI_MODE_REPLACE,
 } ViMode;

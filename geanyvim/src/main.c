@@ -112,6 +112,12 @@ static const gchar *get_mode_name(ViMode vi_mode)
 		case VI_MODE_VISUAL:
 			return "VISUAL";
 			break;
+		case VI_MODE_VISUAL_LINE:
+			return "VISUAL LINE";
+			break;
+		case VI_MODE_VISUAL_BLOCK:
+			return "VISUAL BLOCK";
+			break;
 	}
 	return "";
 }
@@ -173,6 +179,8 @@ static void set_vi_mode_full(ViMode mode, ScintillaObject *sci)
 			ctx.insert_buf_len = 0;
 			break;
 		case VI_MODE_VISUAL:
+		case VI_MODE_VISUAL_LINE:
+		case VI_MODE_VISUAL_BLOCK:
 			SSM(sci, SCI_SETOVERTYPE, 0, 0);
 			/* Even with block-style caret, scintilla's caret behaves differently
 			 * from how vim behaves - it always behaves as if the caret is before
@@ -431,7 +439,7 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 			state.kpl = NULL;
 		}
 	}
-	else if (state.vi_mode == VI_MODE_COMMAND || state.vi_mode == VI_MODE_VISUAL)
+	else if (state.vi_mode == VI_MODE_COMMAND || IS_VISUAL(state.vi_mode))
 	{
 		KeyPress *kp = kp_from_event_key(event);
 		if (kp)
@@ -457,7 +465,7 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 					state.kpl = NULL;
 				}
 			}
-			else if (state.vi_mode == VI_MODE_VISUAL)
+			else if (IS_VISUAL(state.vi_mode))
 			{
 				if (process_event_vis_mode(sci, &ctx, state.kpl))
 				{
@@ -498,7 +506,7 @@ static gboolean on_editor_notify(GObject *object, GeanyEditor *editor,
 		return FALSE;
 
 	if (nt->nmhdr.code == SCN_CHARADDED &&
-		(state.vi_mode == VI_MODE_VISUAL || state.vi_mode == VI_MODE_INSERT))
+		(IS_VISUAL(state.vi_mode) || state.vi_mode == VI_MODE_INSERT))
 	{
 		gchar buf[7];
 		gint len = g_unichar_to_utf8(nt->ch, buf);
@@ -514,11 +522,40 @@ static gboolean on_editor_notify(GObject *object, GeanyEditor *editor,
 		}
 	}
 
-	if (nt->nmhdr.code == SCN_UPDATEUI && state.vi_mode == VI_MODE_VISUAL)
+	if (nt->nmhdr.code == SCN_UPDATEUI && IS_VISUAL(state.vi_mode))
 	{
-		gint anchor = SSM(sci, SCI_GETANCHOR, 0, 0);
-		if (anchor != ctx.sel_anchor)
-			SSM(sci, SCI_SETANCHOR, ctx.sel_anchor, 0);
+		if (state.vi_mode == VI_MODE_VISUAL)
+		{
+			gint anchor = SSM(sci, SCI_GETANCHOR, 0, 0);
+			if (anchor != ctx.sel_anchor)
+				SSM(sci, SCI_SETANCHOR, ctx.sel_anchor, 0);
+		}
+		else if (state.vi_mode == VI_MODE_VISUAL_LINE)
+		{
+			gint pos = sci_get_current_position(sci);
+			gint anchor_line = SSM(sci, SCI_LINEFROMPOSITION, ctx.sel_anchor, 0);
+			gint pos_line = SSM(sci, SCI_LINEFROMPOSITION, pos, 0);
+			gint anchor_linepos, pos_linepos;
+
+			if (pos_line >= anchor_line)
+			{
+				anchor_linepos = SSM(sci, SCI_POSITIONFROMLINE, anchor_line, 0);
+				pos_linepos = SSM(sci, SCI_GETLINEENDPOSITION, pos_line, 0);
+			}
+			else
+			{
+				anchor_linepos = SSM(sci, SCI_GETLINEENDPOSITION, anchor_line, 0);
+				pos_linepos = SSM(sci, SCI_POSITIONFROMLINE, pos_line, 0);
+			}
+
+			/* Scintilla' selection spans from anchor position to caret position.
+			 * This means that unfortunately we have to set the caret position as
+			 * well even though it would be better to have caret independent of
+			 * selection like in vim. TODO: explore the possibility of using
+			 * multiple selections to simulate this behavior */
+			if (SSM(sci, SCI_GETANCHOR, 0, 0) != anchor_linepos || pos != pos_linepos)
+				SSM(sci, SCI_SETSEL, anchor_linepos, pos_linepos);
+		}
 	}
 
 	//if (nt->nmhdr.code == SCN_MODIFIED && nt->modificationType & SC_MOD_CONTAINER)
