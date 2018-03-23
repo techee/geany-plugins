@@ -1079,11 +1079,5 @@ gboolean process_event_vis_mode(ScintillaObject *sci, CmdContext *ctx, GSList *k
 
 	perform_cmd(def, sci, ctx, kpl);
 
-	if (get_vi_mode() == VI_MODE_VISUAL)
-	{
-		gint pos = sci_get_current_position(sci);
-		SSM(sci, SCI_SETSEL, ctx->sel_anchor, pos);
-	}
-
 	return TRUE;
 }

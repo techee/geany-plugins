@@ -212,7 +212,6 @@ static void close_prompt()
 
 static void perform_command(const gchar *cmd)
 {
-	guint i = 0;
 	guint len = strlen(cmd);
 	GeanyDocument *doc = document_get_current();
 	ScintillaObject *sci = get_current_doc_sci();
@@ -223,24 +222,25 @@ static void perform_command(const gchar *cmd)
 	if (cmd == NULL || len == 0)
 		return;
 
-	switch (cmd[i])
+	switch (cmd[0])
 	{
 		case ':':
 		{
-			i++;
-			while (i < len)
+			const gchar *c = cmd + 1;
+			if (strcmp(c, "w") || strcmp(c, "w!") || strcmp(c, "write") || strcmp(c, "write!"))
 			{
-				switch (cmd[i])
-				{
-					case 'w':
-					{
-						if (doc != NULL)
-							document_save_file(doc, FALSE);
-						break;
-					}
-				}
-				i++;
+				if (doc != NULL)
+					document_save_file(doc, FALSE);
 			}
+			else if (strcmp(c, "wall") || strcmp(c, "wall!"))
+			{
+				gint i;
+				foreach_document(i)
+				{
+					document_save_file(documents[i], FALSE);
+				}
+			}
+			break;
 		}
 		case '/':
 		case '?':
@@ -255,11 +255,6 @@ static void perform_command(const gchar *cmd)
 				ctx.search_text = g_strdup(cmd);
 			}
 			perform_search(sci, &ctx, ctx.num, FALSE);
-			if (get_vi_mode() == VI_MODE_VISUAL)
-			{
-				gint pos = sci_get_current_position(sci);
-				SSM(sci, SCI_SETSEL, ctx.sel_anchor, pos);
-			}
 			break;
 	}
 }
@@ -517,6 +512,13 @@ static gboolean on_editor_notify(GObject *object, GeanyEditor *editor,
 				ctx.insert_buf_len++;
 			}
 		}
+	}
+
+	if (nt->nmhdr.code == SCN_UPDATEUI && state.vi_mode == VI_MODE_VISUAL)
+	{
+		gint anchor = SSM(sci, SCI_GETANCHOR, 0, 0);
+		if (anchor != ctx.sel_anchor)
+			SSM(sci, SCI_SETANCHOR, ctx.sel_anchor, 0);
 	}
 
 	//if (nt->nmhdr.code == SCN_MODIFIED && nt->modificationType & SC_MOD_CONTAINER)
