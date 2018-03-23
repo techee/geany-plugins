@@ -825,6 +825,12 @@ CmdDef range_cmds[] = {
 	{cmd_mode_cmdline, GDK_KEY_slash, 0, 0, 0, FALSE, FALSE}, \
 	{cmd_mode_cmdline, GDK_KEY_question, 0, 0, 0, FALSE, FALSE},
 
+#define SEARCH_CMDS \
+	{cmd_search_next, GDK_KEY_n, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_search_next, GDK_KEY_N, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_search_current_next, GDK_KEY_asterisk, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_search_current_prev, GDK_KEY_numbersign, 0, 0, 0, FALSE, FALSE},
+
 CmdDef cmd_mode_cmds[] = {
 	/* enter insert mode */
 	/* TODO: replaying insert mode */
@@ -873,12 +879,7 @@ CmdDef cmd_mode_cmds[] = {
 	{cmd_undo, GDK_KEY_u, 0, 0, 0, FALSE, FALSE},
 	{cmd_redo, GDK_KEY_r, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
 
-	/* search */
-	{cmd_search_next, GDK_KEY_n, 0, 0, 0, FALSE, FALSE},
-	{cmd_search_next, GDK_KEY_N, 0, 0, 0, FALSE, FALSE},
-	{cmd_search_current_next, GDK_KEY_asterisk, 0, 0, 0, FALSE, FALSE},
-	{cmd_search_current_prev, GDK_KEY_numbersign, 0, 0, 0, FALSE, FALSE},
-
+	SEARCH_CMDS
 	MOVEMENT_CMDS
 	RANGE_CMDS
 
@@ -891,6 +892,7 @@ CmdDef cmd_mode_cmds[] = {
 CmdDef vis_mode_cmds[] = {
 	{cmd_swap_anchor, GDK_KEY_o, 0, 0, 0, FALSE, FALSE},
 	{cmd_exit_visual, GDK_KEY_v, 0, 0, 0, FALSE, FALSE},
+	SEARCH_CMDS
 	MOVEMENT_CMDS
 	RANGE_CMDS
 	ENTER_CMDLINE_CMDS
