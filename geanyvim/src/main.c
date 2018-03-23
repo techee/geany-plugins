@@ -76,9 +76,6 @@ struct
 
 	/* whether vi mode is enabled or disabled */
 	gboolean vi_enabled; 
-	/* if vi mode is valid for a single command and will be disabled automatically
-	 * after performing it */
-	gboolean vi_onetime;
 	/* vi mode */
 	ViMode vi_mode;
 	/* key presses accumulated over time (e.g. for commands like 100dd) */
@@ -87,7 +84,7 @@ struct
 	GSList *prev_kpl;
 } state =
 {
-	-1, -1, TRUE, FALSE, VI_MODE_COMMAND, NULL, NULL
+	-1, -1, TRUE, VI_MODE_COMMAND, NULL, NULL
 };
 
 CmdContext ctx =
@@ -200,20 +197,9 @@ void set_vi_mode(ViMode mode)
 	set_vi_mode_full(mode, get_current_doc_sci());
 }
 
-static void leave_onetime_vi_mode()
-{
-	if (state.vi_onetime)
-	{
-		state.vi_enabled = FALSE;
-		state.vi_onetime = FALSE;
-		set_vi_mode(VI_MODE_COMMAND);
-	}
-}
-
 
 static void close_prompt()
 {
-	leave_onetime_vi_mode();
 	gtk_widget_hide(vi_widgets.prompt);
 }
 
@@ -350,7 +336,6 @@ static void save_config(void)
 static void on_toggle_vim_mode(void)
 {
 	state.vi_enabled = gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(vi_widgets.toggle_vi_item));
-	state.vi_onetime = FALSE;
 	set_vi_mode(VI_MODE_COMMAND);
 	if (!state.vi_enabled)
 		ui_set_statusbar(FALSE, "Vim Mode Disabled");
@@ -371,7 +356,6 @@ static gboolean on_perform_vim_command(GeanyKeyBinding *kb, guint key_id, gpoint
 {
 	if (!state.vi_enabled)
 	{
-		state.vi_onetime = TRUE;
 		state.vi_enabled = TRUE;
 		set_vi_mode(VI_MODE_COMMAND);
 	}
@@ -408,15 +392,13 @@ static void repeat_insert(void)
 static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer user_data)
 {
 	ScintillaObject *sci = get_current_doc_sci();
-	gboolean consumed;
+	gboolean consumed = FALSE;
 
 	if (!state.vi_enabled || !sci)
 		return FALSE;
 
 	if (gtk_window_get_focus(GTK_WINDOW(geany->main_widgets->window)) != GTK_WIDGET(sci))
 		return FALSE;
-
-	consumed = state.vi_mode == VI_MODE_COMMAND;
 
 	if (event->keyval == GDK_KEY_Escape && state.vi_mode != VI_MODE_COMMAND)
 	{
@@ -433,7 +415,6 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 			SSM(sci, SCI_SETEMPTYSELECTION, pos, 0);
 			if (pos > start_pos)
 				sci_set_current_position(sci, pos-1, FALSE);
-			leave_onetime_vi_mode();
 			set_vi_mode(VI_MODE_COMMAND);
 			g_slist_free_full(state.kpl, g_free);
 			state.kpl = NULL;
@@ -454,7 +435,6 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 			{
 				if (process_event_cmd_mode(sci, &ctx, state.kpl, state.prev_kpl, &is_repeat_command))
 				{
-					leave_onetime_vi_mode();
 					if (is_repeat_command)
 						g_slist_free_full(state.kpl, g_free);
 					else
@@ -463,6 +443,7 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 						state.prev_kpl = state.kpl;
 					}
 					state.kpl = NULL;
+					consumed = TRUE;
 				}
 			}
 			else if (IS_VISUAL(state.vi_mode))
@@ -471,10 +452,11 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 				{
 					g_slist_free_full(state.kpl, g_free);
 					state.kpl = NULL;
+					consumed = TRUE;
 				}
-				consumed = TRUE;
 			}
 		}
+		consumed = consumed || is_printable(event);
 	}
 
 	return consumed;

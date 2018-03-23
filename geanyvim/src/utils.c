@@ -33,10 +33,37 @@ ScintillaObject *get_current_doc_sci(void)
 
 gchar kp_to_char(KeyPress *kp)
 {
-	gchar utf8[5];
+	gchar utf8[7];
 	gunichar key = gdk_keyval_to_unicode(kp->key);
 	g_unichar_to_utf8(key, utf8);
 	return utf8[0];
+}
+
+gboolean is_printable(GdkEventKey *ev)
+{
+	guint mask = GDK_KEY_Control_L | GDK_KEY_Control_R | GDK_KEY_Meta_L | GDK_KEY_Meta_R |
+		GDK_KEY_Alt_L | GDK_KEY_Alt_R | GDK_KEY_Super_L | GDK_KEY_Super_R |
+		GDK_KEY_Hyper_L | GDK_KEY_Hyper_R;
+
+	switch (ev->keyval)
+	{
+		case GDK_KEY_Control_L:
+		case GDK_KEY_Control_R:
+		case GDK_KEY_Meta_L:
+		case GDK_KEY_Meta_R:
+		case GDK_KEY_Alt_L:
+		case GDK_KEY_Alt_R:
+		case GDK_KEY_Super_L:
+		case GDK_KEY_Super_R:
+		case GDK_KEY_Hyper_L:
+		case GDK_KEY_Hyper_R:
+			return FALSE;
+	}
+
+	if (ev->state & mask)
+		return FALSE;
+
+	return g_unichar_isprint(gdk_keyval_to_unicode(ev->keyval));
 }
 
 static gint kp_todigit(KeyPress *kp)
