@@ -62,7 +62,7 @@ struct
 {
 	GtkWidget *prompt;
 	GtkWidget *entry;
-	GtkWidget *separator_item;
+	GtkWidget *parent_item;
 	GtkWidget *enable_vim_item;
 	GtkWidget *start_in_insert_item;
 	GtkWidget *insert_for_dummies_item;
@@ -616,39 +616,41 @@ PluginCallback plugin_callbacks[] = {
 void plugin_init(GeanyData *data)
 {
 	GeanyKeyGroup *group;
-	GtkWidget *frame;
+	GtkWidget *frame, *menu;
 
 	load_config();
 
 	/* menu items and keybindings */
 	group = plugin_set_key_group(geany_plugin, "geanyvim", KB_COUNT, NULL);
 
-	vi_widgets.separator_item = gtk_separator_menu_item_new();
-	gtk_container_add(GTK_CONTAINER(geany->main_widgets->tools_menu), vi_widgets.separator_item);
+	vi_widgets.parent_item = gtk_menu_item_new_with_mnemonic(_("_Vim Mode"));
+	gtk_container_add(GTK_CONTAINER(geany->main_widgets->tools_menu), vi_widgets.parent_item);
+
+	menu = gtk_menu_new ();
+	gtk_menu_item_set_submenu(GTK_MENU_ITEM(vi_widgets.parent_item), menu);
 
 	vi_widgets.enable_vim_item = gtk_check_menu_item_new_with_mnemonic(_("Enable _Vim Mode"));
-	gtk_widget_show(vi_widgets.enable_vim_item);
-	gtk_container_add(GTK_CONTAINER(geany->main_widgets->tools_menu), vi_widgets.enable_vim_item);
+	gtk_container_add(GTK_CONTAINER(menu), vi_widgets.enable_vim_item);
 	g_signal_connect((gpointer) vi_widgets.enable_vim_item, "activate", G_CALLBACK(on_enable_vim_mode), NULL);
 	gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(vi_widgets.enable_vim_item), state.vim_enabled);
 	keybindings_set_item_full(group, KB_ENABLE_VIM, 0, 0, "enable_vim",
 			_("Enable Vim Mode"), NULL, on_enable_vim_mode_kb, NULL, NULL);
 
 	vi_widgets.start_in_insert_item = gtk_check_menu_item_new_with_mnemonic(_("Start in _Insert Mode"));
-	gtk_widget_show(vi_widgets.start_in_insert_item);
-	gtk_container_add(GTK_CONTAINER(geany->main_widgets->tools_menu), vi_widgets.start_in_insert_item);
+	gtk_container_add(GTK_CONTAINER(menu), vi_widgets.start_in_insert_item);
 	g_signal_connect((gpointer) vi_widgets.start_in_insert_item, "activate",
 		G_CALLBACK(on_start_in_insert), NULL);
 	gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(vi_widgets.start_in_insert_item), state.start_in_insert);
 
 	vi_widgets.insert_for_dummies_item = gtk_check_menu_item_new_with_mnemonic(_("Insert Mode for _Dummies"));
-	gtk_widget_show(vi_widgets.insert_for_dummies_item);
-	gtk_container_add(GTK_CONTAINER(geany->main_widgets->tools_menu), vi_widgets.insert_for_dummies_item);
+	gtk_container_add(GTK_CONTAINER(menu), vi_widgets.insert_for_dummies_item);
 	g_signal_connect((gpointer) vi_widgets.insert_for_dummies_item, "activate",
 		G_CALLBACK(on_insert_for_dummies), NULL);
 	gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(vi_widgets.insert_for_dummies_item), state.insert_for_dummies);
 	keybindings_set_item_full(group, KB_START_IN_INSERT, 0, 0, "insert_for_dummies",
 			_("Insert Mode for Dummies"), NULL, on_insert_for_dummies_kb, NULL, NULL);
+
+	gtk_widget_show_all(vi_widgets.parent_item);
 
 	/* prompt */
 	vi_widgets.prompt = g_object_new(GTK_TYPE_WINDOW,
@@ -693,10 +695,7 @@ void plugin_cleanup(void)
 	}
 
 	gtk_widget_destroy(vi_widgets.prompt);
-	gtk_widget_destroy(vi_widgets.separator_item);
-	gtk_widget_destroy(vi_widgets.enable_vim_item);
-	gtk_widget_destroy(vi_widgets.start_in_insert_item);
-	gtk_widget_destroy(vi_widgets.insert_for_dummies_item);
+	gtk_widget_destroy(vi_widgets.parent_item);
 
 	g_free(ctx.search_text);
 }
