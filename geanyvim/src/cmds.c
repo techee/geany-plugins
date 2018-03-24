@@ -75,7 +75,7 @@ static void cmd_mode_replace(CmdContext *c, CmdParams *p)
 
 static void cmd_mode_visual(CmdContext *c, CmdParams *p)
 {
-	cmd_mode_insert(c, p);
+	set_vi_mode(VI_MODE_VISUAL);
 }
 
 static void cmd_mode_visual_line(CmdContext *c, CmdParams *p)

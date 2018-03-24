@@ -450,6 +450,8 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 {
 	KeyPress *kp = kp_from_event_key(event);
 	ScintillaObject *sci = get_current_doc_sci();
+	gboolean command_performed = FALSE;
+	gboolean is_repeat_command = FALSE;
 	gboolean consumed = FALSE;
 
 	if (!state.vim_enabled || !sci || !kp)
@@ -465,44 +467,32 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 		//kpl_printf(state.kpl);
 		//kpl_printf(state.prev_kpl);
 		if (state.vi_mode == VI_MODE_COMMAND)
-		{
-			gboolean is_repeat_command;
-			if (process_event_cmd_mode(sci, &ctx, state.kpl, state.prev_kpl, &is_repeat_command))
-			{
-				if (is_repeat_command)
-					g_slist_free_full(state.kpl, g_free);
-				else
-				{
-					g_slist_free_full(state.prev_kpl, g_free);
-					state.prev_kpl = state.kpl;
-				}
-				state.kpl = NULL;
-				consumed = TRUE;
-			}
-		}
-		else if (IS_VISUAL(state.vi_mode))
-		{
-			if (process_event_vis_mode(sci, &ctx, state.kpl))
-			{
-				g_slist_free_full(state.kpl, g_free);
-				state.kpl = NULL;
-				consumed = TRUE;
-			}
-		}
-		consumed = consumed || is_printable(event);
+			command_performed = process_event_cmd_mode(sci, &ctx, state.kpl, state.prev_kpl,
+				&is_repeat_command);
+		else
+			command_performed = process_event_vis_mode(sci, &ctx, state.kpl);
+		consumed = command_performed || is_printable(event);
 	}
 	else //insert, replace mode
 	{
 		if (!is_printable(event))
 		{
 			state.kpl = g_slist_prepend(state.kpl, kp);
-			if (process_event_ins_mode(sci, &ctx, state.kpl))
-			{
-				g_slist_free_full(state.kpl, g_free);
-				state.kpl = NULL;
-				consumed = TRUE;
-			}
+			command_performed = process_event_ins_mode(sci, &ctx, state.kpl);
+			consumed = command_performed;
 		}
+	}
+
+	if (command_performed)
+	{
+		if (is_repeat_command)
+			g_slist_free_full(state.kpl, g_free);
+		else
+		{
+			g_slist_free_full(state.prev_kpl, g_free);
+			state.prev_kpl = state.kpl;
+		}
+		state.kpl = NULL;
 	}
 
 	return consumed;
