@@ -55,22 +55,27 @@ typedef void (*Cmd)(CmdContext *c, CmdParams *p);
 
 static void cmd_mode_cmdline(CmdContext *c, CmdParams *p)
 {
+	c->num = p->num;
 	enter_cmdline_mode();
 }
 
 static void cmd_mode_insert(CmdContext *c, CmdParams *p)
 {
+	c->num = p->num;
+	c->newline_insert = FALSE;
 	set_vi_mode(VI_MODE_INSERT);
 }
 
 static void cmd_mode_replace(CmdContext *c, CmdParams *p)
 {
+	c->num = p->num;
+	c->newline_insert = FALSE;
 	set_vi_mode(VI_MODE_REPLACE);
 }
 
 static void cmd_mode_visual(CmdContext *c, CmdParams *p)
 {
-	set_vi_mode(VI_MODE_VISUAL);
+	cmd_mode_insert(c, p);
 }
 
 static void cmd_mode_visual_line(CmdContext *c, CmdParams *p)
@@ -85,7 +90,7 @@ static void cmd_mode_insert_after(CmdContext *c, CmdParams *p)
 {
 	gint end_pos = sci_get_line_end_position(p->sci, p->line);
 
-	set_vi_mode(VI_MODE_INSERT);
+	cmd_mode_insert(c, p);
 	if (p->pos < end_pos)
 		SSM(p->sci, SCI_CHARRIGHT, 0, 0);
 }
@@ -103,20 +108,20 @@ static void goto_nonempty(CmdParams *p, gint line, gboolean scroll)
 static void cmd_mode_insert_line_start_nonempty(CmdContext *c, CmdParams *p)
 {
 	goto_nonempty(p, p->line, FALSE);
-	set_vi_mode(VI_MODE_INSERT);
+	cmd_mode_insert(c, p);
 }
 
 static void cmd_mode_insert_line_start(CmdContext *c, CmdParams *p)
 {
 	gint pos = SSM(p->sci, SCI_POSITIONFROMLINE, p->line, 0);
 	sci_set_current_position(p->sci, pos, FALSE);
-	set_vi_mode(VI_MODE_INSERT);
+	cmd_mode_insert(c, p);
 }
 
 static void cmd_mode_insert_line_end(CmdContext *c, CmdParams *p)
 {
 	SSM(p->sci, SCI_LINEEND, 0, 0);
-	set_vi_mode(VI_MODE_INSERT);
+	cmd_mode_insert(c, p);
 }
 
 static void cmd_mode_insert_next_line(CmdContext *c, CmdParams *p)
@@ -125,6 +130,7 @@ static void cmd_mode_insert_next_line(CmdContext *c, CmdParams *p)
 	SSM(p->sci, SCI_NEWLINE, 0, 0);
 	// undo inserted indentation
 	SSM(p->sci, SCI_DELLINELEFT, 0, 0);
+	c->num = p->num;
 	c->newline_insert = TRUE;
 	set_vi_mode(VI_MODE_INSERT);
 }
@@ -134,6 +140,7 @@ static void cmd_mode_insert_prev_line(CmdContext *c, CmdParams *p)
 	SSM(p->sci, SCI_HOME, 0, 0);
 	SSM(p->sci, SCI_NEWLINE, 0, 0);
 	SSM(p->sci, SCI_LINEUP, 0, 0);
+	c->num = p->num;
 	c->newline_insert = TRUE;
 	set_vi_mode(VI_MODE_INSERT);
 }
@@ -142,19 +149,19 @@ static void cmd_mode_insert_clear_line(CmdContext *c, CmdParams *p)
 {
 	SSM(p->sci, SCI_DELLINELEFT, 0, 0);
 	SSM(p->sci, SCI_DELLINERIGHT, 0, 0);
-	set_vi_mode(VI_MODE_INSERT);
+	cmd_mode_insert(c, p);
 }
 
 static void cmd_mode_insert_clear_right(CmdContext *c, CmdParams *p)
 {
 	SSM(p->sci, SCI_DELLINERIGHT, 0, 0);
-	set_vi_mode(VI_MODE_INSERT);
+	cmd_mode_insert(c, p);
 }
 
 static void cmd_mode_insert_delete_char(CmdContext *c, CmdParams *p)
 {
 	SSM(p->sci, SCI_DELETERANGE, p->pos, 1);
-	set_vi_mode(VI_MODE_INSERT);
+	cmd_mode_insert(c, p);
 }
 
 static void cmd_goto_page_up(CmdContext *c, CmdParams *p)
@@ -690,7 +697,6 @@ static void cmd_range_copy(CmdContext *c, CmdParams *p)
 static void cmd_range_change(CmdContext *c, CmdParams *p)
 {
 	SSM(p->sci, SCI_DELETERANGE, p->sel_start, p->sel_len);
-	set_vi_mode(VI_MODE_INSERT);
 }
 
 static void cmd_repeat_last_command(CmdContext *c, CmdParams *p)
@@ -709,6 +715,14 @@ static void cmd_exit_visual(CmdContext *c, CmdParams *p)
 {
 	SSM(p->sci, SCI_SETEMPTYSELECTION, p->pos, 0);
 	set_vi_mode(VI_MODE_COMMAND);
+}
+
+static void cmd_escape(CmdContext *c, CmdParams *p)
+{
+	if (SSM(p->sci, SCI_AUTOCACTIVE, 0, 0) || SSM(p->sci, SCI_CALLTIPACTIVE, 0, 0))
+		SSM(p->sci, SCI_CANCEL, 0, 0);
+	else
+		set_vi_mode(VI_MODE_COMMAND);
 }
 
 /******************************************************************************/
@@ -885,6 +899,7 @@ CmdDef cmd_mode_cmds[] = {
 
 	/* special */
 	{cmd_repeat_last_command, GDK_KEY_period, 0, 0, 0, FALSE, FALSE},
+	{cmd_escape, GDK_KEY_Escape, 0, 0, 0, FALSE, FALSE},
 
 	{NULL, 0, 0, 0, 0, FALSE, FALSE}
 };
@@ -892,6 +907,7 @@ CmdDef cmd_mode_cmds[] = {
 CmdDef vis_mode_cmds[] = {
 	{cmd_swap_anchor, GDK_KEY_o, 0, 0, 0, FALSE, FALSE},
 	{cmd_exit_visual, GDK_KEY_v, 0, 0, 0, FALSE, FALSE},
+	{cmd_escape, GDK_KEY_Escape, 0, 0, 0, FALSE, FALSE},
 	SEARCH_CMDS
 	MOVEMENT_CMDS
 	RANGE_CMDS
@@ -899,6 +915,10 @@ CmdDef vis_mode_cmds[] = {
 	{NULL, 0, 0, 0, 0, FALSE, FALSE}
 };
 
+CmdDef ins_mode_cmds[] = {
+	{cmd_escape, GDK_KEY_Escape, 0, 0, 0, FALSE, FALSE},
+	{NULL, 0, 0, 0, 0, FALSE, FALSE}
+};
 
 static gboolean is_in_cmd_group(CmdDef *cmds, CmdDef *def)
 {
@@ -1017,9 +1037,6 @@ static void perform_cmd(CmdDef *def, ScintillaObject *sci, CmdContext *ctx, GSLi
 	param.sel_len = sci_get_selection_end(sci) - sci_get_selection_start(sci);
 	param.line = sci_get_current_line(sci);
 
-	ctx->num = param.num;
-	ctx->newline_insert = FALSE;
-
 	sci_start_undo_action(sci);
 
 //	if (def->cmd != cmd_undo && def->cmd != cmd_redo)
@@ -1057,23 +1074,24 @@ static void perform_cmd(CmdDef *def, ScintillaObject *sci, CmdContext *ctx, GSLi
 }
 
 
-gboolean process_event_cmd_mode(ScintillaObject *sci, CmdContext *ctx, GSList *kpl, GSList *prev_kpl, gboolean *is_repeat)
+static gboolean process_event_mode(CmdDef *cmds, ScintillaObject *sci, CmdContext *ctx, GSList *kpl, GSList *prev_kpl, gboolean *is_repeat)
 {
 	gboolean have_selection = sci_get_selection_end(sci)-sci_get_selection_start(sci) > 0;
-	CmdDef *def = get_cmd_to_run(kpl, cmd_mode_cmds, have_selection);
+	CmdDef *def = get_cmd_to_run(kpl, cmds, have_selection);
 
-	*is_repeat = FALSE;
 	if (!def)
 		return FALSE;
 
-	*is_repeat = def->cmd == cmd_repeat_last_command;
-
-	if (*is_repeat)
+	if (is_repeat != NULL)
 	{
-		kpl = prev_kpl;
-		def = get_cmd_to_run(kpl, cmd_mode_cmds, have_selection);
-		if (!def)
-			return FALSE;
+		*is_repeat = def->cmd == cmd_repeat_last_command;
+		if (*is_repeat)
+		{
+			kpl = prev_kpl;
+			def = get_cmd_to_run(kpl, cmd_mode_cmds, have_selection);
+			if (!def)
+				return FALSE;
+		}
 	}
 
 	perform_cmd(def, sci, ctx, kpl);
@@ -1081,14 +1099,18 @@ gboolean process_event_cmd_mode(ScintillaObject *sci, CmdContext *ctx, GSList *k
 	return TRUE;
 }
 
+gboolean process_event_cmd_mode(ScintillaObject *sci, CmdContext *ctx, GSList *kpl,
+	GSList *prev_kpl, gboolean *is_repeat)
+{
+	return process_event_mode(cmd_mode_cmds, sci, ctx, kpl, prev_kpl, is_repeat);
+}
+
 gboolean process_event_vis_mode(ScintillaObject *sci, CmdContext *ctx, GSList *kpl)
 {
-	CmdDef *def = get_cmd_to_run(kpl, vis_mode_cmds, TRUE);
+	return process_event_mode(vis_mode_cmds, sci, ctx, kpl, NULL, NULL);
+}
 
-	if (!def)
-		return FALSE;
-
-	perform_cmd(def, sci, ctx, kpl);
-
-	return TRUE;
+gboolean process_event_ins_mode(ScintillaObject *sci, CmdContext *ctx, GSList *kpl)
+{
+	return process_event_mode(ins_mode_cmds, sci, ctx, kpl, NULL, NULL);
 }

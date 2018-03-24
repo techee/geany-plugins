@@ -37,7 +37,6 @@ GSList *kpl_copy(GSList *kpl);
 gint kpl_get_int(GSList *kpl, GSList **ret);
 void kpl_printf(GSList *kpl);
 
-ScintillaObject *get_current_doc_sci(void);
 gchar *get_current_word(ScintillaObject *sci);
 
 void clamp_cursor_pos(ScintillaObject *sci);

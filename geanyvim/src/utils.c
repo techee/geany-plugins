@@ -25,11 +25,6 @@
 
 #include "utils.h"
 
-ScintillaObject *get_current_doc_sci(void)
-{
-	GeanyDocument *doc = document_get_current();
-	return doc != NULL ? doc->editor->sci : NULL;
-}
 
 gchar kp_to_char(KeyPress *kp)
 {
@@ -205,7 +200,7 @@ void clamp_cursor_pos(ScintillaObject *sci)
 	gint start_pos = sci_get_position_from_line(sci, sci_get_current_line(sci));
 	gint end_pos = sci_get_line_end_position(sci, sci_get_current_line(sci));
 	if (pos == end_pos && pos != start_pos)
-		sci_send_command(sci, SCI_CHARLEFT);
+		SSM(sci, SCI_CHARLEFT, 0, 0);
 }
 
 gchar *get_current_word(ScintillaObject *sci)
