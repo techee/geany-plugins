@@ -111,6 +111,9 @@ static const gchar *get_mode_name(ViMode vi_mode)
 		case VI_MODE_COMMAND:
 			return "COMMAND";
 			break;
+		case VI_MODE_COMMAND_SINGLE:
+			return "(insert)";
+			break;
 		case VI_MODE_INSERT:
 			return "INSERT";
 			break;
@@ -202,9 +205,11 @@ static void set_vi_mode_full(ViMode mode, ScintillaObject *sci)
 	switch (mode)
 	{
 		case VI_MODE_COMMAND:
+		case VI_MODE_COMMAND_SINGLE:
 		{
 			gint pos = sci_get_current_position(sci);
-			if (state.vi_mode == VI_MODE_INSERT || state.vi_mode == VI_MODE_REPLACE)
+			if (state.vi_mode == VI_MODE_COMMAND &&
+				(state.vi_mode == VI_MODE_INSERT || state.vi_mode == VI_MODE_REPLACE))
 			{
 				repeat_insert();
 
@@ -453,6 +458,7 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 	gboolean command_performed = FALSE;
 	gboolean is_repeat_command = FALSE;
 	gboolean consumed = FALSE;
+	ViMode orig_mode = state.vi_mode;
 
 	if (!state.vim_enabled || !sci || !kp)
 		return FALSE;
@@ -460,13 +466,13 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 	if (gtk_window_get_focus(GTK_WINDOW(geany->main_widgets->window)) != GTK_WIDGET(sci))
 		return FALSE;
 
-	if (state.vi_mode == VI_MODE_COMMAND || IS_VISUAL(state.vi_mode))
+	if (IS_COMMAND(state.vi_mode) || IS_VISUAL(state.vi_mode))
 	{
 		state.kpl = g_slist_prepend(state.kpl, kp);
 		printf("key: %x, state: %d\n", event->keyval, event->state);
 		//kpl_printf(state.kpl);
 		//kpl_printf(state.prev_kpl);
-		if (state.vi_mode == VI_MODE_COMMAND)
+		if (IS_COMMAND(state.vi_mode))
 			command_performed = process_event_cmd_mode(sci, &ctx, state.kpl, state.prev_kpl,
 				&is_repeat_command);
 		else
@@ -493,6 +499,9 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 			state.prev_kpl = state.kpl;
 		}
 		state.kpl = NULL;
+
+		if (orig_mode == VI_MODE_COMMAND_SINGLE)
+			set_vi_mode(VI_MODE_INSERT);
 	}
 
 	return consumed;

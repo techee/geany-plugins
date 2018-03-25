@@ -725,6 +725,11 @@ static void cmd_escape(CmdContext *c, CmdParams *p)
 		set_vi_mode(VI_MODE_COMMAND);
 }
 
+static void cmd_run_single_command(CmdContext *c, CmdParams *p)
+{
+	set_vi_mode(VI_MODE_COMMAND_SINGLE);
+}
+
 /******************************************************************************/
 
 
@@ -917,6 +922,7 @@ CmdDef vis_mode_cmds[] = {
 
 CmdDef ins_mode_cmds[] = {
 	{cmd_escape, GDK_KEY_Escape, 0, 0, 0, FALSE, FALSE},
+	{cmd_run_single_command, GDK_KEY_o, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
 	{NULL, 0, 0, 0, 0, FALSE, FALSE}
 };
 
@@ -1044,7 +1050,7 @@ static void perform_cmd(CmdDef *def, ScintillaObject *sci, CmdContext *ctx, GSLi
 
 	def->cmd(ctx, &param);
 
-	if (get_vi_mode() == VI_MODE_COMMAND)
+	if (IS_COMMAND(get_vi_mode()))
 	{
 		if (is_in_cmd_group(movement_cmds, def))
 		{
@@ -1067,7 +1073,7 @@ static void perform_cmd(CmdDef *def, ScintillaObject *sci, CmdContext *ctx, GSLi
 	}
 
 	/* mode could have changed after performing command */
-	if (get_vi_mode() == VI_MODE_COMMAND)
+	if (IS_COMMAND(get_vi_mode()))
 		clamp_cursor_pos(sci);
 
 	sci_end_undo_action(sci);

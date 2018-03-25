@@ -20,9 +20,11 @@
 #define __GEANYVIM_STATE_H__
 
 #define IS_VISUAL(m) ((m) == VI_MODE_VISUAL || (m) == VI_MODE_VISUAL_LINE || (m) == VI_MODE_VISUAL_BLOCK)
+#define IS_COMMAND(m) ((m) == VI_MODE_COMMAND || (m) == VI_MODE_COMMAND_SINGLE)
 
 typedef enum {
 	VI_MODE_COMMAND,
+	VI_MODE_COMMAND_SINGLE, //performing single command from insert mode using Ctrl+O
 	VI_MODE_VISUAL,
 	VI_MODE_VISUAL_LINE,
 	VI_MODE_VISUAL_BLOCK, //not implemented
