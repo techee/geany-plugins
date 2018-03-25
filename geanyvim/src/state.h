@@ -21,6 +21,7 @@
 
 #define IS_VISUAL(m) ((m) == VI_MODE_VISUAL || (m) == VI_MODE_VISUAL_LINE || (m) == VI_MODE_VISUAL_BLOCK)
 #define IS_COMMAND(m) ((m) == VI_MODE_COMMAND || (m) == VI_MODE_COMMAND_SINGLE)
+#define IS_INSERT(m) ((m) == VI_MODE_INSERT || (m) == VI_MODE_REPLACE)
 
 typedef enum {
 	VI_MODE_COMMAND,

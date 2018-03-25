@@ -493,10 +493,7 @@ static void cmd_goto_line_end(CmdContext *c, CmdParams *p)
 
 static void cmd_goto_column(CmdContext *c, CmdParams *p)
 {
-	gint pos = SSM(p->sci, SCI_POSITIONFROMLINE, p->line, 0);
-	gint line_end = SSM(p->sci, SCI_GETLINEENDPOSITION, p->line, 0);
-	pos = REL(p->sci, pos, p->num - 1);
-	pos = pos > line_end ? line_end : pos;
+	gint pos = SSM(p->sci, SCI_FINDCOLUMN, p->line, p->num - 1);
 	sci_set_current_position(p->sci, pos, TRUE);
 }
 
@@ -735,6 +732,72 @@ static void cmd_newline(CmdContext *c, CmdParams *p)
 	SSM(p->sci, SCI_NEWLINE, 0, 0);
 }
 
+static void cmd_tab(CmdContext *c, CmdParams *p)
+{
+	SSM(p->sci, SCI_TAB, 0, 0);
+}
+
+static void cmd_del_word_left(CmdContext *c, CmdParams *p)
+{
+	SSM(p->sci, SCI_DELWORDLEFT, 0, 0);
+}
+
+static void cmd_del_line(CmdContext *c, CmdParams *p)
+{
+	SSM(p->sci, SCI_LINEDELETE, 0, 0);
+}
+
+
+static void indent_ins(CmdContext *c, CmdParams *p, gboolean indent)
+{
+	gint line_end_pos = SSM(p->sci, SCI_GETLINEENDPOSITION, p->line, 0);
+	gint delta;
+	SSM(p->sci, SCI_HOME, 0, 0);
+	SSM(p->sci, indent ? SCI_TAB : SCI_BACKTAB, 0, 0);
+	delta = SSM(p->sci, SCI_GETLINEENDPOSITION, p->line, 0) - line_end_pos;
+	sci_set_current_position(p->sci, p->pos + delta, FALSE);
+}
+
+static void cmd_indent_ins(CmdContext *c, CmdParams *p)
+{
+	indent_ins(c, p, TRUE);
+}
+
+static void cmd_unindent_ins(CmdContext *c, CmdParams *p)
+{
+	indent_ins(c, p, FALSE);
+}
+
+static void cmd_copy_char(CmdContext *c, CmdParams *p, gboolean above)
+{
+	gint line_count = sci_get_line_count(p->sci);
+	if ((above && p->line > 0) || (!above && p->line < line_count - 1))
+	{
+		gint line = above ? p->line - 1 : p->line + 1;
+		gint col = SSM(p->sci, SCI_GETCOLUMN, p->pos, 0);
+		gint pos = SSM(p->sci, SCI_FINDCOLUMN, line, col);
+		gint line_end = sci_get_line_end_position(p->sci, line);
+
+		if (pos < line_end)
+		{
+			gchar *txt = sci_get_contents_range(p->sci, pos, NEXT(p->sci, pos));
+			sci_insert_text(p->sci, p->pos, txt);
+			sci_set_current_position(p->sci, NEXT(p->sci, p->pos), FALSE);
+			g_free(txt);
+		}
+	}
+}
+
+static void cmd_copy_char_from_above(CmdContext *c, CmdParams *p)
+{
+	cmd_copy_char(c, p, TRUE);
+}
+
+static void cmd_copy_char_from_below(CmdContext *c, CmdParams *p)
+{
+	cmd_copy_char(c, p, FALSE);
+}
+
 static void cmd_paste_inserted_text(CmdContext *c, CmdParams *p)
 {
 	const gchar *txt = get_inserted_text();
@@ -959,9 +1022,18 @@ CmdDef ins_mode_cmds[] = {
 
 	{cmd_newline, GDK_KEY_m, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
 	{cmd_newline, GDK_KEY_j, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
+	{cmd_tab, GDK_KEY_i, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
 
 	{cmd_paste_inserted_text, GDK_KEY_a, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
 	{cmd_paste_inserted_text_leave, GDK_KEY_at, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
+
+	{cmd_delete_char_back, GDK_KEY_h, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
+	{cmd_del_word_left, GDK_KEY_w, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
+	{cmd_del_line, GDK_KEY_u, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
+	{cmd_indent_ins, GDK_KEY_t, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
+	{cmd_unindent_ins, GDK_KEY_d, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
+	{cmd_copy_char_from_below, GDK_KEY_e, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
+	{cmd_copy_char_from_above, GDK_KEY_y, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
 
 	{NULL, 0, 0, 0, 0, FALSE, FALSE}
 };
@@ -990,6 +1062,7 @@ static CmdDef *get_cmd_to_run(GSList *kpl, CmdDef *cmds, gboolean have_selection
 	gint i;
 	KeyPress *curr = g_slist_nth_data(kpl, 0);
 	KeyPress *prev = g_slist_nth_data(kpl, 1);
+	ViMode mode = get_vi_mode();
 
 	if (!kpl)
 		return NULL;
@@ -1031,14 +1104,14 @@ static CmdDef *get_cmd_to_run(GSList *kpl, CmdDef *cmds, gboolean have_selection
 			key_equals(curr, cmd->key1, cmd->modif1))
 		{
 			// now solve some quirks manually
-			if (curr->key == GDK_KEY_0)
+			if (curr->key == GDK_KEY_0 && !IS_INSERT(mode))
 			{
 				// 0 jumps to the beginning of line only when not preceded
 				// by another number in which case we want to add it to the accumulator
 				if (prev == NULL || !kp_isdigit(prev))
 					return cmd;
 			}
-			else if (curr->key == GDK_KEY_percent)
+			else if (curr->key == GDK_KEY_percent && !IS_INSERT(mode))
 			{
 				Cmd c = cmd_goto_matching_brace;
 				gint val = kpl_get_int(kpl, NULL);

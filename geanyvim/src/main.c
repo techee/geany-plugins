@@ -161,8 +161,7 @@ const gchar *get_inserted_text(void)
 
 static void repeat_insert(void)
 {
-	if ((state.vi_mode == VI_MODE_INSERT || state.vi_mode == VI_MODE_REPLACE) &&
-		ctx.num > 1 && ctx.insert_buf_len > 0)
+	if (IS_INSERT(state.vi_mode) && ctx.num > 1 && ctx.insert_buf_len > 0)
 	{
 		ScintillaObject *sci = get_current_doc_sci();
 		gint i;
@@ -214,8 +213,7 @@ static void set_vi_mode_full(ViMode mode, ScintillaObject *sci)
 		case VI_MODE_COMMAND_SINGLE:
 		{
 			gint pos = sci_get_current_position(sci);
-			if (state.vi_mode == VI_MODE_COMMAND &&
-				(state.vi_mode == VI_MODE_INSERT || state.vi_mode == VI_MODE_REPLACE))
+			if (mode == VI_MODE_COMMAND && IS_INSERT(state.vi_mode))
 			{
 				repeat_insert();
 
@@ -545,8 +543,7 @@ static gboolean on_editor_notify(GObject *object, GeanyEditor *editor,
 	if (!state.vim_enabled || !sci)
 		return FALSE;
 
-	if (nt->nmhdr.code == SCN_CHARADDED &&
-		(state.vi_mode == VI_MODE_INSERT || state.vi_mode == VI_MODE_REPLACE))
+	if (nt->nmhdr.code == SCN_CHARADDED && IS_INSERT(state.vi_mode))
 	{
 		gchar buf[7];
 		gint len = g_unichar_to_utf8(nt->ch, buf);
