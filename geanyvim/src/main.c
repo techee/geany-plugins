@@ -453,17 +453,19 @@ static gboolean on_insert_for_dummies_kb(GeanyKeyBinding *kb, guint key_id, gpoi
 
 static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer user_data)
 {
-	KeyPress *kp = kp_from_event_key(event);
 	ScintillaObject *sci = get_current_doc_sci();
 	gboolean command_performed = FALSE;
 	gboolean is_repeat_command = FALSE;
 	gboolean consumed = FALSE;
 	ViMode orig_mode = state.vi_mode;
+	KeyPress *kp;
 
-	if (!state.vim_enabled || !sci || !kp)
+	if (!state.vim_enabled || !sci ||
+		gtk_window_get_focus(GTK_WINDOW(geany->main_widgets->window)) != GTK_WIDGET(sci))
 		return FALSE;
 
-	if (gtk_window_get_focus(GTK_WINDOW(geany->main_widgets->window)) != GTK_WIDGET(sci))
+	kp = kp_from_event_key(event);
+	if (!kp)
 		return FALSE;
 
 	if (IS_COMMAND(state.vi_mode) || IS_VISUAL(state.vi_mode))
@@ -481,11 +483,16 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 	}
 	else //insert, replace mode
 	{
-		if (!is_printable(event))
+		if (!is_printable(event) && (!state.insert_for_dummies || kp->key == GDK_KEY_Escape))
 		{
 			state.kpl = g_slist_prepend(state.kpl, kp);
 			command_performed = process_event_ins_mode(sci, &ctx, state.kpl);
 			consumed = command_performed;
+		}
+		else
+		{
+			g_free(kp);
+			kp = NULL;
 		}
 	}
 
