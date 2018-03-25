@@ -1015,6 +1015,21 @@ static CmdDef *get_cmd_to_run(GSList *kpl, CmdDef *cmds, gboolean have_selection
 	return NULL;
 }
 
+/* is the current keypress the first character of a 2-keypress command? */
+static gboolean is_cmdpart(GSList *kpl, CmdDef *cmds)
+{
+	gint i;
+	KeyPress *curr = g_slist_nth_data(kpl, 0);
+
+	for (i = 0; cmds[i].cmd != NULL; i++)
+	{
+		CmdDef *cmd = &cmds[i];
+		if (cmd->key2 != 0 && key_equals(curr, cmd->key1, cmd->modif1))
+			return TRUE;
+	}
+
+	return FALSE;
+}
 
 static void perform_cmd(CmdDef *def, ScintillaObject *sci, CmdContext *ctx, GSList *kpl)
 {
@@ -1080,10 +1095,13 @@ static void perform_cmd(CmdDef *def, ScintillaObject *sci, CmdContext *ctx, GSLi
 }
 
 
-static gboolean process_event_mode(CmdDef *cmds, ScintillaObject *sci, CmdContext *ctx, GSList *kpl, GSList *prev_kpl, gboolean *is_repeat)
+static gboolean process_event_mode(CmdDef *cmds, ScintillaObject *sci, CmdContext *ctx,
+	GSList *kpl, GSList *prev_kpl, gboolean *is_repeat, gboolean *consumed)
 {
 	gboolean have_selection = sci_get_selection_end(sci)-sci_get_selection_start(sci) > 0;
 	CmdDef *def = get_cmd_to_run(kpl, cmds, have_selection);
+
+	*consumed = is_cmdpart(kpl, cmds);
 
 	if (!def)
 		return FALSE;
@@ -1102,21 +1120,22 @@ static gboolean process_event_mode(CmdDef *cmds, ScintillaObject *sci, CmdContex
 
 	perform_cmd(def, sci, ctx, kpl);
 
+	*consumed = TRUE;
 	return TRUE;
 }
 
 gboolean process_event_cmd_mode(ScintillaObject *sci, CmdContext *ctx, GSList *kpl,
-	GSList *prev_kpl, gboolean *is_repeat)
+	GSList *prev_kpl, gboolean *is_repeat, gboolean *consumed)
 {
-	return process_event_mode(cmd_mode_cmds, sci, ctx, kpl, prev_kpl, is_repeat);
+	return process_event_mode(cmd_mode_cmds, sci, ctx, kpl, prev_kpl, is_repeat, consumed);
 }
 
-gboolean process_event_vis_mode(ScintillaObject *sci, CmdContext *ctx, GSList *kpl)
+gboolean process_event_vis_mode(ScintillaObject *sci, CmdContext *ctx, GSList *kpl, gboolean *consumed)
 {
-	return process_event_mode(vis_mode_cmds, sci, ctx, kpl, NULL, NULL);
+	return process_event_mode(vis_mode_cmds, sci, ctx, kpl, NULL, NULL, consumed);
 }
 
-gboolean process_event_ins_mode(ScintillaObject *sci, CmdContext *ctx, GSList *kpl)
+gboolean process_event_ins_mode(ScintillaObject *sci, CmdContext *ctx, GSList *kpl, gboolean *consumed)
 {
-	return process_event_mode(ins_mode_cmds, sci, ctx, kpl, NULL, NULL);
+	return process_event_mode(ins_mode_cmds, sci, ctx, kpl, NULL, NULL, consumed);
 }

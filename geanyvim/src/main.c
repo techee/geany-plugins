@@ -476,18 +476,17 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 		//kpl_printf(state.prev_kpl);
 		if (IS_COMMAND(state.vi_mode))
 			command_performed = process_event_cmd_mode(sci, &ctx, state.kpl, state.prev_kpl,
-				&is_repeat_command);
+				&is_repeat_command, &consumed);
 		else
-			command_performed = process_event_vis_mode(sci, &ctx, state.kpl);
-		consumed = command_performed || is_printable(event);
+			command_performed = process_event_vis_mode(sci, &ctx, state.kpl, &consumed);
+		consumed = consumed || is_printable(event);
 	}
 	else //insert, replace mode
 	{
 		if (!is_printable(event) && (!state.insert_for_dummies || kp->key == GDK_KEY_Escape))
 		{
 			state.kpl = g_slist_prepend(state.kpl, kp);
-			command_performed = process_event_ins_mode(sci, &ctx, state.kpl);
-			consumed = command_performed;
+			command_performed = process_event_ins_mode(sci, &ctx, state.kpl, &consumed);
 		}
 		else
 		{

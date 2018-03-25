@@ -54,8 +54,8 @@ typedef struct
 
 
 gboolean process_event_cmd_mode(ScintillaObject *sci, CmdContext *ctx, GSList *kpl,
-	GSList *prev_kpl, gboolean *is_repeat);
-gboolean process_event_vis_mode(ScintillaObject *sci, CmdContext *ctx, GSList *kpl);
-gboolean process_event_ins_mode(ScintillaObject *sci, CmdContext *ctx, GSList *kpl);
+	GSList *prev_kpl, gboolean *is_repeat, gboolean *consumed);
+gboolean process_event_vis_mode(ScintillaObject *sci, CmdContext *ctx, GSList *kpl, gboolean *consumed);
+gboolean process_event_ins_mode(ScintillaObject *sci, CmdContext *ctx, GSList *kpl, gboolean *consumed);
 
 #endif
