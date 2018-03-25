@@ -120,9 +120,21 @@ KeyPress *kp_from_event_key(GdkEventKey *ev)
 
 	kp = g_new0(KeyPress, 1);
 	kp->key = ev->keyval;
-	/* we are interested only in Ctrl presses - Alt is not used in Vim and
-	 * shift is included in letter capitalisation implicitly */
-	kp->modif = ev->state & GDK_CONTROL_MASK;
+	/* We are interested only in Ctrl presses - Alt is not used in Vim and
+	 * shift is included in letter capitalisation implicitly. The only case
+	 * we are interested in shift is for insert mode shift+arrow keystrokes. */
+	switch (ev->keyval)
+	{
+		case GDK_KEY_Left:
+		case GDK_KEY_Up:
+		case GDK_KEY_Right:
+		case GDK_KEY_Down:
+			kp->modif = ev->state & GDK_SHIFT_MASK;
+			break;
+		default:
+			kp->modif = ev->state & GDK_CONTROL_MASK;
+			break;
+	}
 
 	return kp;
 }

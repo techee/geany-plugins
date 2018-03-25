@@ -153,6 +153,12 @@ static ScintillaObject *get_current_doc_sci(void)
 	return doc != NULL ? doc->editor->sci : NULL;
 }
 
+const gchar *get_inserted_text(void)
+{
+	ctx.insert_buf[ctx.insert_buf_len] = '\0';
+	return ctx.insert_buf;
+}
+
 static void repeat_insert(void)
 {
 	if ((state.vi_mode == VI_MODE_INSERT || state.vi_mode == VI_MODE_REPLACE) &&
@@ -440,6 +446,7 @@ static void on_insert_for_dummies(void)
 {
 	state.insert_for_dummies =
 		gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(vi_widgets.insert_for_dummies_item));
+	ui_set_statusbar(FALSE, _("Insert Mode for Dummies: %s"), state.insert_for_dummies ? _("ON") : _("OFF"));
 	save_config();
 }
 
@@ -539,7 +546,7 @@ static gboolean on_editor_notify(GObject *object, GeanyEditor *editor,
 		return FALSE;
 
 	if (nt->nmhdr.code == SCN_CHARADDED &&
-		(IS_VISUAL(state.vi_mode) || state.vi_mode == VI_MODE_INSERT))
+		(state.vi_mode == VI_MODE_INSERT || state.vi_mode == VI_MODE_REPLACE))
 	{
 		gchar buf[7];
 		gint len = g_unichar_to_utf8(nt->ch, buf);

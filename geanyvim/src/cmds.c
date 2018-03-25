@@ -730,6 +730,23 @@ static void cmd_run_single_command(CmdContext *c, CmdParams *p)
 	set_vi_mode(VI_MODE_COMMAND_SINGLE);
 }
 
+static void cmd_newline(CmdContext *c, CmdParams *p)
+{
+	SSM(p->sci, SCI_NEWLINE, 0, 0);
+}
+
+static void cmd_paste_inserted_text(CmdContext *c, CmdParams *p)
+{
+	const gchar *txt = get_inserted_text();
+	SSM(p->sci, SCI_ADDTEXT, strlen(txt), (sptr_t) txt);
+}
+
+static void cmd_paste_inserted_text_leave(CmdContext *c, CmdParams *p)
+{
+	cmd_paste_inserted_text(c, p);
+	set_vi_mode(VI_MODE_COMMAND);
+}
+
 /******************************************************************************/
 
 
@@ -926,6 +943,22 @@ CmdDef ins_mode_cmds[] = {
 	{cmd_escape, GDK_KEY_bracketleft, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
 
 	{cmd_run_single_command, GDK_KEY_o, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
+
+	{cmd_goto_previous_word, GDK_KEY_Left, 0, GDK_SHIFT_MASK, 0, FALSE, FALSE},
+	{cmd_goto_previous_word, GDK_KEY_leftarrow, 0, GDK_SHIFT_MASK, 0, FALSE, FALSE},
+	{cmd_goto_next_word, GDK_KEY_Right, 0, GDK_SHIFT_MASK, 0, FALSE, FALSE},
+	{cmd_goto_next_word, GDK_KEY_rightarrow, 0, GDK_SHIFT_MASK, 0, FALSE, FALSE},
+	{cmd_goto_page_up, GDK_KEY_Up, 0, GDK_SHIFT_MASK, 0, FALSE, FALSE},
+	{cmd_goto_page_up, GDK_KEY_uparrow, 0, GDK_SHIFT_MASK, 0, FALSE, FALSE},
+	{cmd_goto_page_down, GDK_KEY_Down, 0, GDK_SHIFT_MASK, 0, FALSE, FALSE},
+	{cmd_goto_page_down, GDK_KEY_downarrow, 0, GDK_SHIFT_MASK, 0, FALSE, FALSE},
+
+	{cmd_newline, GDK_KEY_m, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
+	{cmd_newline, GDK_KEY_j, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
+
+	{cmd_paste_inserted_text, GDK_KEY_a, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
+	{cmd_paste_inserted_text_leave, GDK_KEY_at, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
+
 	{NULL, 0, 0, 0, 0, FALSE, FALSE}
 };
 
