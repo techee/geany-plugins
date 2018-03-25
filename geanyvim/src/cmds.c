@@ -910,9 +910,9 @@ CmdDef cmd_mode_cmds[] = {
 };
 
 CmdDef vis_mode_cmds[] = {
+	{cmd_escape, GDK_KEY_Escape, 0, 0, 0, FALSE, FALSE},
 	{cmd_swap_anchor, GDK_KEY_o, 0, 0, 0, FALSE, FALSE},
 	{cmd_exit_visual, GDK_KEY_v, 0, 0, 0, FALSE, FALSE},
-	{cmd_escape, GDK_KEY_Escape, 0, 0, 0, FALSE, FALSE},
 	SEARCH_CMDS
 	MOVEMENT_CMDS
 	RANGE_CMDS
@@ -922,6 +922,9 @@ CmdDef vis_mode_cmds[] = {
 
 CmdDef ins_mode_cmds[] = {
 	{cmd_escape, GDK_KEY_Escape, 0, 0, 0, FALSE, FALSE},
+	{cmd_escape, GDK_KEY_c, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
+	{cmd_escape, GDK_KEY_bracketleft, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
+
 	{cmd_run_single_command, GDK_KEY_o, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
 	{NULL, 0, 0, 0, 0, FALSE, FALSE}
 };
