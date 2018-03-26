@@ -109,7 +109,7 @@ static const gchar *get_mode_name(ViMode vi_mode)
 	switch (vi_mode)
 	{
 		case VI_MODE_COMMAND:
-			return "COMMAND";
+			return "NORMAL";
 			break;
 		case VI_MODE_COMMAND_SINGLE:
 			return "(insert)";
