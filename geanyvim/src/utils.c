@@ -36,24 +36,7 @@ gchar kp_to_char(KeyPress *kp)
 
 gboolean is_printable(GdkEventKey *ev)
 {
-	guint mask = GDK_KEY_Control_L | GDK_KEY_Control_R | GDK_KEY_Meta_L | GDK_KEY_Meta_R |
-		GDK_KEY_Alt_L | GDK_KEY_Alt_R | GDK_KEY_Super_L | GDK_KEY_Super_R |
-		GDK_KEY_Hyper_L | GDK_KEY_Hyper_R;
-
-	switch (ev->keyval)
-	{
-		case GDK_KEY_Control_L:
-		case GDK_KEY_Control_R:
-		case GDK_KEY_Meta_L:
-		case GDK_KEY_Meta_R:
-		case GDK_KEY_Alt_L:
-		case GDK_KEY_Alt_R:
-		case GDK_KEY_Super_L:
-		case GDK_KEY_Super_R:
-		case GDK_KEY_Hyper_L:
-		case GDK_KEY_Hyper_R:
-			return FALSE;
-	}
+	guint mask = GDK_MODIFIER_MASK & ~(GDK_SHIFT_MASK | GDK_LOCK_MASK);
 
 	if (ev->state & mask)
 		return FALSE;
@@ -147,7 +130,7 @@ KeyPress *kp_from_event_key(GdkEventKey *ev)
 		case GDK_KEY_Down:
 		case GDK_KEY_KP_Down:
 		case GDK_KEY_downarrow:
-			kp->modif = ev->state & GDK_SHIFT_MASK;
+			kp->modif = ev->state & (GDK_SHIFT_MASK | GDK_CONTROL_MASK);
 			break;
 		default:
 			kp->modif = ev->state & GDK_CONTROL_MASK;

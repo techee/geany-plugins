@@ -75,15 +75,29 @@ static void cmd_mode_replace(CmdContext *c, CmdParams *p)
 
 static void cmd_mode_visual(CmdContext *c, CmdParams *p)
 {
-	set_vi_mode(VI_MODE_VISUAL);
+	if (get_vi_mode() == VI_MODE_VISUAL)
+	{
+		SSM(p->sci, SCI_SETEMPTYSELECTION, p->pos, 0);
+		set_vi_mode(VI_MODE_COMMAND);
+	}
+	else
+		set_vi_mode(VI_MODE_VISUAL);
 }
 
 static void cmd_mode_visual_line(CmdContext *c, CmdParams *p)
 {
-	set_vi_mode(VI_MODE_VISUAL_LINE);
-	/* just to force the scintilla notification callback to be called so we can
-	 * select the current line */
-	SSM(p->sci, SCI_LINEEND, 0, 0);
+	if (get_vi_mode() == VI_MODE_VISUAL_LINE)
+	{
+		SSM(p->sci, SCI_SETEMPTYSELECTION, p->pos, 0);
+		set_vi_mode(VI_MODE_COMMAND);
+	}
+	else
+	{
+		set_vi_mode(VI_MODE_VISUAL_LINE);
+		/* just to force the scintilla notification callback to be called so we can
+		 * select the current line */
+		SSM(p->sci, SCI_LINEEND, 0, 0);
+	}
 }
 
 static void cmd_mode_insert_after(CmdContext *c, CmdParams *p)
@@ -708,12 +722,6 @@ static void cmd_swap_anchor(CmdContext *c, CmdParams *p)
 	sci_set_current_position(p->sci, anchor, FALSE);
 }
 
-static void cmd_exit_visual(CmdContext *c, CmdParams *p)
-{
-	SSM(p->sci, SCI_SETEMPTYSELECTION, p->pos, 0);
-	set_vi_mode(VI_MODE_COMMAND);
-}
-
 static void cmd_escape(CmdContext *c, CmdParams *p)
 {
 	if (SSM(p->sci, SCI_AUTOCACTIVE, 0, 0) || SSM(p->sci, SCI_CALLTIPACTIVE, 0, 0))
@@ -1016,8 +1024,10 @@ CmdDef cmd_mode_cmds[] = {
 
 CmdDef vis_mode_cmds[] = {
 	{cmd_escape, GDK_KEY_Escape, 0, 0, 0, FALSE, FALSE},
+	{cmd_escape, GDK_KEY_c, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
 	{cmd_swap_anchor, GDK_KEY_o, 0, 0, 0, FALSE, FALSE},
-	{cmd_exit_visual, GDK_KEY_v, 0, 0, 0, FALSE, FALSE},
+	{cmd_mode_visual, GDK_KEY_v, 0, 0, 0, FALSE, FALSE},
+	{cmd_mode_visual_line, GDK_KEY_V, 0, 0, 0, FALSE, FALSE},
 	{cmd_nop, GDK_KEY_Insert, 0, 0, 0, FALSE, FALSE},
 	{cmd_nop, GDK_KEY_KP_Insert, 0, 0, 0, FALSE, FALSE},
 	SEARCH_CMDS
