@@ -66,24 +66,34 @@ static gint kp_todigit(KeyPress *kp)
 	switch (kp->key)
 	{
 		case GDK_KEY_0:
+		case GDK_KEY_KP_0:
 			return 0;
 		case GDK_KEY_1:
+		case GDK_KEY_KP_1:
 			return 1;
 		case GDK_KEY_2:
+		case GDK_KEY_KP_2:
 			return 2;
 		case GDK_KEY_3:
+		case GDK_KEY_KP_3:
 			return 3;
 		case GDK_KEY_4:
+		case GDK_KEY_KP_4:
 			return 4;
 		case GDK_KEY_5:
+		case GDK_KEY_KP_5:
 			return 5;
 		case GDK_KEY_6:
+		case GDK_KEY_KP_6:
 			return 6;
 		case GDK_KEY_7:
+		case GDK_KEY_KP_7:
 			return 7;
 		case GDK_KEY_8:
+		case GDK_KEY_KP_8:
 			return 8;
 		case GDK_KEY_9:
+		case GDK_KEY_KP_9:
 			return 9;
 	}
 	return -1;
@@ -126,9 +136,17 @@ KeyPress *kp_from_event_key(GdkEventKey *ev)
 	switch (ev->keyval)
 	{
 		case GDK_KEY_Left:
+		case GDK_KEY_KP_Left:
+		case GDK_KEY_leftarrow:
 		case GDK_KEY_Up:
+		case GDK_KEY_KP_Up:
+		case GDK_KEY_uparrow:
 		case GDK_KEY_Right:
+		case GDK_KEY_KP_Right:
+		case GDK_KEY_rightarrow:
 		case GDK_KEY_Down:
+		case GDK_KEY_KP_Down:
+		case GDK_KEY_downarrow:
 			kp->modif = ev->state & GDK_SHIFT_MASK;
 			break;
 		default:
