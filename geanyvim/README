@@ -1,0 +1,269 @@
+TODO: description, FAQ, implementation limitations
+
+
+Commands implemented
+
+
+==============================================================================
+1. Insert mode                                          insert-index
+
+tag             char            action in Insert mode   
+-----------------------------------------------------------------------
+i_CTRL-@      CTRL-@          insert previously inserted text and stop
+                                insert
+i_CTRL-A      CTRL-A          insert previously inserted text
+i_CTRL-C      CTRL-C          quit insert mode, without checking for
+                                abbreviation, unless 'insertmode' set.
+i_CTRL-D      CTRL-D          delete one shiftwidth of indent in the current
+                                line
+i_CTRL-E      CTRL-E          insert the character which is below the cursor
+i_<BS>        <BS>            delete character before the cursor
+i_CTRL-H      CTRL-H          same as <BS>
+i_<Tab>       <Tab>           insert a <Tab> character
+i_CTRL-I      CTRL-I          same as <Tab>
+i_<NL>        <NL>            same as <CR>
+i_CTRL-J      CTRL-J          same as <CR>
+i_<CR>        <CR>            begin new line
+i_CTRL-M      CTRL-M          same as <CR>
+i_CTRL-O      CTRL-O          execute a single command and return to insert
+                                mode
+i_CTRL-T      CTRL-T          insert one shiftwidth of indent in current
+                                line
+i_CTRL-U      CTRL-U          delete all entered characters in the current
+                                line
+i_CTRL-W      CTRL-W          delete word before the cursor
+i_CTRL-Y      CTRL-Y          insert the character which is above the cursor
+i_<Esc>       <Esc>           end insert mode (unless 'insertmode' set)
+i_CTRL-[      CTRL-[          same as <Esc>
+i_<Del>       <Del>           delete character under the cursor
+
+i_<Left>      <Left>          cursor one character left
+i_<S-Left>    <S-Left>        cursor one word left
+i_<C-Left>    <C-Left>        cursor one word left
+i_<Right>     <Right>         cursor one character right
+i_<S-Right>   <S-Right>       cursor one word right
+i_<C-Right>   <C-Right>       cursor one word right
+i_<Up>        <Up>            cursor one line up
+i_<S-Up>      <S-Up>          same as <PageUp>
+i_<Down>      <Down>          cursor one line down
+i_<S-Down>    <S-Down>        same as <PageDown>
+i_<Home>      <Home>          cursor to start of line
+i_<C-Home>    <C-Home>        cursor to start of file
+i_<End>       <End>           cursor past end of line
+i_<C-End>     <C-End>         cursor past end of file
+i_<PageUp>    <PageUp>        one screenful backward
+i_<PageDown>  <PageDown>      one screenful forward
+i_<Insert>    <Insert>        toggle Insert/Replace mode
+i_<LeftMouse> <LeftMouse>     cursor at mouse click
+
+==============================================================================
+2. Normal mode                                          normal-index
+
+CHAR     any non-blank character
+WORD     a sequence of non-blank characters
+N        a number entered before the command
+{motion} a cursor movement command
+Nmove    the text that is moved over with a {motion}
+SECTION  a section that possibly starts with '}' instead of '{'
+
+note: 1 = cursor movement command; 2 = can be undone/redone
+
+tag             char          note action in Normal mode        
+------------------------------------------------------------------------------
+CTRL-B        CTRL-B          1  scroll N screens Backwards
+CTRL-D        CTRL-D             scroll Down N lines (default: half a screen)
+CTRL-E        CTRL-E             scroll N lines upwards (N lines Extra)
+CTRL-F        CTRL-F          1  scroll N screens Forward
+<BS>          <BS>            1  same as "h"
+CTRL-H        CTRL-H          1  same as "h"
+<NL>          <NL>            1  same as "j"
+CTRL-J        CTRL-J          1  same as "j"
+<CR>          <CR>            1  cursor to the first CHAR N lines lower
+CTRL-M        CTRL-M          1  same as <CR>
+CTRL-N        CTRL-N          1  same as "j"
+CTRL-P        CTRL-P          1  same as "k"
+CTRL-R        CTRL-R          2  redo changes which were undone with 'u'
+CTRL-U        CTRL-U             scroll N lines Upwards (default: half a
+                                   screen)
+CTRL-Y        CTRL-Y             scroll N lines downwards
+
+<Space>       <Space>         1  same as "l"
+#             #               1  search backward for the Nth occurrence of
+                                   the ident under the cursor
+$             $               1  cursor to the end of Nth next line
+%             %               1  find the next (curly/square) bracket on
+                                   this line and go to its match, or go to
+                                   matching comment bracket, or go to matching
+                                   preprocessor directive.
+N%            {count}%        1  go to N percentage in the file
+&             &               2  repeat last :s
+star          *               1  search forward for the Nth occurrence of
+                                   the ident under the cursor
++             +               1  same as <CR>
+,             ,               1  repeat latest f, t, F or T in opposite
+                                   direction N times
+-             -               1  cursor to the first CHAR N lines higher
+.             .               2  repeat last change with count replaced with
+                                   N
+/             /{pattern}<CR>  1  search forward for the Nth occurrence of
+                                   {pattern}
+/<CR>         /<CR>           1  search forward for {pattern} of last search
+count         0               1  cursor to the first char of the line
+count         1                  prepend to command to give a count
+count         2                       "
+count         3                       "
+count         4                       "
+count         5                       "
+count         6                       "
+count         7                       "
+count         8                       "
+count         9                       "
+:             :               1  start entering an Ex command
+;             ;               1  repeat latest f, t, F or T N times
+<             <{motion}       2  shift Nmove lines one 'shiftwidth'
+                                   leftwards
+<<            <<              2  shift N lines one 'shiftwidth' leftwards
+>             >{motion}       2  shift Nmove lines one 'shiftwidth'
+                                   rightwards
+>>            >>              2  shift N lines one 'shiftwidth' rightwards
+?             ?{pattern}<CR>  1  search backward for the Nth previous
+                                   occurrence of {pattern}
+?<CR>         ?<CR>           1  search backward for {pattern} of last search
+A             A               2  append text after the end of the line N times
+B             B               1  cursor N WORDS backward
+C             ["x]C           2  change from the cursor position to the end
+                                   of the line, and N-1 more lines [into
+                                   register x]; synonym for "c$"
+D             ["x]D           2  delete the characters under the cursor
+                                   until the end of the line and N-1 more
+                                   lines [into register x]; synonym for "d$"
+E             E               1  cursor forward to the end of WORD N
+F             F{char}         1  cursor to the Nth occurrence of {char} to
+                                   the left
+G             G               1  cursor to line N, default last line
+H             H               1  cursor to line N from top of screen
+I             I               2  insert text before the first CHAR on the
+                                   line N times
+J             J               2  Join N lines; default is 2
+L             L               1  cursor to line N from bottom of screen
+M             M               1  cursor to middle line of screen
+N             N               1  repeat the latest '/' or '?' N times in
+                                   opposite direction
+O             O               2  begin a new line above the cursor and
+                                   insert text, repeat N times
+P             ["x]P           2  put the text [from register x] before the
+                                   cursor N times
+R             R               2  enter replace mode: overtype existing
+                                   characters, repeat the entered text N-1
+                                   times
+S             ["x]S           2  delete N lines [into register x] and start
+                                   insert; synonym for "cc".
+T             T{char}         1  cursor till after Nth occurrence of {char}
+                                   to the left
+V             V                  start linewise Visual mode
+W             W               1  cursor N WORDS forward
+X             ["x]X           2  delete N characters before the cursor [into
+                                   register x]
+Y             ["x]Y              yank N lines [into register x]; synonym for
+                                   "yy"
+^             ^               1  cursor to the first CHAR of the line
+_             _               1  cursor to the first CHAR N - 1 lines lower
+a             a               2  append text after the cursor N times
+b             b               1  cursor N words backward
+c             ["x]c{motion}   2  delete Nmove text [into register x] and
+                                   start insert
+cc            ["x]cc          2  delete N lines [into register x] and start
+                                   insert
+d             ["x]d{motion}   2  delete Nmove text [into register x]
+dd            ["x]dd          2  delete N lines [into register x]
+e             e               1  cursor forward to the end of word N
+f             f{char}         1  cursor to Nth occurrence of {char} to the
+                                   right
+h             h               1  cursor N chars to the left
+i             i               2  insert text before the cursor N times
+j             j               1  cursor N lines downward
+k             k               1  cursor N lines upward
+l             l               1  cursor N chars to the right
+n             n               1  repeat the latest '/' or '?' N times
+o             o               2  begin a new line below the cursor and
+                                   insert text, repeat N times
+r             r{char}         2  replace N chars with {char}
+s             ["x]s           2  (substitute) delete N characters [into
+                                   register x] and start insert
+t             t{char}         1  cursor till before Nth occurrence of {char}
+                                   to the right
+u             u               2  undo changes
+v             v                  start characterwise Visual mode
+w             w               1  cursor N words forward
+x             ["x]x           2  delete N characters under and after the
+                                   cursor [into register x]
+y             ["x]y{motion}      yank Nmove text [into register x]
+yy            ["x]yy             yank N lines [into register x]
+bar           |               1  cursor to column N
+~             ~               2  'tildeop' off: switch case of N characters
+                                   under cursor and move the cursor N
+                                   characters to the right
+~             ~{motion}          'tildeop' on: switch case of Nmove text
+<C-End>       <C-End>         1  same as "G"
+<C-Home>      <C-Home>        1  same as "gg"
+<C-Left>      <C-Left>        1  same as "b"
+<C-LeftMouse> <C-LeftMouse>      ":ta" to the keyword at the mouse click
+<C-Right>     <C-Right>       1  same as "w"
+<C-RightMouse> <C-RightMouse>    same as "CTRL-T"
+<Del>         ["x]<Del>       2  same as "x"
+N<Del>        {count}<Del>       remove the last digit from {count}
+<Down>        <Down>          1  same as "j"
+<End>         <End>           1  same as "$"
+<Home>        <Home>          1  same as "0"
+<Insert>      <Insert>        2  same as "i"
+<Left>        <Left>          1  same as "h"
+<LeftMouse>   <LeftMouse>     1  move cursor to the mouse click position
+<PageDown>    <PageDown>         same as CTRL-F
+<PageUp>      <PageUp>           same as CTRL-B
+<Right>       <Right>         1  same as "l"
+<S-Down>      <S-Down>        1  same as CTRL-F
+<S-Left>      <S-Left>        1  same as "b"
+<S-Right>     <S-Right>       1  same as "w"
+<S-Up>        <S-Up>          1  same as CTRL-B
+<Up>          <Up>            1  same as "k"
+
+==============================================================================
+3. Visual mode                                          visual-index
+
+Most commands in Visual mode are the same as in Normal mode.  The ones listed
+here are those that are different.
+
+tag             command       note action in Visual mode        
+------------------------------------------------------------------------------
+v_CTRL-C      CTRL-C             stop Visual mode
+v_:           :                  start a command-line with the highlighted
+                                   lines as a range
+v_<           <               2  shift the highlighted lines one
+                                   'shiftwidth' left
+v_>           >               2  shift the highlighted lines one
+                                   'shiftwidth' right
+v_C           C               2  delete the highlighted lines and start
+                                   insert
+v_D           D               2  delete the highlighted lines
+v_J           J               2  join the highlighted lines
+v_O           O                  Move horizontally to other corner of area.
+v_R           R               2  delete the highlighted lines and start
+                                   insert
+v_S           S               2  delete the highlighted lines and start
+                                   insert
+v_U           U               2  make highlighted area uppercase
+v_V           V                  make Visual mode linewise or stop Visual
+                                   mode
+v_X           X               2  delete the highlighted lines
+v_Y           Y                  yank the highlighted lines
+v_c           c               2  delete highlighted area and start insert
+v_d           d               2  delete highlighted area
+v_o           o                  move cursor to other corner of area
+v_r           r               2  delete highlighted area and start insert
+v_s           s               2  delete highlighted area and start insert
+v_u           u               2  make highlighted area lowercase
+v_v           v                  make Visual mode characterwise or stop
+                                   Visual mode
+v_x           x               2  delete the highlighted area
+v_y           y                  yank the highlighted area
+v_~           ~               2  swap case for the highlighted area
