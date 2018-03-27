@@ -425,18 +425,24 @@ static void cmd_delete_char_yank(CmdContext *c, CmdParams *p)
 	delete_char(c, p, TRUE);
 }
 
+static void delete_char_back(CmdContext *c, CmdParams *p, gboolean yank)
+{
+	gint line_start_pos = SSM(p->sci, SCI_POSITIONFROMLINE, p->line, 0);
+	gint start_pos = REL(p->sci, p->pos, -p->num);
+	start_pos = start_pos < line_start_pos ? line_start_pos : start_pos;
+	if (yank)
+		SSM(p->sci, SCI_COPYRANGE, start_pos, p->pos);
+	SSM(p->sci, SCI_DELETERANGE, start_pos, p->pos - start_pos);
+}
+
 static void cmd_delete_char_back(CmdContext *c, CmdParams *p)
 {
-	gint i;
-	gint pos = p->pos;
-	gint line_start = SSM(p->sci, SCI_POSITIONFROMLINE, p->line, 0);
-	for (i = 0; i < p->num; i++)
-	{
-		if (pos == line_start)
-			break;
-		pos = PREV(p->sci, pos);
-		SSM(p->sci, SCI_DELETERANGE, pos, 1);
-	}
+	delete_char_back(c, p, FALSE);
+}
+
+static void cmd_delete_char_back_yank(CmdContext *c, CmdParams *p)
+{
+	delete_char_back(c, p, TRUE);
 }
 
 static void cmd_goto_line(CmdContext *c, CmdParams *p)
@@ -1019,7 +1025,7 @@ CmdDef cmd_mode_cmds[] = {
 	{cmd_delete_char_yank, GDK_KEY_x, 0, 0, 0, FALSE, FALSE},
 	{cmd_delete_char_yank, GDK_KEY_Delete, 0, 0, 0, FALSE, FALSE},
 	{cmd_delete_char_yank, GDK_KEY_KP_Delete, 0, 0, 0, FALSE, FALSE},
-	{cmd_delete_char_back, GDK_KEY_X, 0, 0, 0, FALSE, FALSE},
+	{cmd_delete_char_back_yank, GDK_KEY_X, 0, 0, 0, FALSE, FALSE},
 	{cmd_delete_line, GDK_KEY_d, GDK_KEY_d, 0, 0, FALSE, FALSE},
 	{cmd_clear_right, GDK_KEY_D, 0, 0, 0, FALSE, FALSE},
 	/* TODO: visual version of line join */
