@@ -830,19 +830,47 @@ typedef struct {
 	gboolean needs_selection;
 } CmdDef;
 
-
-#define MOVEMENT_CMDS \
-	/* left */ \
+#define ARROW_MOTIONS \
+	{cmd_goto_next_word, GDK_KEY_Right, 0, GDK_SHIFT_MASK, 0, FALSE, FALSE}, \
+	{cmd_goto_next_word, GDK_KEY_Right, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE}, \
+	{cmd_goto_next_word, GDK_KEY_KP_Right, 0, GDK_SHIFT_MASK, 0, FALSE, FALSE}, \
+	{cmd_goto_next_word, GDK_KEY_KP_Right, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE}, \
+	{cmd_goto_next_word, GDK_KEY_rightarrow, 0, GDK_SHIFT_MASK, 0, FALSE, FALSE}, \
+	{cmd_goto_next_word, GDK_KEY_rightarrow, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE}, \
+	{cmd_goto_previous_word, GDK_KEY_Left, 0, GDK_SHIFT_MASK, 0, FALSE, FALSE}, \
+	{cmd_goto_previous_word, GDK_KEY_Left, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE}, \
+	{cmd_goto_previous_word, GDK_KEY_KP_Left, 0, GDK_SHIFT_MASK, 0, FALSE, FALSE}, \
+	{cmd_goto_previous_word, GDK_KEY_KP_Left, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE}, \
+	{cmd_goto_previous_word, GDK_KEY_leftarrow, 0, GDK_SHIFT_MASK, 0, FALSE, FALSE}, \
+	{cmd_goto_previous_word, GDK_KEY_leftarrow, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE}, \
+	{cmd_goto_page_up, GDK_KEY_Up, 0, GDK_SHIFT_MASK, 0, FALSE, FALSE}, \
+	{cmd_goto_page_up, GDK_KEY_KP_Up, 0, GDK_SHIFT_MASK, 0, FALSE, FALSE}, \
+	{cmd_goto_page_up, GDK_KEY_uparrow, 0, GDK_SHIFT_MASK, 0, FALSE, FALSE}, \
+	{cmd_goto_page_down, GDK_KEY_Down, 0, GDK_SHIFT_MASK, 0, FALSE, FALSE}, \
+	{cmd_goto_page_down, GDK_KEY_KP_Down, 0, GDK_SHIFT_MASK, 0, FALSE, FALSE}, \
+	{cmd_goto_page_down, GDK_KEY_downarrow, 0, GDK_SHIFT_MASK, 0, FALSE, FALSE}, \
 	{cmd_goto_left, GDK_KEY_Left, 0, 0, 0, FALSE, FALSE}, \
 	{cmd_goto_left, GDK_KEY_KP_Left, 0, 0, 0, FALSE, FALSE}, \
 	{cmd_goto_left, GDK_KEY_leftarrow, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_goto_right, GDK_KEY_Right, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_goto_right, GDK_KEY_KP_Right, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_goto_right, GDK_KEY_rightarrow, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_goto_up, GDK_KEY_Up, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_goto_up, GDK_KEY_KP_Up, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_goto_up, GDK_KEY_uparrow, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_goto_down, GDK_KEY_Down, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_goto_down, GDK_KEY_KP_Down, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_goto_down, GDK_KEY_downarrow, 0, 0, 0, FALSE, FALSE}, \
+	/* END */
+
+
+#define MOVEMENT_CMDS \
+	ARROW_MOTIONS \
+	/* left */ \
 	{cmd_goto_left, GDK_KEY_h, 0, 0, 0, FALSE, FALSE}, \
 	{cmd_goto_left, GDK_KEY_h, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE}, \
 	{cmd_goto_left, GDK_KEY_BackSpace, 0, 0, 0, FALSE, FALSE}, \
 	/* right */ \
-	{cmd_goto_right, GDK_KEY_Right, 0, 0, 0, FALSE, FALSE}, \
-	{cmd_goto_right, GDK_KEY_KP_Right, 0, 0, 0, FALSE, FALSE}, \
-	{cmd_goto_right, GDK_KEY_rightarrow, 0, 0, 0, FALSE, FALSE}, \
 	{cmd_goto_right, GDK_KEY_l, 0, 0, 0, FALSE, FALSE}, \
 	{cmd_goto_right, GDK_KEY_space, 0, 0, 0, FALSE, FALSE}, \
 	/* line beginning */ \
@@ -861,17 +889,11 @@ typedef struct {
 	{cmd_find_char_repeat, GDK_KEY_semicolon, 0, 0, 0, FALSE, FALSE}, \
 	{cmd_find_char_repeat_opposite, GDK_KEY_comma, 0, 0, 0, FALSE, FALSE}, \
 	/* up */ \
-	{cmd_goto_up, GDK_KEY_Up, 0, 0, 0, FALSE, FALSE}, \
-	{cmd_goto_up, GDK_KEY_KP_Up, 0, 0, 0, FALSE, FALSE}, \
-	{cmd_goto_up, GDK_KEY_uparrow, 0, 0, 0, FALSE, FALSE}, \
 	{cmd_goto_up, GDK_KEY_k, 0, 0, 0, FALSE, FALSE}, \
 	{cmd_goto_up, GDK_KEY_p, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE}, \
 	{cmd_goto_up_nonempty, GDK_KEY_minus, 0, 0, 0, FALSE, FALSE}, \
 	{cmd_goto_up_nonempty, GDK_KEY_KP_Subtract, 0, 0, 0, FALSE, FALSE}, \
 	/* down */ \
-	{cmd_goto_down, GDK_KEY_Down, 0, 0, 0, FALSE, FALSE}, \
-	{cmd_goto_down, GDK_KEY_KP_Down, 0, 0, 0, FALSE, FALSE}, \
-	{cmd_goto_down, GDK_KEY_downarrow, 0, 0, 0, FALSE, FALSE}, \
 	{cmd_goto_down, GDK_KEY_j, 0, 0, 0, FALSE, FALSE}, \
 	{cmd_goto_down, GDK_KEY_j, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE}, \
 	{cmd_goto_down, GDK_KEY_n, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE}, \
@@ -955,10 +977,11 @@ CmdDef range_cmds[] = {
 
 CmdDef cmd_mode_cmds[] = {
 	/* enter insert mode */
-	/* TODO: replaying insert mode */
 	{cmd_mode_insert_after, GDK_KEY_a, 0, 0, 0, FALSE, FALSE},
 	{cmd_mode_insert_line_end, GDK_KEY_A, 0, 0, 0, FALSE, FALSE},
 	{cmd_mode_insert, GDK_KEY_i, 0, 0, 0, FALSE, FALSE},
+	{cmd_mode_insert, GDK_KEY_Insert, 0, 0, 0, FALSE, FALSE},
+	{cmd_mode_insert, GDK_KEY_KP_Insert, 0, 0, 0, FALSE, FALSE},
 	{cmd_mode_insert_line_start_nonempty, GDK_KEY_I, 0, 0, 0, FALSE, FALSE},
 	{cmd_mode_insert_line_start, GDK_KEY_g, GDK_KEY_I, 0, 0, FALSE, FALSE},
 	{cmd_mode_insert_next_line, GDK_KEY_o, 0, 0, 0, FALSE, FALSE},
@@ -1032,34 +1055,18 @@ CmdDef vis_mode_cmds[] = {
 };
 
 CmdDef ins_mode_cmds[] = {
+	ARROW_MOTIONS
+
 	{cmd_escape, GDK_KEY_Escape, 0, 0, 0, FALSE, FALSE},
 	{cmd_escape, GDK_KEY_c, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
 	{cmd_escape, GDK_KEY_bracketleft, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
 
 	{cmd_run_single_command, GDK_KEY_o, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
 
-	{cmd_goto_previous_word, GDK_KEY_Left, 0, GDK_SHIFT_MASK, 0, FALSE, FALSE},
-	{cmd_goto_previous_word, GDK_KEY_Left, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
-	{cmd_goto_previous_word, GDK_KEY_KP_Left, 0, GDK_SHIFT_MASK, 0, FALSE, FALSE},
-	{cmd_goto_previous_word, GDK_KEY_KP_Left, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
-	{cmd_goto_previous_word, GDK_KEY_leftarrow, 0, GDK_SHIFT_MASK, 0, FALSE, FALSE},
-	{cmd_goto_previous_word, GDK_KEY_leftarrow, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
-	{cmd_goto_next_word, GDK_KEY_Right, 0, GDK_SHIFT_MASK, 0, FALSE, FALSE},
-	{cmd_goto_next_word, GDK_KEY_Right, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
-	{cmd_goto_next_word, GDK_KEY_KP_Right, 0, GDK_SHIFT_MASK, 0, FALSE, FALSE},
-	{cmd_goto_next_word, GDK_KEY_KP_Right, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
-	{cmd_goto_next_word, GDK_KEY_rightarrow, 0, GDK_SHIFT_MASK, 0, FALSE, FALSE},
-	{cmd_goto_next_word, GDK_KEY_rightarrow, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
-	{cmd_goto_page_up, GDK_KEY_Up, 0, GDK_SHIFT_MASK, 0, FALSE, FALSE},
-	{cmd_goto_page_up, GDK_KEY_KP_Up, 0, GDK_SHIFT_MASK, 0, FALSE, FALSE},
-	{cmd_goto_page_up, GDK_KEY_uparrow, 0, GDK_SHIFT_MASK, 0, FALSE, FALSE},
-	{cmd_goto_page_down, GDK_KEY_Down, 0, GDK_SHIFT_MASK, 0, FALSE, FALSE},
-	{cmd_goto_page_down, GDK_KEY_KP_Down, 0, GDK_SHIFT_MASK, 0, FALSE, FALSE},
-	{cmd_goto_page_down, GDK_KEY_downarrow, 0, GDK_SHIFT_MASK, 0, FALSE, FALSE},
-	{cmd_goto_line_last, GDK_KEY_End, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE}, \
-	{cmd_goto_line_last, GDK_KEY_KP_End, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE}, \
-	{cmd_goto_line, GDK_KEY_Home, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE}, \
-	{cmd_goto_line, GDK_KEY_KP_Home, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE}, \
+	{cmd_goto_line_last, GDK_KEY_End, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
+	{cmd_goto_line_last, GDK_KEY_KP_End, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
+	{cmd_goto_line, GDK_KEY_Home, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
+	{cmd_goto_line, GDK_KEY_KP_Home, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
 
 	{cmd_newline, GDK_KEY_m, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
 	{cmd_newline, GDK_KEY_j, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
