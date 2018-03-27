@@ -159,7 +159,7 @@ const gchar *get_inserted_text(void)
 	return ctx.insert_buf;
 }
 
-static void repeat_insert(void)
+static void repeat_insert(gboolean replace)
 {
 	if (ctx.num > 1 && ctx.insert_buf_len > 0)
 	{
@@ -171,9 +171,25 @@ static void repeat_insert(void)
 		sci_start_undo_action(sci);
 		for (i = 0; i < ctx.num - 1; i++)
 		{
+			gint line;
+			gint line_len;
+
 			if (ctx.newline_insert)
 				SSM(sci, SCI_NEWLINE, 0, 0);
+
+			line = sci_get_current_line(sci);
+			line_len = SSM(sci, SCI_LINELENGTH, line, 0);
+
 			SSM(sci, SCI_ADDTEXT, ctx.insert_buf_len, (sptr_t) ctx.insert_buf);
+
+			if (replace)
+			{
+				gint pos = sci_get_current_position(sci);
+				gint line_end_pos = sci_get_line_end_position(sci, line);
+				gint diff = SSM(sci, SCI_LINELENGTH, line, 0) - line_len;
+				diff = pos + diff > line_end_pos ? line_end_pos - pos : diff;
+				SSM(sci, SCI_DELETERANGE, pos, diff);
+			}
 		}
 		sci_end_undo_action(sci);
 	}
@@ -215,7 +231,7 @@ static void set_vi_mode_full(ViMode mode, ScintillaObject *sci)
 			gint pos = sci_get_current_position(sci);
 			if (mode == VI_MODE_COMMAND && IS_INSERT(prev_mode))
 			{
-				repeat_insert();
+				repeat_insert(prev_mode == VI_MODE_REPLACE);
 
 				//repeat_insert() can change current position
 				pos = sci_get_current_position(sci);
