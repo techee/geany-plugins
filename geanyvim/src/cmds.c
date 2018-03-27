@@ -542,7 +542,9 @@ static void cmd_goto_doc_percentage(CmdContext *c, CmdParams *p)
 static void cmd_goto_screen_top(CmdContext *c, CmdParams *p)
 {
 	gint top = SSM(p->sci, SCI_GETFIRSTVISIBLELINE, 0, 0);
-	goto_nonempty(p, top, FALSE);
+	gint count = SSM(p->sci, SCI_LINESONSCREEN, 0, 0);
+	gint line = top + p->num;
+	goto_nonempty(p, line > top + count ? top + count : line, FALSE);
 }
 
 static void cmd_goto_screen_middle(CmdContext *c, CmdParams *p)
@@ -556,7 +558,8 @@ static void cmd_goto_screen_bottom(CmdContext *c, CmdParams *p)
 {
 	gint top = SSM(p->sci, SCI_GETFIRSTVISIBLELINE, 0, 0);
 	gint count = SSM(p->sci, SCI_LINESONSCREEN, 0, 0);
-	goto_nonempty(p, top + count - p->num, FALSE);
+	gint line = top + count - p->num;
+	goto_nonempty(p, line < top ? top : line, FALSE);
 }
 
 static void cmd_replace_char(CmdContext *c, CmdParams *p)
