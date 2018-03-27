@@ -907,16 +907,16 @@ typedef struct {
 	{cmd_goto_screen_middle, GDK_KEY_M, 0, 0, 0, FALSE, FALSE}, \
 	{cmd_goto_screen_bottom, GDK_KEY_L, 0, 0, 0, FALSE, FALSE}, \
 	/* scrolling */ \
-	{cmd_goto_page_down, GDK_f, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE}, \
+	{cmd_goto_page_down, GDK_KEY_f, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE}, \
 	{cmd_goto_page_down, GDK_KEY_Page_Down, 0, 0, 0, FALSE, FALSE}, \
 	{cmd_goto_page_down, GDK_KEY_KP_Page_Down, 0, 0, 0, FALSE, FALSE}, \
-	{cmd_goto_page_up, GDK_b, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE}, \
+	{cmd_goto_page_up, GDK_KEY_b, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE}, \
 	{cmd_goto_page_up, GDK_KEY_Page_Up, 0, 0, 0, FALSE, FALSE}, \
 	{cmd_goto_page_up, GDK_KEY_KP_Page_Up, 0, 0, 0, FALSE, FALSE}, \
-	{cmd_goto_halfpage_down, GDK_d, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE}, \
-	{cmd_goto_halfpage_up, GDK_u, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE}, \
-	{cmd_scroll_down, GDK_e, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE}, \
-	{cmd_scroll_up, GDK_y, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE}, \
+	{cmd_goto_halfpage_down, GDK_KEY_d, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE}, \
+	{cmd_goto_halfpage_up, GDK_KEY_u, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE}, \
+	{cmd_scroll_down, GDK_KEY_e, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE}, \
+	{cmd_scroll_up, GDK_KEY_y, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE}, \
 	/* END */
 
 
