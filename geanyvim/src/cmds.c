@@ -405,15 +405,24 @@ static void cmd_search_current_prev(CmdContext *c, CmdParams *p)
 	search_current(c, p, FALSE);
 }
 
+static void delete_char(CmdContext *c, CmdParams *p, gboolean yank)
+{
+	gint line_end_pos = SSM(p->sci, SCI_GETLINEENDPOSITION, p->line, 0);
+	gint end_pos = REL(p->sci, p->pos, p->num);
+	end_pos = end_pos > line_end_pos ? line_end_pos : end_pos;
+	if (yank)
+		SSM(p->sci, SCI_COPYRANGE, p->pos, end_pos);
+	SSM(p->sci, SCI_DELETERANGE, p->pos, end_pos - p->pos);
+}
+
 static void cmd_delete_char(CmdContext *c, CmdParams *p)
 {
-	gint i;
-	for (i = 0; i < p->num; i++)
-	{
-		if (SSM(p->sci, SCI_GETLINEENDPOSITION, p->line, 0) == p->pos)
-			break;
-		SSM(p->sci, SCI_DELETERANGE, p->pos, 1);
-	}
+	delete_char(c, p, FALSE);
+}
+
+static void cmd_delete_char_yank(CmdContext *c, CmdParams *p)
+{
+	delete_char(c, p, TRUE);
 }
 
 static void cmd_delete_char_back(CmdContext *c, CmdParams *p)
@@ -1007,9 +1016,9 @@ CmdDef cmd_mode_cmds[] = {
 	ENTER_CMDLINE_CMDS
 
 	/* deletion */
-	{cmd_delete_char, GDK_KEY_x, 0, 0, 0, FALSE, FALSE},
-	{cmd_delete_char, GDK_KEY_Delete, 0, 0, 0, FALSE, FALSE},
-	{cmd_delete_char, GDK_KEY_KP_Delete, 0, 0, 0, FALSE, FALSE},
+	{cmd_delete_char_yank, GDK_KEY_x, 0, 0, 0, FALSE, FALSE},
+	{cmd_delete_char_yank, GDK_KEY_Delete, 0, 0, 0, FALSE, FALSE},
+	{cmd_delete_char_yank, GDK_KEY_KP_Delete, 0, 0, 0, FALSE, FALSE},
 	{cmd_delete_char_back, GDK_KEY_X, 0, 0, 0, FALSE, FALSE},
 	{cmd_delete_line, GDK_KEY_d, GDK_KEY_d, 0, 0, FALSE, FALSE},
 	{cmd_clear_right, GDK_KEY_D, 0, 0, 0, FALSE, FALSE},
