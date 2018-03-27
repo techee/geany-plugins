@@ -161,7 +161,7 @@ const gchar *get_inserted_text(void)
 
 static void repeat_insert(void)
 {
-	if (IS_INSERT(state.vi_mode) && ctx.num > 1 && ctx.insert_buf_len > 0)
+	if (ctx.num > 1 && ctx.insert_buf_len > 0)
 	{
 		ScintillaObject *sci = get_current_doc_sci();
 		gint i;
@@ -169,13 +169,12 @@ static void repeat_insert(void)
 		ctx.insert_buf[ctx.insert_buf_len] = '\0';
 
 		sci_start_undo_action(sci);
-		/* insert newline for 'o' and 'O' insert modes - this is recorded as
-		 * a normal keystroke and added into insert_buf so we don't have to
-		 * add newlines in the cycle below */
-		if (ctx.newline_insert)
-			SSM(sci, SCI_NEWLINE, 0, 0);
 		for (i = 0; i < ctx.num - 1; i++)
+		{
+			if (ctx.newline_insert)
+				SSM(sci, SCI_NEWLINE, 0, 0);
 			SSM(sci, SCI_ADDTEXT, ctx.insert_buf_len, (sptr_t) ctx.insert_buf);
+		}
 		sci_end_undo_action(sci);
 	}
 	ctx.num = 1;
@@ -185,11 +184,12 @@ static void repeat_insert(void)
 
 static void set_vi_mode_full(ViMode mode, ScintillaObject *sci)
 {
+	ViMode prev_mode = state.vi_mode;
+
+	state.vi_mode = mode;
+
 	if (!sci)
-	{
-		state.vi_mode = mode;
 		return;
-	}
 
 	if (state.default_caret_style == -1)
 	{
@@ -204,7 +204,7 @@ static void set_vi_mode_full(ViMode mode, ScintillaObject *sci)
 		return;
 	}
 
-	if (mode != state.vi_mode)
+	if (mode != prev_mode)
 		ui_set_statusbar(FALSE, "Vim Mode: -- %s --", get_mode_name(mode));
 
 	switch (mode)
@@ -213,7 +213,7 @@ static void set_vi_mode_full(ViMode mode, ScintillaObject *sci)
 		case VI_MODE_COMMAND_SINGLE:
 		{
 			gint pos = sci_get_current_position(sci);
-			if (mode == VI_MODE_COMMAND && IS_INSERT(state.vi_mode))
+			if (mode == VI_MODE_COMMAND && IS_INSERT(prev_mode))
 			{
 				repeat_insert();
 
@@ -223,7 +223,7 @@ static void set_vi_mode_full(ViMode mode, ScintillaObject *sci)
 				if (pos > start_pos)
 					sci_set_current_position(sci, PREV(sci, pos), FALSE);
 			}
-			else if (IS_VISUAL(state.vi_mode))
+			else if (IS_VISUAL(prev_mode))
 				SSM(sci, SCI_SETEMPTYSELECTION, pos, 0);
 
 			g_slist_free_full(state.kpl, g_free);
@@ -261,8 +261,6 @@ static void set_vi_mode_full(ViMode mode, ScintillaObject *sci)
 			ctx.sel_anchor = sci_get_current_position(sci);
 			break;
 	}
-
-	state.vi_mode = mode;
 }
 
 void set_vi_mode(ViMode mode)
