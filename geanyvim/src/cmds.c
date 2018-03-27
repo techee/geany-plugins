@@ -178,38 +178,37 @@ static void cmd_mode_insert_delete_char(CmdContext *c, CmdParams *p)
 	cmd_mode_insert(c, p);
 }
 
+static void cmd_goto_line_rel(CmdContext *c, CmdParams *p, gint shift)
+{
+	gint line_num = sci_get_line_count(p->sci);
+	gint new_line = p->line + shift;
+	new_line = new_line < 0 ? 0 : new_line;
+	new_line = new_line > line_num ? line_num : new_line;
+	goto_nonempty(p, new_line, TRUE);
+}
+
 static void cmd_goto_page_up(CmdContext *c, CmdParams *p)
 {
 	gint shift = SSM(p->sci, SCI_LINESONSCREEN, 0, 0) * p->num;
-	gint new_line = p->line - shift < 0 ? 0 : p->line - shift;
-	goto_nonempty(p, new_line, FALSE);
-	SSM(p->sci, SCI_SETFIRSTVISIBLELINE, new_line, 0);
+	cmd_goto_line_rel(c, p, -shift);
 }
 
 static void cmd_goto_page_down(CmdContext *c, CmdParams *p)
 {
 	gint shift = SSM(p->sci, SCI_LINESONSCREEN, 0, 0) * p->num;
-	gint line_num = sci_get_line_count(p->sci);
-	gint new_line = p->line + shift > line_num ? line_num : p->line + shift;
-	goto_nonempty(p, new_line, FALSE);
-	SSM(p->sci, SCI_SETFIRSTVISIBLELINE, new_line, 0);
+	cmd_goto_line_rel(c, p, shift);
 }
 
 static void cmd_goto_halfpage_up(CmdContext *c, CmdParams *p)
 {
-	gint shift = SSM(p->sci, SCI_LINESONSCREEN, 0, 0) * p->num / 2;
-	gint new_line = p->line - shift < 0 ? 0 : p->line - shift;
-	goto_nonempty(p, new_line, FALSE);
-	SSM(p->sci, SCI_SETFIRSTVISIBLELINE, new_line, 0);
+	gint shift = p->num_present ? p->num : SSM(p->sci, SCI_LINESONSCREEN, 0, 0) / 2;
+	cmd_goto_line_rel(c, p, -shift);
 }
 
 static void cmd_goto_halfpage_down(CmdContext *c, CmdParams *p)
 {
-	gint shift = SSM(p->sci, SCI_LINESONSCREEN, 0, 0) * p->num / 2;
-	gint line_num = sci_get_line_count(p->sci);
-	gint new_line = p->line + shift > line_num ? line_num : p->line + shift;
-	goto_nonempty(p, new_line, FALSE);
-	SSM(p->sci, SCI_SETFIRSTVISIBLELINE, new_line, 0);
+	gint shift = p->num_present ? p->num : SSM(p->sci, SCI_LINESONSCREEN, 0, 0) / 2;
+	cmd_goto_line_rel(c, p, shift);
 }
 
 static void cmd_scroll_up(CmdContext *c, CmdParams *p)
@@ -1159,7 +1158,8 @@ static CmdDef *get_cmd_to_run(GSList *kpl, CmdDef *cmds, gboolean have_selection
 			else if (curr->key == GDK_KEY_percent && !IS_INSERT(mode))
 			{
 				Cmd c = cmd_goto_matching_brace;
-				gint val = kpl_get_int(kpl, NULL);
+				GSList *below = g_slist_next(kpl);
+				gint val = kpl_get_int(below, NULL);
 				if (val != -1)
 					c = cmd_goto_doc_percentage;
 				if (cmd->cmd == c)
