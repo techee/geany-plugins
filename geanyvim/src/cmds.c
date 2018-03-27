@@ -750,11 +750,6 @@ static void cmd_del_word_left(CmdContext *c, CmdParams *p)
 	SSM(p->sci, SCI_DELWORDLEFT, 0, 0);
 }
 
-static void cmd_del_line(CmdContext *c, CmdParams *p)
-{
-	SSM(p->sci, SCI_LINEDELETE, 0, 0);
-}
-
 
 static void indent_ins(CmdContext *c, CmdParams *p, gboolean indent)
 {
@@ -1073,10 +1068,13 @@ CmdDef ins_mode_cmds[] = {
 
 	{cmd_paste_inserted_text, GDK_KEY_a, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
 	{cmd_paste_inserted_text_leave, GDK_KEY_at, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
+	/* it's enough to press Ctrl+2 instead of Ctrl+Shift+2 to get Ctrl+@ */
+	{cmd_paste_inserted_text_leave, GDK_KEY_2, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
 
+	{cmd_delete_char, GDK_KEY_Delete, 0, 0, 0, FALSE, FALSE},
+	{cmd_delete_char, GDK_KEY_KP_Delete, 0, 0, 0, FALSE, FALSE},
 	{cmd_delete_char_back, GDK_KEY_h, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
 	{cmd_del_word_left, GDK_KEY_w, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
-	{cmd_del_line, GDK_KEY_u, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
 	{cmd_indent_ins, GDK_KEY_t, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
 	{cmd_unindent_ins, GDK_KEY_d, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
 	{cmd_copy_char_from_below, GDK_KEY_e, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},

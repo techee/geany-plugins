@@ -29,8 +29,6 @@ i_CTRL-O      CTRL-O          execute a single command and return to insert
                                 mode
 i_CTRL-T      CTRL-T          insert one shiftwidth of indent in current
                                 line
-i_CTRL-U      CTRL-U          delete all entered characters in the current
-                                line
 i_CTRL-W      CTRL-W          delete word before the cursor
 i_CTRL-Y      CTRL-Y          insert the character which is above the cursor
 i_<Esc>       <Esc>           end insert mode (unless 'insertmode' set)

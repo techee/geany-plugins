@@ -46,6 +46,9 @@ gboolean is_printable(GdkEventKey *ev)
 
 static gint kp_todigit(KeyPress *kp)
 {
+	if (kp->modif != 0)
+		return -1;
+
 	switch (kp->key)
 	{
 		case GDK_KEY_0:
