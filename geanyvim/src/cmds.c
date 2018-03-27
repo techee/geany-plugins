@@ -1253,6 +1253,26 @@ static void perform_cmd(CmdDef *def, ScintillaObject *sci, CmdContext *ctx, GSLi
 }
 
 
+static gboolean perform_repeat_cmd(ScintillaObject *sci, CmdContext *ctx, GSList *kpl,
+	GSList *prev_kpl)
+{
+	GSList *top = g_slist_next(kpl);  // get behind "."
+	gint num = kpl_get_int(top, NULL);
+	CmdDef *def;
+	gint i;
+
+	def = get_cmd_to_run(prev_kpl, cmd_mode_cmds, FALSE);
+	if (!def)
+		return FALSE;
+
+	num = num == -1 ? 1 : num;
+	for (i = 0; i < num; i++)
+		perform_cmd(def, sci, ctx, prev_kpl);
+
+	return TRUE;
+}
+
+
 static gboolean process_event_mode(CmdDef *cmds, ScintillaObject *sci, CmdContext *ctx,
 	GSList *kpl, GSList *prev_kpl, gboolean *is_repeat, gboolean *consumed)
 {
@@ -1269,10 +1289,11 @@ static gboolean process_event_mode(CmdDef *cmds, ScintillaObject *sci, CmdContex
 		*is_repeat = def->cmd == cmd_repeat_last_command;
 		if (*is_repeat)
 		{
-			kpl = prev_kpl;
-			def = get_cmd_to_run(kpl, cmd_mode_cmds, have_selection);
-			if (!def)
+			if (!perform_repeat_cmd(sci, ctx, kpl, prev_kpl))
 				return FALSE;
+
+			*consumed = TRUE;
+			return TRUE;
 		}
 	}
 
