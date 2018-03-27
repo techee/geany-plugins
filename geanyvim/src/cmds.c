@@ -166,9 +166,21 @@ static void cmd_mode_insert_clear_line(CmdContext *c, CmdParams *p)
 	cmd_mode_insert(c, p);
 }
 
+static gint get_line_number_rel(CmdParams *p, gint shift)
+{
+	gint line_num = sci_get_line_count(p->sci);
+	gint new_line = p->line + shift;
+	new_line = new_line < 0 ? 0 : new_line;
+	new_line = new_line > line_num ? line_num : new_line;
+	return new_line;
+}
+
 static void cmd_mode_insert_clear_right(CmdContext *c, CmdParams *p)
 {
-	SSM(p->sci, SCI_DELLINERIGHT, 0, 0);
+	gint new_line = get_line_number_rel(p, p->num - 1);
+	gint pos = SSM(p->sci, SCI_GETLINEENDPOSITION, new_line, 0);
+	SSM(p->sci, SCI_COPYRANGE, p->pos, pos);
+	SSM(p->sci, SCI_DELETERANGE, p->pos, pos - p->pos);
 	cmd_mode_insert(c, p);
 }
 
@@ -178,37 +190,32 @@ static void cmd_mode_insert_delete_char(CmdContext *c, CmdParams *p)
 	cmd_mode_insert(c, p);
 }
 
-static void cmd_goto_line_rel(CmdContext *c, CmdParams *p, gint shift)
-{
-	gint line_num = sci_get_line_count(p->sci);
-	gint new_line = p->line + shift;
-	new_line = new_line < 0 ? 0 : new_line;
-	new_line = new_line > line_num ? line_num : new_line;
-	goto_nonempty(p, new_line, TRUE);
-}
-
 static void cmd_goto_page_up(CmdContext *c, CmdParams *p)
 {
 	gint shift = SSM(p->sci, SCI_LINESONSCREEN, 0, 0) * p->num;
-	cmd_goto_line_rel(c, p, -shift);
+	gint new_line = get_line_number_rel(p, -shift);
+	goto_nonempty(p, new_line, TRUE);
 }
 
 static void cmd_goto_page_down(CmdContext *c, CmdParams *p)
 {
 	gint shift = SSM(p->sci, SCI_LINESONSCREEN, 0, 0) * p->num;
-	cmd_goto_line_rel(c, p, shift);
+	gint new_line = get_line_number_rel(p, shift);
+	goto_nonempty(p, new_line, TRUE);
 }
 
 static void cmd_goto_halfpage_up(CmdContext *c, CmdParams *p)
 {
 	gint shift = p->num_present ? p->num : SSM(p->sci, SCI_LINESONSCREEN, 0, 0) / 2;
-	cmd_goto_line_rel(c, p, -shift);
+	gint new_line = get_line_number_rel(p, -shift);
+	goto_nonempty(p, new_line, TRUE);
 }
 
 static void cmd_goto_halfpage_down(CmdContext *c, CmdParams *p)
 {
 	gint shift = p->num_present ? p->num : SSM(p->sci, SCI_LINESONSCREEN, 0, 0) / 2;
-	cmd_goto_line_rel(c, p, shift);
+	gint new_line = get_line_number_rel(p, shift);
+	goto_nonempty(p, new_line, TRUE);
 }
 
 static void cmd_scroll_up(CmdContext *c, CmdParams *p)
@@ -305,8 +312,7 @@ static void cmd_redo(CmdContext *c, CmdParams *p)
 
 static void cmd_copy_line(CmdContext *c, CmdParams *p)
 {
-	gint line_num = SSM(p->sci, SCI_GETLINECOUNT, 0, 0);
-	gint num = p->line + p->num < line_num ? p->line + p->num : line_num;
+	gint num = get_line_number_rel(p, p->num);
 	gint start = sci_get_position_from_line(p->sci, p->line);
 	gint end = sci_get_position_from_line(p->sci, num);
 	SSM(p->sci, SCI_COPYRANGE, start, end);
@@ -353,8 +359,7 @@ static void cmd_paste_before(CmdContext *c, CmdParams *p)
 
 static void cmd_delete_line(CmdContext *c, CmdParams *p)
 {
-	gint line_num = SSM(p->sci, SCI_GETLINECOUNT, 0, 0);
-	gint num = p->line + p->num < line_num ? p->line + p->num : line_num;
+	gint num = get_line_number_rel(p, p->num);
 	gint start = sci_get_position_from_line(p->sci, p->line);
 	gint end = sci_get_position_from_line(p->sci, num);
 	SSM(p->sci, SCI_DELETERANGE, start, end-start);
@@ -440,7 +445,8 @@ static void cmd_goto_line_last(CmdContext *c, CmdParams *p)
 static void cmd_join_lines(CmdContext *c, CmdParams *p)
 {
 	//TODO: remove whitespace between lines
-	gint next_line_pos = sci_get_position_from_line(p->sci, p->line + p->num);
+	gint next_line = get_line_number_rel(p, p->num);
+	gint next_line_pos = sci_get_position_from_line(p->sci, next_line);
 
 	sci_set_target_start(p->sci, p->pos);
 	sci_set_target_end(p->sci, next_line_pos);
