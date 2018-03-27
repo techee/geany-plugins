@@ -175,12 +175,17 @@ static gint get_line_number_rel(CmdParams *p, gint shift)
 	return new_line;
 }
 
-static void cmd_mode_insert_clear_right(CmdContext *c, CmdParams *p)
+static void cmd_clear_right(CmdContext *c, CmdParams *p)
 {
 	gint new_line = get_line_number_rel(p, p->num - 1);
 	gint pos = SSM(p->sci, SCI_GETLINEENDPOSITION, new_line, 0);
 	SSM(p->sci, SCI_COPYRANGE, p->pos, pos);
 	SSM(p->sci, SCI_DELETERANGE, p->pos, pos - p->pos);
+}
+
+static void cmd_mode_insert_clear_right(CmdContext *c, CmdParams *p)
+{
+	cmd_clear_right(c, p);
 	cmd_mode_insert(c, p);
 }
 
@@ -1004,8 +1009,7 @@ CmdDef cmd_mode_cmds[] = {
 	{cmd_delete_char, GDK_KEY_KP_Delete, 0, 0, 0, FALSE, FALSE},
 	{cmd_delete_char_back, GDK_KEY_X, 0, 0, 0, FALSE, FALSE},
 	{cmd_delete_line, GDK_KEY_d, GDK_KEY_d, 0, 0, FALSE, FALSE},
-	/* TODO: this is not correct implementation */
-	{cmd_delete_line, GDK_KEY_D, 0, 0, 0, FALSE, FALSE},
+	{cmd_clear_right, GDK_KEY_D, 0, 0, 0, FALSE, FALSE},
 	/* TODO: visual version of line join */
 	{cmd_join_lines, GDK_KEY_J, 0, 0, 0, FALSE, FALSE},
 
