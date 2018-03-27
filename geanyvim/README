@@ -179,6 +179,7 @@ dd            ["x]dd          2  delete N lines [into register x]
 e             e               1  cursor forward to the end of word N
 f             f{char}         1  cursor to Nth occurrence of {char} to the
                                    right
+g             g{char}            extended commands, see g below
 h             h               1  cursor N chars to the left
 i             i               2  insert text before the cursor N times
 j             j               1  cursor N lines downward
@@ -226,6 +227,20 @@ N<Del>        {count}<Del>       remove the last digit from {count}
 <S-Right>     <S-Right>       1  same as "w"
 <S-Up>        <S-Up>          1  same as CTRL-B
 <Up>          <Up>            1  same as "k"
+
+==============================================================================
+2.4 Commands starting with 'g'                                          g
+
+tag             char          note action in Normal mode        
+------------------------------------------------------------------------------
+gE            gE              1  go backwards to the end of the previous
+                                   WORD
+gU            gU{motion}      2  make Nmove text uppercase
+ge            ge              1  go backwards to the end of the previous
+                                   word
+gg            gg              1  cursor to line N, default first line
+gu            gu{motion}      2  make Nmove text lowercase
+g~            g~{motion}      2  swap case for Nmove text
 
 ==============================================================================
 3. Visual mode                                          visual-index
