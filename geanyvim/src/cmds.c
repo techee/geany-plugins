@@ -594,26 +594,46 @@ static void cmd_goto_screen_bottom(CmdContext *c, CmdParams *p)
 	goto_nonempty(p, line < top ? top : line, FALSE);
 }
 
-static void cmd_replace_char(CmdContext *c, CmdParams *p)
+static void replace_char(CmdParams *p, gint pos, gint num, gint line)
 {
 	gchar repl[2] = {kp_to_char(p->last_kp), '\0'};
-	gint pos = p->pos;
 	gint i;
 
-	for (i = 0; i < p->num; i++)
+	for (i = 0; i < num; i++)
 	{
-		//line end position can change because of the replacement and different
-		//character lengths
-		gint line_end_pos = sci_get_line_end_position(p->sci, p->line);
-
 		sci_set_current_position(p->sci, pos, FALSE);
 		sci_set_target_start(p->sci, pos);
 		pos = NEXT(p->sci, pos);
-		if (pos > line_end_pos)
-			break;
+		if (line != -1)
+		{
+			//line end position can change because of the replacement and different
+			//character lengths
+			gint line_end_pos = sci_get_line_end_position(p->sci, line);
+			if (pos > line_end_pos)
+				break;
+		}
+		else
+		{
+			gint ln = sci_get_current_line(p->sci);
+			gint line_end_pos = sci_get_line_end_position(p->sci, ln);
+			if (pos == NEXT(p->sci, line_end_pos))
+				continue;
+		}
 		sci_set_target_end(p->sci, pos);
 		sci_replace_target(p->sci, repl, FALSE);
 	}
+}
+
+static void cmd_replace_char(CmdContext *c, CmdParams *p)
+{
+	replace_char(p, p->pos, p->num, p->line);
+}
+
+static void cmd_replace_char_vis(CmdContext *c, CmdParams *p)
+{
+	replace_char(p, p->sel_start, p->sel_len, -1);
+	sci_set_current_position(p->sci, p->sel_start, FALSE);
+	set_vi_mode(VI_MODE_COMMAND);
 }
 
 static void change_case(ScintillaObject *sci, gint pos, gint num, gint line,
@@ -1230,6 +1250,7 @@ CmdDef vis_mode_cmds[] = {
 	{cmd_range_delete, GDK_KEY_KP_Delete, 0, 0, 0, FALSE, FALSE},
 	{cmd_range_change, GDK_KEY_s, 0, 0, 0, FALSE, FALSE},
 	{cmd_yank_lines_vis, GDK_KEY_Y, 0, 0, 0, FALSE, FALSE},
+	{cmd_replace_char_vis, GDK_KEY_r, 0, 0, 0, TRUE, FALSE},
 	SEARCH_CMDS
 	MOVEMENT_CMDS
 	RANGE_CMDS
