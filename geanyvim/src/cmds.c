@@ -719,36 +719,54 @@ static void cmd_find_char_repeat_opposite(CmdContext *c, CmdParams *p)
 	cmd_find_char(c, p, TRUE);
 }
 
+static void indent(ScintillaObject *sci, gboolean unindent, gint pos, gint num)
+{
+	gint line_num = sci_get_line_count(sci);
+	gint i;
+
+	sci_set_current_position(sci, pos, FALSE);
+	for (i = 0; i < num; i++)
+	{
+		gint line;
+		SSM(sci, SCI_HOME, 0, 0);
+		if (unindent)
+			SSM(sci, SCI_BACKTAB, 0, 0);
+		else
+			SSM(sci, SCI_TAB, 0, 0);
+		line = sci_get_current_line(sci);
+		if (line == line_num - 1)
+			break;
+		SSM(sci, SCI_LINEDOWN, 0, 0);
+	}
+	sci_set_current_position(sci, pos, FALSE);
+}
+
 static void cmd_indent(CmdContext *c, CmdParams *p)
 {
-	gint i;
-	gint pos = p->pos;
-
-	for (i = 0; i < p->num; i++)
-	{
-		SSM(p->sci, SCI_HOME, 0, 0);
-		SSM(p->sci, SCI_TAB, 0, 0);
-		if (i == 0)
-			pos = sci_get_current_position(p->sci);
-		SSM(p->sci, SCI_LINEDOWN, 0, 0);
-	}
-	sci_set_current_position(p->sci, pos, FALSE);
+	indent(p->sci, FALSE, p->pos, p->num);
 }
 
 static void cmd_unindent(CmdContext *c, CmdParams *p)
 {
-	gint i;
-	gint pos = p->pos;
+	indent(p->sci, TRUE, p->pos, p->num);
+}
 
-	for (i = 0; i < p->num; i++)
-	{
-		SSM(p->sci, SCI_HOME, 0, 0);
-		SSM(p->sci, SCI_BACKTAB, 0, 0);
-		if (i == 0)
-			pos = sci_get_current_position(p->sci);
-		SSM(p->sci, SCI_LINEDOWN, 0, 0);
-	}
-	sci_set_current_position(p->sci, pos, FALSE);
+static void range_indent(CmdContext *c, CmdParams *p, gboolean unindent)
+{
+	gint line_start = sci_get_line_from_position(p->sci, p->sel_start);
+	gint line_end = sci_get_line_from_position(p->sci, p->sel_start + p->sel_len);
+	indent(p->sci, unindent, p->sel_start, line_end - line_start + 1);
+	set_vi_mode(VI_MODE_COMMAND);
+}
+
+static void cmd_range_indent(CmdContext *c, CmdParams *p)
+{
+	range_indent(c, p, FALSE);
+}
+
+static void cmd_range_unindent(CmdContext *c, CmdParams *p)
+{
+	range_indent(c, p, TRUE);
 }
 
 static void cmd_range_delete(CmdContext *c, CmdParams *p)
@@ -1022,12 +1040,13 @@ CmdDef movement_cmds[] = {
 #define RANGE_CMDS \
 	{cmd_range_delete, GDK_KEY_d, 0, 0, 0, FALSE, TRUE}, \
 	{cmd_range_copy, GDK_KEY_y, 0, 0, 0, FALSE, TRUE}, \
-	{cmd_range_change, GDK_KEY_c, 0, 0, 0, FALSE, TRUE},
+	{cmd_range_change, GDK_KEY_c, 0, 0, 0, FALSE, TRUE}, \
+	{cmd_range_unindent, GDK_KEY_less, 0, 0, 0, FALSE, TRUE}, \
+	{cmd_range_indent, GDK_KEY_greater, 0, 0, 0, FALSE, TRUE},
 //	{cmd_range_switch_case, GDK_KEY_g, GDK_KEY_asciitilde, 0, 0, FALSE, TRUE},
 //	{cmd_range_uppercase, GDK_KEY_g, GDK_KEY_u, 0, 0, FALSE, TRUE},
 //	{cmd_range_lowercase, GDK_KEY_g, GDK_KEY_U, 0, 0, FALSE, TRUE},
-//	{cmd_range_unindent, GDK_KEY_less, 0, 0, 0, FALSE, TRUE},
-//	{cmd_range_indent, GDK_KEY_greater, 0, 0, 0, FALSE, TRUE},
+	/* END */
 
 
 CmdDef range_cmds[] = {
