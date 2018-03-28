@@ -1,8 +1,14 @@
 TODO: description, FAQ, implementation limitations
 
 
-Commands implemented
+problems:
+- goto next, previous word desn't work the same way as in vim
+- J (join lines) should remove whitespace between lines
+- TODO: & repeat last :s once replace is implemented
 
+
+
+Commands implemented
 
 ==============================================================================
 1. Insert mode                                          insert-index
@@ -52,7 +58,6 @@ i_<C-End>     <C-End>         cursor past end of file
 i_<PageUp>    <PageUp>        one screenful backward
 i_<PageDown>  <PageDown>      one screenful forward
 i_<Insert>    <Insert>        toggle Insert/Replace mode
-i_<LeftMouse> <LeftMouse>     cursor at mouse click
 
 ==============================================================================
 2. Normal mode                                          normal-index
@@ -94,7 +99,6 @@ $             $               1  cursor to the end of Nth next line
                                    matching comment bracket, or go to matching
                                    preprocessor directive.
 N%            {count}%        1  go to N percentage in the file
-&             &               2  repeat last :s
 star          *               1  search forward for the Nth occurrence of
                                    the ident under the cursor
 +             +               1  same as <CR>
@@ -202,21 +206,16 @@ bar           |               1  cursor to column N
 ~             ~               2  'tildeop' off: switch case of N characters
                                    under cursor and move the cursor N
                                    characters to the right
-~             ~{motion}          'tildeop' on: switch case of Nmove text
 <C-End>       <C-End>         1  same as "G"
 <C-Home>      <C-Home>        1  same as "gg"
 <C-Left>      <C-Left>        1  same as "b"
-<C-LeftMouse> <C-LeftMouse>      ":ta" to the keyword at the mouse click
 <C-Right>     <C-Right>       1  same as "w"
-<C-RightMouse> <C-RightMouse>    same as "CTRL-T"
 <Del>         ["x]<Del>       2  same as "x"
-N<Del>        {count}<Del>       remove the last digit from {count}
 <Down>        <Down>          1  same as "j"
 <End>         <End>           1  same as "$"
 <Home>        <Home>          1  same as "0"
 <Insert>      <Insert>        2  same as "i"
 <Left>        <Left>          1  same as "h"
-<LeftMouse>   <LeftMouse>     1  move cursor to the mouse click position
 <PageDown>    <PageDown>         same as CTRL-F
 <PageUp>      <PageUp>           same as CTRL-B
 <Right>       <Right>         1  same as "l"
