@@ -485,6 +485,14 @@ static void cmd_join_lines(CmdContext *c, CmdParams *p)
 	SSM(p->sci, SCI_LINESJOIN, 0, 0);
 }
 
+static void cmd_join_lines_vis(CmdContext *c, CmdParams *p)
+{
+	//TODO: remove whitespace between lines
+	sci_set_target_start(p->sci, p->sel_start);
+	sci_set_target_end(p->sci, p->sel_start + p->sel_len);
+	SSM(p->sci, SCI_LINESJOIN, 0, 0);
+}
+
 static void cmd_goto_next_word(CmdContext *c, CmdParams *p)
 {
 	//TODO: words in scintilla are different from words in vim
@@ -1036,7 +1044,6 @@ typedef struct {
 	{cmd_goto_line, GDK_KEY_KP_Home, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE}, \
 	{cmd_goto_doc_percentage, GDK_KEY_percent, 0, 0, 0, FALSE, FALSE}, \
 	/* goto next/prev word */ \
-	/* TODO - do properly - scintilla words differ from vim words */ \
 	{cmd_goto_next_word, GDK_KEY_w, 0, 0, 0, FALSE, FALSE}, \
 	{cmd_goto_next_word, GDK_KEY_W, 0, 0, 0, FALSE, FALSE}, \
 	{cmd_goto_next_word_end, GDK_KEY_e, 0, 0, 0, FALSE, FALSE}, \
@@ -1124,7 +1131,6 @@ CmdDef cmd_mode_cmds[] = {
 	{cmd_delete_char_back_yank, GDK_KEY_X, 0, 0, 0, FALSE, FALSE},
 	{cmd_delete_line, GDK_KEY_d, GDK_KEY_d, 0, 0, FALSE, FALSE},
 	{cmd_clear_right, GDK_KEY_D, 0, 0, 0, FALSE, FALSE},
-	/* TODO: visual version of line join */
 	{cmd_join_lines, GDK_KEY_J, 0, 0, 0, FALSE, FALSE},
 
 	/* copy/paste */
@@ -1167,12 +1173,14 @@ CmdDef vis_mode_cmds[] = {
 	{cmd_escape, GDK_KEY_Escape, 0, 0, 0, FALSE, FALSE},
 	{cmd_escape, GDK_KEY_c, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
 	{cmd_swap_anchor, GDK_KEY_o, 0, 0, 0, FALSE, FALSE},
+	{cmd_swap_anchor, GDK_KEY_O, 0, 0, 0, FALSE, FALSE},
 	{cmd_mode_visual, GDK_KEY_v, 0, 0, 0, FALSE, FALSE},
 	{cmd_mode_visual_line, GDK_KEY_V, 0, 0, 0, FALSE, FALSE},
 	{cmd_nop, GDK_KEY_Insert, 0, 0, 0, FALSE, FALSE},
 	{cmd_nop, GDK_KEY_KP_Insert, 0, 0, 0, FALSE, FALSE},
 	{cmd_upper_case, GDK_KEY_U, 0, 0, 0, FALSE, FALSE},
 	{cmd_lower_case, GDK_KEY_u, 0, 0, 0, FALSE, FALSE},
+	{cmd_join_lines_vis, GDK_KEY_J, 0, 0, 0, FALSE, FALSE},
 	SEARCH_CMDS
 	MOVEMENT_CMDS
 	RANGE_CMDS
