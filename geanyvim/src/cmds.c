@@ -596,6 +596,30 @@ static void cmd_replace_char(CmdContext *c, CmdParams *p)
 	}
 }
 
+static void cmd_switch_case_char(CmdContext *c, CmdParams *p)
+{
+	gint pos = p->pos;
+	gint i;
+
+	for (i = 0; i < p->num; i++)
+	{
+		//line end position can change because of the replacement and different
+		//character lengths
+		gint line_end_pos = sci_get_line_end_position(p->sci, p->line);
+		gboolean is_lower = islower(sci_get_char_at(p->sci, pos));
+		gchar upper[2] = {toupper(sci_get_char_at(p->sci, pos)), '\0'};
+		gchar lower[2] = {tolower(sci_get_char_at(p->sci, pos)), '\0'};
+
+		sci_set_target_start(p->sci, pos);
+		pos = NEXT(p->sci, pos);
+		if (pos > line_end_pos)
+			break;
+		sci_set_target_end(p->sci, pos);
+		sci_replace_target(p->sci, is_lower ? upper : lower, FALSE);
+		sci_set_current_position(p->sci, pos, FALSE);
+	}
+}
+
 static void cmd_find_char(CmdContext *c, CmdParams *p, gboolean invert)
 {
 	struct Sci_TextToFind ttf;
@@ -681,20 +705,6 @@ static void cmd_find_char_repeat(CmdContext *c, CmdParams *p)
 static void cmd_find_char_repeat_opposite(CmdContext *c, CmdParams *p)
 {
 	cmd_find_char(c, p, TRUE);
-}
-
-static void cmd_switch_case_char(CmdContext *c, CmdParams *p)
-{
-	gchar upper[2] = {toupper(sci_get_char_at(p->sci, p->pos)), '\0'};
-	gchar lower[2] = {tolower(sci_get_char_at(p->sci, p->pos)), '\0'};
-	gchar *replacement = lower;
-
-	sci_set_target_start(p->sci, p->pos);
-	sci_set_target_end(p->sci, NEXT(p->sci, p->pos));
-	if (islower(sci_get_char_at(p->sci, p->pos)))
-		replacement = upper;
-	sci_replace_target(p->sci, replacement, FALSE);
-	SSM(p->sci, SCI_CHARRIGHT, 0, 0);
 }
 
 static void cmd_indent(CmdContext *c, CmdParams *p)
