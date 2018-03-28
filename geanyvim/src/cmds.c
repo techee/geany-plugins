@@ -608,28 +608,46 @@ static void cmd_replace_char(CmdContext *c, CmdParams *p)
 	}
 }
 
-static void cmd_switch_case_char(CmdContext *c, CmdParams *p)
+static void switch_case(ScintillaObject *sci, gint pos, gint num, gint line)
 {
-	gint pos = p->pos;
 	gint i;
 
-	for (i = 0; i < p->num; i++)
+	for (i = 0; i < num; i++)
 	{
-		//line end position can change because of the replacement and different
-		//character lengths
-		gint line_end_pos = sci_get_line_end_position(p->sci, p->line);
-		gboolean is_lower = islower(sci_get_char_at(p->sci, pos));
-		gchar upper[2] = {toupper(sci_get_char_at(p->sci, pos)), '\0'};
-		gchar lower[2] = {tolower(sci_get_char_at(p->sci, pos)), '\0'};
+		gboolean is_lower = islower(sci_get_char_at(sci, pos));
+		gchar upper[2] = {toupper(sci_get_char_at(sci, pos)), '\0'};
+		gchar lower[2] = {tolower(sci_get_char_at(sci, pos)), '\0'};
 
-		sci_set_target_start(p->sci, pos);
-		pos = NEXT(p->sci, pos);
-		if (pos > line_end_pos)
-			break;
-		sci_set_target_end(p->sci, pos);
-		sci_replace_target(p->sci, is_lower ? upper : lower, FALSE);
-		sci_set_current_position(p->sci, pos, FALSE);
+		sci_set_target_start(sci, pos);
+		pos = NEXT(sci, pos);
+		if (line != -1)
+		{
+			//line end position can change because of the replacement and different
+			//character lengths
+			gint line_end_pos = sci_get_line_end_position(sci, line);
+			if (pos > line_end_pos)
+				break;
+		}
+		sci_set_target_end(sci, pos);
+		sci_replace_target(sci, is_lower ? upper : lower, FALSE);
+		sci_set_current_position(sci, pos, FALSE);
 	}
+}
+
+static void cmd_switch_case_char(CmdContext *c, CmdParams *p)
+{
+	if (IS_VISUAL(get_vi_mode()))
+	{
+		switch_case(p->sci, p->sel_start, p->sel_len, -1);
+		set_vi_mode(VI_MODE_COMMAND);
+	}
+	else
+		switch_case(p->sci, p->pos, p->num, p->line);
+}
+
+static void cmd_switch_case(CmdContext *c, CmdParams *p)
+{
+	switch_case(p->sci, p->sel_start, p->sel_len, -1);
 }
 
 static void cmd_find_char(CmdContext *c, CmdParams *p, gboolean invert)
@@ -1042,8 +1060,9 @@ CmdDef movement_cmds[] = {
 	{cmd_range_copy, GDK_KEY_y, 0, 0, 0, FALSE, TRUE}, \
 	{cmd_range_change, GDK_KEY_c, 0, 0, 0, FALSE, TRUE}, \
 	{cmd_range_unindent, GDK_KEY_less, 0, 0, 0, FALSE, TRUE}, \
-	{cmd_range_indent, GDK_KEY_greater, 0, 0, 0, FALSE, TRUE},
-//	{cmd_range_switch_case, GDK_KEY_g, GDK_KEY_asciitilde, 0, 0, FALSE, TRUE},
+	{cmd_range_indent, GDK_KEY_greater, 0, 0, 0, FALSE, TRUE}, \
+	{cmd_switch_case, GDK_KEY_g, GDK_KEY_asciitilde, 0, 0, FALSE, TRUE}, \
+	{cmd_switch_case_char, GDK_KEY_asciitilde, 0, 0, 0, FALSE, TRUE},
 //	{cmd_range_uppercase, GDK_KEY_g, GDK_KEY_u, 0, 0, FALSE, TRUE},
 //	{cmd_range_lowercase, GDK_KEY_g, GDK_KEY_U, 0, 0, FALSE, TRUE},
 	/* END */
@@ -1262,6 +1281,13 @@ static CmdDef *get_cmd_to_run(GSList *kpl, CmdDef *cmds, gboolean have_selection
 					c = cmd_goto_doc_percentage;
 				if (cmd->cmd == c)
 					return cmd;
+			}
+			else if (prev && prev->key == GDK_KEY_g)
+			{
+				//takes care of motion commands like g~, gu, gU etc. where we
+				//have no selection yet so the 2-letter command isn't found
+				//above and a corresponding 1-letter command ~, u, U exists and
+				//would be used incorrectly
 			}
 			else
 				return cmd;
