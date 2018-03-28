@@ -47,6 +47,12 @@ typedef struct
 	gint sel_len;
 	/* current line in scintilla */
 	gint line;
+	/* position of the end of the current line */
+	gint line_end_pos;
+	/* position of the start of the current line */
+	gint line_start_pos;
+	/* number of lines in document */
+	gint line_num;
 } CmdParams;
 
 
@@ -102,10 +108,8 @@ static void cmd_mode_visual_line(CmdContext *c, CmdParams *p)
 
 static void cmd_mode_insert_after(CmdContext *c, CmdParams *p)
 {
-	gint end_pos = sci_get_line_end_position(p->sci, p->line);
-
 	cmd_mode_insert(c, p);
-	if (p->pos < end_pos)
+	if (p->pos < p->line_end_pos)
 		SSM(p->sci, SCI_CHARRIGHT, 0, 0);
 }
 
@@ -127,8 +131,7 @@ static void cmd_mode_insert_line_start_nonempty(CmdContext *c, CmdParams *p)
 
 static void cmd_mode_insert_line_start(CmdContext *c, CmdParams *p)
 {
-	gint pos = SSM(p->sci, SCI_POSITIONFROMLINE, p->line, 0);
-	sci_set_current_position(p->sci, pos, FALSE);
+	sci_set_current_position(p->sci, p->line_start_pos, FALSE);
 	cmd_mode_insert(c, p);
 }
 
@@ -161,20 +164,18 @@ static void cmd_mode_insert_prev_line(CmdContext *c, CmdParams *p)
 
 static gint get_line_number_rel(CmdParams *p, gint shift)
 {
-	gint line_num = sci_get_line_count(p->sci);
 	gint new_line = p->line + shift;
 	new_line = new_line < 0 ? 0 : new_line;
-	new_line = new_line > line_num ? line_num : new_line;
+	new_line = new_line > p->line_num ? p->line_num : new_line;
 	return new_line;
 }
 
 static void cmd_mode_insert_cut_line(CmdContext *c, CmdParams *p)
 {
 	gint new_line = get_line_number_rel(p, p->num - 1);
-	gint pos_start = SSM(p->sci, SCI_POSITIONFROMLINE, p->line, 0);
 	gint pos_end = SSM(p->sci, SCI_GETLINEENDPOSITION, new_line, 0);
-	SSM(p->sci, SCI_COPYRANGE, pos_start, pos_end);
-	SSM(p->sci, SCI_DELETERANGE, pos_start, pos_end - pos_start);
+	SSM(p->sci, SCI_COPYRANGE, p->line_start_pos, pos_end);
+	SSM(p->sci, SCI_DELETERANGE, p->line_start_pos, pos_end - p->line_start_pos);
 }
 
 static void cmd_clear_right(CmdContext *c, CmdParams *p)
@@ -193,9 +194,8 @@ static void cmd_mode_insert_clear_right(CmdContext *c, CmdParams *p)
 
 static void cmd_mode_insert_delete_char_yank(CmdContext *c, CmdParams *p)
 {
-	gint pos_line_end = SSM(p->sci, SCI_GETLINEENDPOSITION, p->line, 0);
 	gint end = REL(p->sci, p->pos, p->num);
-	end = end > pos_line_end ? pos_line_end : end;
+	end = end > p->line_end_pos ? p->line_end_pos : end;
 	SSM(p->sci, SCI_COPYRANGE, p->pos, end);
 	SSM(p->sci, SCI_DELETERANGE, p->pos, end - p->pos);
 	cmd_mode_insert(c, p);
@@ -242,8 +242,8 @@ static void cmd_scroll_down(CmdContext *c, CmdParams *p)
 static void cmd_goto_left(CmdContext *c, CmdParams *p)
 {
 	gint i;
-	gint start_pos = sci_get_position_from_line(p->sci, p->line);
-	gint pos = sci_get_current_position(p->sci);
+	gint start_pos = p->line_start_pos;
+	gint pos = p->pos;
 	for (i = 0; i < p->num && pos > start_pos; i++)
 	{
 		pos = PREV(p->sci, pos);
@@ -254,9 +254,8 @@ static void cmd_goto_left(CmdContext *c, CmdParams *p)
 static void cmd_goto_right(CmdContext *c, CmdParams *p)
 {
 	gint i;
-	gint end_pos = sci_get_line_end_position(p->sci, p->line);
-	gint pos = sci_get_current_position(p->sci);
-	for (i = 0; i < p->num && pos < end_pos; i++)
+	gint pos = p->pos;
+	for (i = 0; i < p->num && pos < p->line_end_pos; i++)
 	{
 		pos = NEXT(p->sci, pos);
 		sci_set_current_position(p->sci, pos, FALSE);
@@ -324,9 +323,8 @@ static void cmd_redo(CmdContext *c, CmdParams *p)
 static void cmd_copy_line(CmdContext *c, CmdParams *p)
 {
 	gint num = get_line_number_rel(p, p->num);
-	gint start = sci_get_position_from_line(p->sci, p->line);
 	gint end = sci_get_position_from_line(p->sci, num);
-	SSM(p->sci, SCI_COPYRANGE, start, end);
+	SSM(p->sci, SCI_COPYRANGE, p->line_start_pos, end);
 	c->line_copy = TRUE;
 }
 
@@ -340,12 +338,12 @@ static void cmd_paste(CmdContext *c, CmdParams *p, gboolean after)
 		if (after)
 			pos = sci_get_position_from_line(p->sci, p->line+1);
 		else
-			pos = sci_get_position_from_line(p->sci, p->line);
+			pos = p->line_start_pos;
 	}
 	else
 	{
 		pos = p->pos;
-		if (after && pos < SSM(p->sci, SCI_GETLINEENDPOSITION, p->line, 0))
+		if (after && pos < p->line_end_pos)
 			pos = NEXT(p->sci, pos);
 	}
 
@@ -371,10 +369,9 @@ static void cmd_paste_before(CmdContext *c, CmdParams *p)
 static void cmd_delete_line(CmdContext *c, CmdParams *p)
 {
 	gint num = get_line_number_rel(p, p->num);
-	gint start = sci_get_position_from_line(p->sci, p->line);
 	gint end = sci_get_position_from_line(p->sci, num);
-	SSM(p->sci, SCI_COPYRANGE, start, end);
-	SSM(p->sci, SCI_DELETERANGE, start, end-start);
+	SSM(p->sci, SCI_COPYRANGE, p->line_start_pos, end);
+	SSM(p->sci, SCI_DELETERANGE, p->line_start_pos, end - p->line_start_pos);
 	c->line_copy = TRUE;
 }
 
@@ -415,9 +412,8 @@ static void cmd_search_current_prev(CmdContext *c, CmdParams *p)
 
 static void delete_char(CmdContext *c, CmdParams *p, gboolean yank)
 {
-	gint line_end_pos = SSM(p->sci, SCI_GETLINEENDPOSITION, p->line, 0);
 	gint end_pos = REL(p->sci, p->pos, p->num);
-	end_pos = end_pos > line_end_pos ? line_end_pos : end_pos;
+	end_pos = end_pos > p->line_end_pos ? p->line_end_pos : end_pos;
 	if (yank)
 		SSM(p->sci, SCI_COPYRANGE, p->pos, end_pos);
 	SSM(p->sci, SCI_DELETERANGE, p->pos, end_pos - p->pos);
@@ -435,9 +431,8 @@ static void cmd_delete_char_yank(CmdContext *c, CmdParams *p)
 
 static void delete_char_back(CmdContext *c, CmdParams *p, gboolean yank)
 {
-	gint line_start_pos = SSM(p->sci, SCI_POSITIONFROMLINE, p->line, 0);
 	gint start_pos = REL(p->sci, p->pos, -p->num);
-	start_pos = start_pos < line_start_pos ? line_start_pos : start_pos;
+	start_pos = start_pos < p->line_start_pos ? p->line_start_pos : start_pos;
 	if (yank)
 		SSM(p->sci, SCI_COPYRANGE, start_pos, p->pos);
 	SSM(p->sci, SCI_DELETERANGE, start_pos, p->pos - start_pos);
@@ -455,18 +450,15 @@ static void cmd_delete_char_back_yank(CmdContext *c, CmdParams *p)
 
 static void cmd_goto_line(CmdContext *c, CmdParams *p)
 {
-	gint line_num = sci_get_line_count(p->sci);
-	gint num = p->num > line_num ? line_num : p->num;
+	gint num = p->num > p->line_num ? p->line_num : p->num;
 	goto_nonempty(p, num - 1, TRUE);
 }
 
 static void cmd_goto_line_last(CmdContext *c, CmdParams *p)
 {
-	gint line_num = sci_get_line_count(p->sci);
-	gint num = p->num > line_num ? line_num : p->num;
-
+	gint num = p->num > p->line_num ? p->line_num : p->num;
 	if (!p->num_present)
-		num = line_num;
+		num = p->line_num;
 	goto_nonempty(p, num - 1, TRUE);
 }
 
@@ -553,13 +545,10 @@ static void cmd_goto_matching_brace(CmdContext *c, CmdParams *p)
 
 static void cmd_goto_doc_percentage(CmdContext *c, CmdParams *p)
 {
-	gint line_num = sci_get_line_count(p->sci);
-
 	if (p->num > 100)
 		p->num = 100;
 
-	line_num = (line_num * p->num) / 100;
-	goto_nonempty(p, line_num, TRUE);
+	goto_nonempty(p, (p->line_num * p->num) / 100, TRUE);
 }
 
 static void cmd_goto_screen_top(CmdContext *c, CmdParams *p)
@@ -615,12 +604,12 @@ static void cmd_find_char(CmdContext *c, CmdParams *p, gboolean invert)
 		if (forward)
 		{
 			ttf.chrg.cpMin = NEXT(p->sci, pos);
-			ttf.chrg.cpMax = SSM(p->sci, SCI_GETLINEENDPOSITION, p->line, 0);
+			ttf.chrg.cpMax = p->line_end_pos;
 		}
 		else
 		{
 			ttf.chrg.cpMin = pos;
-			ttf.chrg.cpMax = SSM(p->sci, SCI_POSITIONFROMLINE, p->line, 0);
+			ttf.chrg.cpMax = p->line_start_pos;
 		}
 
 		new_pos = sci_find_text(p->sci, 0, &ttf);
@@ -754,7 +743,7 @@ static void cmd_repeat_last_command(CmdContext *c, CmdParams *p)
 static void cmd_swap_anchor(CmdContext *c, CmdParams *p)
 {
 	gint anchor = c->sel_anchor;
-	c->sel_anchor = SSM(p->sci, SCI_GETCURRENTPOS, 0, 0);
+	c->sel_anchor = p->pos;
 	sci_set_current_position(p->sci, anchor, FALSE);
 }
 
@@ -789,11 +778,10 @@ static void cmd_del_word_left(CmdContext *c, CmdParams *p)
 
 static void indent_ins(CmdContext *c, CmdParams *p, gboolean indent)
 {
-	gint line_end_pos = SSM(p->sci, SCI_GETLINEENDPOSITION, p->line, 0);
 	gint delta;
 	SSM(p->sci, SCI_HOME, 0, 0);
 	SSM(p->sci, indent ? SCI_TAB : SCI_BACKTAB, 0, 0);
-	delta = SSM(p->sci, SCI_GETLINEENDPOSITION, p->line, 0) - line_end_pos;
+	delta = SSM(p->sci, SCI_GETLINEENDPOSITION, p->line, 0) - p->line_end_pos;
 	sci_set_current_position(p->sci, p->pos + delta, FALSE);
 }
 
@@ -809,8 +797,7 @@ static void cmd_unindent_ins(CmdContext *c, CmdParams *p)
 
 static void cmd_copy_char(CmdContext *c, CmdParams *p, gboolean above)
 {
-	gint line_count = sci_get_line_count(p->sci);
-	if ((above && p->line > 0) || (!above && p->line < line_count - 1))
+	if ((above && p->line > 0) || (!above && p->line < p->line_num - 1))
 	{
 		gint line = above ? p->line - 1 : p->line + 1;
 		gint col = SSM(p->sci, SCI_GETCOLUMN, p->pos, 0);
@@ -1239,6 +1226,7 @@ static void perform_cmd(CmdDef *def, ScintillaObject *sci, CmdContext *ctx, GSLi
 	gint cmd_len = 0;
 	gboolean num_present;
 	CmdParams param;
+	gint orig_pos = sci_get_current_position(sci);
 
 	if (def->key1 != 0)
 		cmd_len++;
@@ -1254,10 +1242,13 @@ static void perform_cmd(CmdDef *def, ScintillaObject *sci, CmdContext *ctx, GSLi
 	param.num = num_present ? num : 1;
 	param.num_present = num_present;
 	param.last_kp = g_slist_nth_data(kpl, 0);
-	param.pos = sci_get_current_position(sci);
 	param.sel_start = SSM(sci, SCI_GETSELECTIONSTART, 0, 0);
 	param.sel_len = sci_get_selection_end(sci) - sci_get_selection_start(sci);
+	param.pos = orig_pos;
 	param.line = sci_get_current_line(sci);
+	param.line_end_pos = SSM(sci, SCI_GETLINEENDPOSITION, param.line, 0);
+	param.line_start_pos = SSM(sci, SCI_POSITIONFROMLINE, param.line, 0);
+	param.line_num = sci_get_line_count(sci);
 
 	sci_start_undo_action(sci);
 
@@ -1275,14 +1266,19 @@ static void perform_cmd(CmdDef *def, ScintillaObject *sci, CmdContext *ctx, GSLi
 			{
 				gint new_pos = sci_get_current_position(sci);
 
-				sci_set_current_position(sci, param.pos, FALSE);
+				sci_set_current_position(sci, orig_pos, FALSE);
 
 				param.num = 1;
 				param.num_present = FALSE;
 				param.last_kp = g_slist_nth_data(top, 0);
 				param.sel_start = MIN(new_pos, param.pos);
 				param.sel_len = ABS(new_pos - param.pos);
-				
+				param.pos = orig_pos;
+				param.line = sci_get_current_line(sci);
+				param.line_end_pos = SSM(sci, SCI_GETLINEENDPOSITION, param.line, 0);
+				param.line_start_pos = SSM(sci, SCI_POSITIONFROMLINE, param.line, 0);
+				param.line_num = sci_get_line_count(sci);
+
 				def->cmd(ctx, &param);
 			}
 		}
