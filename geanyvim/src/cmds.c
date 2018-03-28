@@ -41,6 +41,8 @@ typedef struct
 	KeyPress *last_kp;
 	/* current position in scintilla */
 	gint pos;
+	/* if running as a "motion" command */
+	gboolean is_motion_cmd;
 	/* selection start or selection made by movement command */
 	gint sel_start;
 	/* selection length or selection made by movement command */
@@ -174,14 +176,17 @@ static void cmd_mode_insert_cut_line(CmdContext *c, CmdParams *p)
 {
 	gint new_line = get_line_number_rel(p, p->num - 1);
 	gint pos_end = SSM(p->sci, SCI_GETLINEENDPOSITION, new_line, 0);
+	c->line_copy = TRUE;
 	SSM(p->sci, SCI_COPYRANGE, p->line_start_pos, pos_end);
 	SSM(p->sci, SCI_DELETERANGE, p->line_start_pos, pos_end - p->line_start_pos);
+	cmd_mode_insert(c, p);
 }
 
 static void cmd_clear_right(CmdContext *c, CmdParams *p)
 {
 	gint new_line = get_line_number_rel(p, p->num - 1);
 	gint pos = SSM(p->sci, SCI_GETLINEENDPOSITION, new_line, 0);
+	c->line_copy = FALSE;
 	SSM(p->sci, SCI_COPYRANGE, p->pos, pos);
 	SSM(p->sci, SCI_DELETERANGE, p->pos, pos - p->pos);
 }
@@ -196,6 +201,7 @@ static void cmd_mode_insert_delete_char_yank(CmdContext *c, CmdParams *p)
 {
 	gint end = REL(p->sci, p->pos, p->num);
 	end = end > p->line_end_pos ? p->line_end_pos : end;
+	c->line_copy = FALSE;
 	SSM(p->sci, SCI_COPYRANGE, p->pos, end);
 	SSM(p->sci, SCI_DELETERANGE, p->pos, end - p->pos);
 	cmd_mode_insert(c, p);
@@ -324,8 +330,8 @@ static void cmd_copy_line(CmdContext *c, CmdParams *p)
 {
 	gint num = get_line_number_rel(p, p->num);
 	gint end = sci_get_position_from_line(p->sci, num);
-	SSM(p->sci, SCI_COPYRANGE, p->line_start_pos, end);
 	c->line_copy = TRUE;
+	SSM(p->sci, SCI_COPYRANGE, p->line_start_pos, end);
 }
 
 static void cmd_paste(CmdContext *c, CmdParams *p, gboolean after)
@@ -370,9 +376,9 @@ static void cmd_delete_line(CmdContext *c, CmdParams *p)
 {
 	gint num = get_line_number_rel(p, p->num);
 	gint end = sci_get_position_from_line(p->sci, num);
+	c->line_copy = TRUE;
 	SSM(p->sci, SCI_COPYRANGE, p->line_start_pos, end);
 	SSM(p->sci, SCI_DELETERANGE, p->line_start_pos, end - p->line_start_pos);
-	c->line_copy = TRUE;
 }
 
 static void cmd_search_next(CmdContext *c, CmdParams *p)
@@ -415,7 +421,10 @@ static void delete_char(CmdContext *c, CmdParams *p, gboolean yank)
 	gint end_pos = REL(p->sci, p->pos, p->num);
 	end_pos = end_pos > p->line_end_pos ? p->line_end_pos : end_pos;
 	if (yank)
+	{
+		c->line_copy = FALSE;
 		SSM(p->sci, SCI_COPYRANGE, p->pos, end_pos);
+	}
 	SSM(p->sci, SCI_DELETERANGE, p->pos, end_pos - p->pos);
 }
 
@@ -434,7 +443,10 @@ static void delete_char_back(CmdContext *c, CmdParams *p, gboolean yank)
 	gint start_pos = REL(p->sci, p->pos, -p->num);
 	start_pos = start_pos < p->line_start_pos ? p->line_start_pos : start_pos;
 	if (yank)
+	{
+		c->line_copy = FALSE;
 		SSM(p->sci, SCI_COPYRANGE, start_pos, p->pos);
+	}
 	SSM(p->sci, SCI_DELETERANGE, start_pos, p->pos - start_pos);
 }
 
@@ -741,21 +753,35 @@ static void cmd_unindent(CmdContext *c, CmdParams *p)
 
 static void cmd_range_delete(CmdContext *c, CmdParams *p)
 {
-	SSM(p->sci, SCI_DELETERANGE, p->sel_start, p->sel_len);
+	gint sel_end_pos = p->sel_start + p->sel_len;
+	if (p->is_motion_cmd && p->line_end_pos < sel_end_pos)
+		sel_end_pos = p->line_end_pos;
+	c->line_copy = FALSE;
+	SSM(p->sci, SCI_COPYRANGE, p->sel_start, sel_end_pos);
+	SSM(p->sci, SCI_DELETERANGE, p->sel_start, sel_end_pos - p->sel_start);
 	set_vi_mode(VI_MODE_COMMAND);
 }
 
 static void cmd_range_copy(CmdContext *c, CmdParams *p)
 {
-	SSM(p->sci, SCI_COPYRANGE, p->sel_start, p->sel_start + p->sel_len);
-	set_vi_mode(VI_MODE_COMMAND);
-	SSM(p->sci, SCI_SETCURRENTPOS, p->sel_start, 0);
+	gint sel_end_pos = p->sel_start + p->sel_len;
+	if (p->is_motion_cmd && p->line_end_pos < sel_end_pos)
+		sel_end_pos = p->line_end_pos;
 	c->line_copy = FALSE;
+	SSM(p->sci, SCI_COPYRANGE, p->sel_start, sel_end_pos);
+	SSM(p->sci, SCI_SETCURRENTPOS, p->sel_start, 0);
+	set_vi_mode(VI_MODE_COMMAND);
 }
 
 static void cmd_range_change(CmdContext *c, CmdParams *p)
 {
-	SSM(p->sci, SCI_DELETERANGE, p->sel_start, p->sel_len);
+	gint sel_end_pos = p->sel_start + p->sel_len;
+	if (p->is_motion_cmd && p->line_end_pos < sel_end_pos)
+		sel_end_pos = p->line_end_pos;
+	c->line_copy = FALSE;
+	SSM(p->sci, SCI_COPYRANGE, p->sel_start, sel_end_pos);
+	SSM(p->sci, SCI_DELETERANGE, p->sel_start, sel_end_pos - p->sel_start);
+	cmd_mode_insert(c, p);
 }
 
 static void cmd_repeat_last_command(CmdContext *c, CmdParams *p)
@@ -1265,6 +1291,7 @@ static void perform_cmd(CmdDef *def, ScintillaObject *sci, CmdContext *ctx, GSLi
 	param.num = num_present ? num : 1;
 	param.num_present = num_present;
 	param.last_kp = g_slist_nth_data(kpl, 0);
+	param.is_motion_cmd = FALSE;
 	param.sel_start = SSM(sci, SCI_GETSELECTIONSTART, 0, 0);
 	param.sel_len = sci_get_selection_end(sci) - sci_get_selection_start(sci);
 	param.pos = orig_pos;
@@ -1294,6 +1321,7 @@ static void perform_cmd(CmdDef *def, ScintillaObject *sci, CmdContext *ctx, GSLi
 				param.num = 1;
 				param.num_present = FALSE;
 				param.last_kp = g_slist_nth_data(top, 0);
+				param.is_motion_cmd = TRUE;
 				param.sel_start = MIN(new_pos, param.pos);
 				param.sel_len = ABS(new_pos - param.pos);
 				param.pos = orig_pos;
