@@ -159,13 +159,6 @@ static void cmd_mode_insert_prev_line(CmdContext *c, CmdParams *p)
 	set_vi_mode(VI_MODE_INSERT);
 }
 
-static void cmd_mode_insert_clear_line(CmdContext *c, CmdParams *p)
-{
-	SSM(p->sci, SCI_DELLINELEFT, 0, 0);
-	SSM(p->sci, SCI_DELLINERIGHT, 0, 0);
-	cmd_mode_insert(c, p);
-}
-
 static gint get_line_number_rel(CmdParams *p, gint shift)
 {
 	gint line_num = sci_get_line_count(p->sci);
@@ -173,6 +166,15 @@ static gint get_line_number_rel(CmdParams *p, gint shift)
 	new_line = new_line < 0 ? 0 : new_line;
 	new_line = new_line > line_num ? line_num : new_line;
 	return new_line;
+}
+
+static void cmd_mode_insert_cut_line(CmdContext *c, CmdParams *p)
+{
+	gint new_line = get_line_number_rel(p, p->num - 1);
+	gint pos_start = SSM(p->sci, SCI_POSITIONFROMLINE, p->line, 0);
+	gint pos_end = SSM(p->sci, SCI_GETLINEENDPOSITION, new_line, 0);
+	SSM(p->sci, SCI_COPYRANGE, pos_start, pos_end);
+	SSM(p->sci, SCI_DELETERANGE, pos_start, pos_end - pos_start);
 }
 
 static void cmd_clear_right(CmdContext *c, CmdParams *p)
@@ -1039,8 +1041,8 @@ CmdDef cmd_mode_cmds[] = {
 
 	/* changing text */
 	{cmd_mode_replace, GDK_KEY_R, 0, 0, 0, FALSE, FALSE},
-	{cmd_mode_insert_clear_line, GDK_KEY_c, GDK_KEY_c, 0, 0, FALSE, FALSE},
-	{cmd_mode_insert_clear_line, GDK_KEY_S, 0, 0, 0, FALSE, FALSE},
+	{cmd_mode_insert_cut_line, GDK_KEY_c, GDK_KEY_c, 0, 0, FALSE, FALSE},
+	{cmd_mode_insert_cut_line, GDK_KEY_S, 0, 0, 0, FALSE, FALSE},
 	{cmd_mode_insert_clear_right, GDK_KEY_C, 0, 0, 0, FALSE, FALSE},
 	{cmd_mode_insert_delete_char, GDK_KEY_s, 0, 0, 0, FALSE, FALSE},
 	{cmd_replace_char, GDK_KEY_r, 0, 0, 0, TRUE, FALSE},
