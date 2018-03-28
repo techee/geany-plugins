@@ -842,6 +842,18 @@ static void cmd_range_change(CmdContext *c, CmdParams *p)
 	cmd_mode_insert(c, p);
 }
 
+static void cmd_delete_lines_vis(CmdContext *c, CmdParams *p)
+{
+	gint line_start = sci_get_line_from_position(p->sci, p->sel_start);
+	gint line_end = sci_get_line_from_position(p->sci, p->sel_start + p->sel_len);
+	gint line_start_pos = sci_get_position_from_line(p->sci, line_start);
+	gint line_end_pos = sci_get_line_end_position(p->sci, line_end);
+	c->line_copy = TRUE;
+	SSM(p->sci, SCI_COPYRANGE, line_start_pos, line_end_pos);
+	SSM(p->sci, SCI_DELETERANGE, line_start_pos, line_end_pos - line_start_pos);
+	cmd_mode_insert(c, p);
+}
+
 static void cmd_repeat_last_command(CmdContext *c, CmdParams *p)
 {
 	// fake - handled in a special way
@@ -1181,6 +1193,7 @@ CmdDef vis_mode_cmds[] = {
 	{cmd_upper_case, GDK_KEY_U, 0, 0, 0, FALSE, FALSE},
 	{cmd_lower_case, GDK_KEY_u, 0, 0, 0, FALSE, FALSE},
 	{cmd_join_lines_vis, GDK_KEY_J, 0, 0, 0, FALSE, FALSE},
+	{cmd_delete_lines_vis, GDK_KEY_C, 0, 0, 0, FALSE, FALSE},
 	SEARCH_CMDS
 	MOVEMENT_CMDS
 	RANGE_CMDS
