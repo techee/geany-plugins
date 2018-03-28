@@ -369,7 +369,9 @@ static void cmd_delete_line(CmdContext *c, CmdParams *p)
 	gint num = get_line_number_rel(p, p->num);
 	gint start = sci_get_position_from_line(p->sci, p->line);
 	gint end = sci_get_position_from_line(p->sci, num);
+	SSM(p->sci, SCI_COPYRANGE, start, end);
 	SSM(p->sci, SCI_DELETERANGE, start, end-start);
+	c->line_copy = TRUE;
 }
 
 static void cmd_search_next(CmdContext *c, CmdParams *p)
