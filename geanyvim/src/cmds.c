@@ -608,15 +608,18 @@ static void cmd_replace_char(CmdContext *c, CmdParams *p)
 	}
 }
 
-static void switch_case(ScintillaObject *sci, gint pos, gint num, gint line)
+static void change_case(ScintillaObject *sci, gint pos, gint num, gint line,
+	gboolean force_upper, gboolean force_lower)
 {
 	gint i;
 
 	for (i = 0; i < num; i++)
 	{
 		gboolean is_lower = islower(sci_get_char_at(sci, pos));
-		gchar upper[2] = {toupper(sci_get_char_at(sci, pos)), '\0'};
-		gchar lower[2] = {tolower(sci_get_char_at(sci, pos)), '\0'};
+		gchar uppercase[2] = {toupper(sci_get_char_at(sci, pos)), '\0'};
+		gchar lowercase[2] = {tolower(sci_get_char_at(sci, pos)), '\0'};
+		gchar *upper = force_lower ? lowercase : uppercase;
+		gchar *lower = force_upper ? uppercase : lowercase;
 
 		sci_set_target_start(sci, pos);
 		pos = NEXT(sci, pos);
@@ -634,20 +637,31 @@ static void switch_case(ScintillaObject *sci, gint pos, gint num, gint line)
 	}
 }
 
-static void cmd_switch_case_char(CmdContext *c, CmdParams *p)
+static void switch_case(CmdContext *c, CmdParams *p,
+	gboolean force_upper, gboolean force_lower)
 {
-	if (IS_VISUAL(get_vi_mode()))
+	if (IS_VISUAL(get_vi_mode()) || p->sel_len > 0)
 	{
-		switch_case(p->sci, p->sel_start, p->sel_len, -1);
+		change_case(p->sci, p->sel_start, p->sel_len, -1, FALSE, FALSE);
 		set_vi_mode(VI_MODE_COMMAND);
 	}
 	else
-		switch_case(p->sci, p->pos, p->num, p->line);
+		change_case(p->sci, p->pos, p->num, p->line, FALSE, FALSE);
 }
 
 static void cmd_switch_case(CmdContext *c, CmdParams *p)
 {
-	switch_case(p->sci, p->sel_start, p->sel_len, -1);
+	switch_case(c, p, FALSE, FALSE);
+}
+
+static void cmd_lower_case(CmdContext *c, CmdParams *p)
+{
+	switch_case(c, p, FALSE, TRUE);
+}
+
+static void cmd_upper_case(CmdContext *c, CmdParams *p)
+{
+	switch_case(c, p, TRUE, FALSE);
 }
 
 static void cmd_find_char(CmdContext *c, CmdParams *p, gboolean invert)
@@ -1062,9 +1076,9 @@ CmdDef movement_cmds[] = {
 	{cmd_range_unindent, GDK_KEY_less, 0, 0, 0, FALSE, TRUE}, \
 	{cmd_range_indent, GDK_KEY_greater, 0, 0, 0, FALSE, TRUE}, \
 	{cmd_switch_case, GDK_KEY_g, GDK_KEY_asciitilde, 0, 0, FALSE, TRUE}, \
-	{cmd_switch_case_char, GDK_KEY_asciitilde, 0, 0, 0, FALSE, TRUE},
-//	{cmd_range_uppercase, GDK_KEY_g, GDK_KEY_u, 0, 0, FALSE, TRUE},
-//	{cmd_range_lowercase, GDK_KEY_g, GDK_KEY_U, 0, 0, FALSE, TRUE},
+	{cmd_switch_case, GDK_KEY_asciitilde, 0, 0, 0, FALSE, TRUE}, \
+	{cmd_upper_case, GDK_KEY_g, GDK_KEY_U, 0, 0, FALSE, TRUE}, \
+	{cmd_lower_case, GDK_KEY_g, GDK_KEY_u, 0, 0, FALSE, TRUE}, \
 	/* END */
 
 
@@ -1126,7 +1140,7 @@ CmdDef cmd_mode_cmds[] = {
 	{cmd_mode_insert_clear_right, GDK_KEY_C, 0, 0, 0, FALSE, FALSE},
 	{cmd_mode_insert_delete_char_yank, GDK_KEY_s, 0, 0, 0, FALSE, FALSE},
 	{cmd_replace_char, GDK_KEY_r, 0, 0, 0, TRUE, FALSE},
-	{cmd_switch_case_char, GDK_KEY_asciitilde, 0, 0, 0, FALSE, FALSE},
+	{cmd_switch_case, GDK_KEY_asciitilde, 0, 0, 0, FALSE, FALSE},
 	{cmd_unindent, GDK_KEY_less, GDK_KEY_less, 0, 0, FALSE, FALSE},
 	{cmd_indent, GDK_KEY_greater, GDK_KEY_greater, 0, 0, FALSE, FALSE},
 
@@ -1157,6 +1171,8 @@ CmdDef vis_mode_cmds[] = {
 	{cmd_mode_visual_line, GDK_KEY_V, 0, 0, 0, FALSE, FALSE},
 	{cmd_nop, GDK_KEY_Insert, 0, 0, 0, FALSE, FALSE},
 	{cmd_nop, GDK_KEY_KP_Insert, 0, 0, 0, FALSE, FALSE},
+	{cmd_upper_case, GDK_KEY_U, 0, 0, 0, FALSE, FALSE},
+	{cmd_lower_case, GDK_KEY_u, 0, 0, 0, FALSE, FALSE},
 	SEARCH_CMDS
 	MOVEMENT_CMDS
 	RANGE_CMDS
