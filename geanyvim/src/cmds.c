@@ -577,10 +577,23 @@ static void cmd_goto_screen_bottom(CmdContext *c, CmdParams *p)
 static void cmd_replace_char(CmdContext *c, CmdParams *p)
 {
 	gchar repl[2] = {kp_to_char(p->last_kp), '\0'};
+	gint pos = p->pos;
+	gint i;
 
-	sci_set_target_start(p->sci, p->pos);
-	sci_set_target_end(p->sci, NEXT(p->sci, p->pos));
-	sci_replace_target(p->sci, repl, FALSE);
+	for (i = 0; i < p->num; i++)
+	{
+		//line end position can change because of the replacement and different
+		//character lengths
+		gint line_end_pos = sci_get_line_end_position(p->sci, p->line);
+
+		sci_set_current_position(p->sci, pos, FALSE);
+		sci_set_target_start(p->sci, pos);
+		pos = NEXT(p->sci, pos);
+		if (pos > line_end_pos)
+			break;
+		sci_set_target_end(p->sci, pos);
+		sci_replace_target(p->sci, repl, FALSE);
+	}
 }
 
 static void cmd_find_char(CmdContext *c, CmdParams *p, gboolean invert)
