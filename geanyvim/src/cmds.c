@@ -191,9 +191,13 @@ static void cmd_mode_insert_clear_right(CmdContext *c, CmdParams *p)
 	cmd_mode_insert(c, p);
 }
 
-static void cmd_mode_insert_delete_char(CmdContext *c, CmdParams *p)
+static void cmd_mode_insert_delete_char_yank(CmdContext *c, CmdParams *p)
 {
-	SSM(p->sci, SCI_DELETERANGE, p->pos, 1);
+	gint pos_line_end = SSM(p->sci, SCI_GETLINEENDPOSITION, p->line, 0);
+	gint end = REL(p->sci, p->pos, p->num);
+	end = end > pos_line_end ? pos_line_end : end;
+	SSM(p->sci, SCI_COPYRANGE, p->pos, end);
+	SSM(p->sci, SCI_DELETERANGE, p->pos, end - p->pos);
 	cmd_mode_insert(c, p);
 }
 
@@ -1046,7 +1050,7 @@ CmdDef cmd_mode_cmds[] = {
 	{cmd_mode_insert_cut_line, GDK_KEY_c, GDK_KEY_c, 0, 0, FALSE, FALSE},
 	{cmd_mode_insert_cut_line, GDK_KEY_S, 0, 0, 0, FALSE, FALSE},
 	{cmd_mode_insert_clear_right, GDK_KEY_C, 0, 0, 0, FALSE, FALSE},
-	{cmd_mode_insert_delete_char, GDK_KEY_s, 0, 0, 0, FALSE, FALSE},
+	{cmd_mode_insert_delete_char_yank, GDK_KEY_s, 0, 0, 0, FALSE, FALSE},
 	{cmd_replace_char, GDK_KEY_r, 0, 0, 0, TRUE, FALSE},
 	{cmd_switch_case_char, GDK_KEY_asciitilde, 0, 0, 0, FALSE, FALSE},
 	{cmd_unindent, GDK_KEY_less, GDK_KEY_less, 0, 0, FALSE, FALSE},
