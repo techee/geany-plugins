@@ -865,7 +865,20 @@ static void cmd_delete_lines_vis(CmdContext *c, CmdParams *p)
 	SSM(p->sci, SCI_COPYRANGE, line_start_pos, line_end_pos);
 	SSM(p->sci, SCI_DELETERANGE, line_start_pos, line_end_pos - line_start_pos);
 	sci_set_current_position(p->sci, line_start_pos, TRUE);
-	c->sel_anchor = line_start_pos;
+	set_vi_mode(VI_MODE_COMMAND);
+}
+
+static void cmd_yank_lines_vis(CmdContext *c, CmdParams *p)
+{
+	gint line_start = sci_get_line_from_position(p->sci, p->sel_start);
+	gint line_end = sci_get_line_from_position(p->sci, p->sel_start + p->sel_len);
+	gint line_start_pos = sci_get_position_from_line(p->sci, line_start);
+	gint line_end_pos = sci_get_line_end_position(p->sci, line_end);
+	line_end_pos = NEXT(p->sci, line_end_pos);
+	c->line_copy = TRUE;
+	SSM(p->sci, SCI_COPYRANGE, line_start_pos, line_end_pos);
+	sci_set_current_position(p->sci, line_start_pos, TRUE);
+	set_vi_mode(VI_MODE_COMMAND);
 }
 
 static void cmd_repeat_last_command(CmdContext *c, CmdParams *p)
@@ -1208,8 +1221,15 @@ CmdDef vis_mode_cmds[] = {
 	{cmd_lower_case, GDK_KEY_u, 0, 0, 0, FALSE, FALSE},
 	{cmd_join_lines_vis, GDK_KEY_J, 0, 0, 0, FALSE, FALSE},
 	{cmd_delete_lines_insert_vis, GDK_KEY_C, 0, 0, 0, FALSE, FALSE},
+	{cmd_delete_lines_insert_vis, GDK_KEY_S, 0, 0, 0, FALSE, FALSE},
+	{cmd_delete_lines_insert_vis, GDK_KEY_R, 0, 0, 0, FALSE, FALSE},
 	{cmd_delete_lines_vis, GDK_KEY_D, 0, 0, 0, FALSE, FALSE},
 	{cmd_delete_lines_vis, GDK_KEY_X, 0, 0, 0, FALSE, FALSE},
+	{cmd_range_delete, GDK_KEY_x, 0, 0, 0, FALSE, FALSE},
+	{cmd_range_delete, GDK_KEY_Delete, 0, 0, 0, FALSE, FALSE},
+	{cmd_range_delete, GDK_KEY_KP_Delete, 0, 0, 0, FALSE, FALSE},
+	{cmd_range_change, GDK_KEY_s, 0, 0, 0, FALSE, FALSE},
+	{cmd_yank_lines_vis, GDK_KEY_Y, 0, 0, 0, FALSE, FALSE},
 	SEARCH_CMDS
 	MOVEMENT_CMDS
 	RANGE_CMDS
