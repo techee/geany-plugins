@@ -245,6 +245,12 @@ static void cmd_scroll_down(CmdContext *c, CmdParams *p)
 	SSM(p->sci, SCI_LINESCROLL, 0, p->num);
 }
 
+static void cmd_scroll_center(CmdContext *c, CmdParams *p)
+{
+	gint lines = SSM(p->sci, SCI_LINESONSCREEN, 0, 0);
+	SSM(p->sci, SCI_SETFIRSTVISIBLELINE, p->line - lines / 2, 0);
+}
+
 static void cmd_goto_left(CmdContext *c, CmdParams *p)
 {
 	gint i;
@@ -1174,6 +1180,7 @@ typedef struct {
 	gboolean needs_selection;
 } CmdDef;
 
+
 #define ARROW_MOTIONS \
 	{cmd_goto_next_word, GDK_KEY_Right, 0, GDK_SHIFT_MASK, 0, FALSE, FALSE}, \
 	{cmd_goto_next_word, GDK_KEY_Right, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE}, \
@@ -1279,8 +1286,6 @@ typedef struct {
 	{cmd_goto_page_up, GDK_KEY_KP_Page_Up, 0, 0, 0, FALSE, FALSE}, \
 	{cmd_goto_halfpage_down, GDK_KEY_d, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE}, \
 	{cmd_goto_halfpage_up, GDK_KEY_u, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE}, \
-	{cmd_scroll_down, GDK_KEY_e, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE}, \
-	{cmd_scroll_up, GDK_KEY_y, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE}, \
 	/* END */
 
 
@@ -1288,6 +1293,7 @@ CmdDef movement_cmds[] = {
 	MOVEMENT_CMDS
 	{NULL, 0, 0, 0, 0, FALSE, FALSE}
 };
+
 
 #define OPERATOR_CMDS \
 	{cmd_range_delete, GDK_KEY_d, 0, 0, 0, FALSE, TRUE}, \
@@ -1306,6 +1312,7 @@ CmdDef operator_cmds[] = {
 	OPERATOR_CMDS
 	{NULL, 0, 0, 0, 0, FALSE, FALSE}
 };
+
 
 #define TEXT_OBJECT_CMDS \
 	{cmd_select_quotedbl, GDK_KEY_a, GDK_KEY_quotedbl, 0, 0, FALSE, FALSE}, \
@@ -1337,23 +1344,36 @@ CmdDef operator_cmds[] = {
 	{cmd_select_bracket_inner, GDK_KEY_i, GDK_KEY_bracketright, 0, 0, FALSE, FALSE}, \
 	/* END */
 
+
 CmdDef text_object_cmds[] = {
 	TEXT_OBJECT_CMDS
 	{NULL, 0, 0, 0, 0, FALSE, FALSE}
 };
 
+
+#define SCROLLING_CMDS \
+	{cmd_scroll_down, GDK_KEY_e, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE}, \
+	{cmd_scroll_up, GDK_KEY_y, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE}, \
+	{cmd_scroll_center, GDK_KEY_z, GDK_KEY_z, 0, 0, FALSE, FALSE}, \
+	/* END */
+
+
 #define ENTER_CMDLINE_CMDS \
 	{cmd_mode_cmdline, GDK_KEY_colon, 0, 0, 0, FALSE, FALSE}, \
 	{cmd_mode_cmdline, GDK_KEY_slash, 0, 0, 0, FALSE, FALSE}, \
 	{cmd_mode_cmdline, GDK_KEY_KP_Divide, 0, 0, 0, FALSE, FALSE}, \
-	{cmd_mode_cmdline, GDK_KEY_question, 0, 0, 0, FALSE, FALSE},
+	{cmd_mode_cmdline, GDK_KEY_question, 0, 0, 0, FALSE, FALSE}, \
+	/* END */
+
 
 #define SEARCH_CMDS \
 	{cmd_search_next, GDK_KEY_n, 0, 0, 0, FALSE, FALSE}, \
 	{cmd_search_next, GDK_KEY_N, 0, 0, 0, FALSE, FALSE}, \
 	{cmd_search_current_next, GDK_KEY_asterisk, 0, 0, 0, FALSE, FALSE}, \
 	{cmd_search_current_next, GDK_KEY_KP_Multiply, 0, 0, 0, FALSE, FALSE}, \
-	{cmd_search_current_prev, GDK_KEY_numbersign, 0, 0, 0, FALSE, FALSE},
+	{cmd_search_current_prev, GDK_KEY_numbersign, 0, 0, 0, FALSE, FALSE}, \
+	/* END */
+
 
 CmdDef cmd_mode_cmds[] = {
 	/* enter insert mode */
@@ -1369,8 +1389,6 @@ CmdDef cmd_mode_cmds[] = {
 	/* enter visual mode */
 	{cmd_mode_visual, GDK_KEY_v, 0, 0, 0, FALSE, FALSE},
 	{cmd_mode_visual_line, GDK_KEY_V, 0, 0, 0, FALSE, FALSE},
-
-	ENTER_CMDLINE_CMDS
 
 	/* deletion */
 	{cmd_delete_char_yank, GDK_KEY_x, 0, 0, 0, FALSE, FALSE},
@@ -1403,11 +1421,6 @@ CmdDef cmd_mode_cmds[] = {
 	{cmd_undo, GDK_KEY_u, 0, 0, 0, FALSE, FALSE},
 	{cmd_redo, GDK_KEY_r, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
 
-	SEARCH_CMDS
-	MOVEMENT_CMDS
-	OPERATOR_CMDS
-	TEXT_OBJECT_CMDS
-
 	/* special */
 	{cmd_repeat_last_command, GDK_KEY_period, 0, 0, 0, FALSE, FALSE},
 	{cmd_repeat_last_command, GDK_KEY_KP_Decimal, 0, 0, 0, FALSE, FALSE},
@@ -1415,8 +1428,16 @@ CmdDef cmd_mode_cmds[] = {
 	{cmd_nop, GDK_KEY_Insert, 0, 0, 0, FALSE, FALSE},
 	{cmd_nop, GDK_KEY_KP_Insert, 0, 0, 0, FALSE, FALSE},
 
+	SEARCH_CMDS
+	MOVEMENT_CMDS
+	TEXT_OBJECT_CMDS
+	OPERATOR_CMDS
+	SCROLLING_CMDS
+	ENTER_CMDLINE_CMDS
+
 	{NULL, 0, 0, 0, 0, FALSE, FALSE}
 };
+
 
 CmdDef vis_mode_cmds[] = {
 	{cmd_escape, GDK_KEY_Escape, 0, 0, 0, FALSE, FALSE},
@@ -1441,17 +1462,19 @@ CmdDef vis_mode_cmds[] = {
 	{cmd_range_change, GDK_KEY_s, 0, 0, 0, FALSE, FALSE},
 	{cmd_yank_lines_vis, GDK_KEY_Y, 0, 0, 0, FALSE, FALSE},
 	{cmd_replace_char_vis, GDK_KEY_r, 0, 0, 0, TRUE, FALSE},
+
 	SEARCH_CMDS
 	MOVEMENT_CMDS
 	TEXT_OBJECT_CMDS
 	OPERATOR_CMDS
+	SCROLLING_CMDS
 	ENTER_CMDLINE_CMDS
+
 	{NULL, 0, 0, 0, 0, FALSE, FALSE}
 };
 
-CmdDef ins_mode_cmds[] = {
-	ARROW_MOTIONS
 
+CmdDef ins_mode_cmds[] = {
 	{cmd_escape, GDK_KEY_Escape, 0, 0, 0, FALSE, FALSE},
 	{cmd_escape, GDK_KEY_c, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
 	{cmd_escape, GDK_KEY_bracketleft, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
@@ -1482,8 +1505,12 @@ CmdDef ins_mode_cmds[] = {
 	{cmd_copy_char_from_above, GDK_KEY_y, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
 	{cmd_paste_before, GDK_KEY_r, 0, GDK_CONTROL_MASK, 0, TRUE, FALSE},
 
+	ARROW_MOTIONS
+
 	{NULL, 0, 0, 0, 0, FALSE, FALSE}
 };
+
+/******************************************************************************/
 
 static gboolean is_in_cmd_group(CmdDef *cmds, CmdDef *def)
 {
