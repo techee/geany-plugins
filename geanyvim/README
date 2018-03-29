@@ -2,6 +2,7 @@ TODO: description, FAQ, implementation limitations
 
 
 problems:
+- TODO: some basic "z" commands and text object commands
 - goto next, previous word desn't work the same way as in vim
 - J (join lines) should remove whitespace between lines
 - TODO: & repeat last :s once replace is implemented
@@ -228,6 +229,46 @@ bar           |               1  cursor to column N
 <Up>          <Up>            1  same as "k"
 
 ==============================================================================
+2.1 Text objects                                                objects
+
+These can be used after an operator or in Visual mode to select an object.
+
+tag             command            action in op-pending and Visual mode 
+------------------------------------------------------------------------------
+v_aquote      a"                 double quoted string
+v_a'          a'                 single quoted string
+v_a(          a(                 same as ab
+v_a)          a)                 same as ab
+v_a<          a<                 "a <>" from '<' to the matching '>'
+v_a>          a>                 same as a<
+v_aB          aB                 "a Block" from "[{" to "]}" (with brackets)
+v_aW          aW                 "a WORD" (with white space)
+v_a[          a[                 "a []" from '[' to the matching ']'
+v_a]          a]                 same as a[
+v_a`          a`                 string in backticks
+v_ab          ab                 "a block" from "[(" to "])" (with braces)
+v_at          at                 "a tag block" (with white space)
+v_aw          aw                 "a word" (with white space)
+v_a{          a{                 same as aB
+v_a}          a}                 same as aB
+v_iquote      i"                 double quoted string without the quotes
+v_i'          i'                 single quoted string without the quotes
+v_i(          i(                 same as ib
+v_i)          i)                 same as ib
+v_i<          i<                 "inner <>" from '<' to the matching '>'
+v_i>          i>                 same as i<
+v_iB          iB                 "inner Block" from "[{" and "]}"
+v_iW          iW                 "inner WORD"
+v_i[          i[                 "inner []" from '[' to the matching ']'
+v_i]          i]                 same as i[
+v_i`          i`                 string in backticks without the backticks
+v_ib          ib                 "inner block" from "[(" to "])"
+v_it          it                 "inner tag block"
+v_iw          iw                 "inner word"
+v_i{          i{                 same as iB
+v_i}          i}                 same as iB
+
+==============================================================================
 2.4 Commands starting with 'g'                                          g
 
 tag             char          note action in Normal mode        
@@ -240,6 +281,23 @@ ge            ge              1  go backwards to the end of the previous
 gg            gg              1  cursor to line N, default first line
 gu            gu{motion}      2  make Nmove text lowercase
 g~            g~{motion}      2  swap case for Nmove text
+
+==============================================================================
+2.5 Commands starting with 'z'                                          z
+
+tag             char          note action in Normal mode        
+------------------------------------------------------------------------------
+z<CR>         z<CR>              redraw, cursor line to top of window,
+                                   cursor on first non-blank
+z+            z+                 cursor on line N (default line below
+                                   window), otherwise like "z<CR>"
+z-            z-                 redraw, cursor line at bottom of window,
+                                   cursor on first non-blank
+z.            z.                 redraw, cursor line to center of window,
+                                   cursor on first non-blank
+zb            zb                 redraw, cursor line at bottom of window
+zt            zt                 redraw, cursor line at top of window
+zz            zz                 redraw, cursor line at center of window
 
 ==============================================================================
 3. Visual mode                                          visual-index
