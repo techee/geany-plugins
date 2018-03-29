@@ -2,7 +2,6 @@ TODO: description, FAQ, implementation limitations
 
 
 problems:
-- TODO: some basic "z" commands and text object commands
 - goto next, previous word desn't work the same way as in vim
 - J (join lines) should remove whitespace between lines
 - TODO: & repeat last :s once replace is implemented

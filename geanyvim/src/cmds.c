@@ -245,10 +245,68 @@ static void cmd_scroll_down(CmdContext *c, CmdParams *p)
 	SSM(p->sci, SCI_LINESCROLL, 0, p->num);
 }
 
+static void scroll_to_line(CmdParams *p, gint offset, gboolean nonempty)
+{
+	gint column = SSM(p->sci, SCI_GETCOLUMN, p->pos, 0);
+	gint line = p->line;
+
+	if (p->num_present)
+		line = p->num - 1;
+	if (nonempty)
+		goto_nonempty(p, line, FALSE);
+	else
+	{
+		gint pos = SSM(p->sci, SCI_FINDCOLUMN, line, column);
+		sci_set_current_position(p->sci, pos, FALSE);
+	}
+	SSM(p->sci, SCI_SETFIRSTVISIBLELINE, line + offset, 0);
+}
+
 static void cmd_scroll_center(CmdContext *c, CmdParams *p)
 {
 	gint lines = SSM(p->sci, SCI_LINESONSCREEN, 0, 0);
-	SSM(p->sci, SCI_SETFIRSTVISIBLELINE, p->line - lines / 2, 0);
+	scroll_to_line(p, - lines / 2, FALSE);
+}
+
+static void cmd_scroll_top(CmdContext *c, CmdParams *p)
+{
+	scroll_to_line(p, 0, FALSE);
+}
+
+static void cmd_scroll_bottom(CmdContext *c, CmdParams *p)
+{
+	gint lines = SSM(p->sci, SCI_LINESONSCREEN, 0, 0);
+	scroll_to_line(p, - lines + 1, FALSE);
+}
+
+static void cmd_scroll_center_nonempty(CmdContext *c, CmdParams *p)
+{
+	gint lines = SSM(p->sci, SCI_LINESONSCREEN, 0, 0);
+	scroll_to_line(p, - lines / 2, TRUE);
+}
+
+static void cmd_scroll_top_nonempty(CmdContext *c, CmdParams *p)
+{
+	scroll_to_line(p, 0, TRUE);
+}
+
+static void cmd_scroll_top_next_nonempty(CmdContext *c, CmdParams *p)
+{
+	if (p->num_present)
+		cmd_scroll_top_nonempty(c, p);
+	else
+	{
+		gint lines = SSM(p->sci, SCI_LINESONSCREEN, 0, 0);
+		gint line = SSM(p->sci, SCI_GETFIRSTVISIBLELINE, 0, 0) + lines;
+		goto_nonempty(p, line, FALSE);
+		SSM(p->sci, SCI_SETFIRSTVISIBLELINE, line, 0);
+	}
+}
+
+static void cmd_scroll_bottom_nonempty(CmdContext *c, CmdParams *p)
+{
+	gint lines = SSM(p->sci, SCI_LINESONSCREEN, 0, 0);
+	scroll_to_line(p, - lines + 1, TRUE);
 }
 
 static void cmd_goto_left(CmdContext *c, CmdParams *p)
@@ -1355,6 +1413,14 @@ CmdDef text_object_cmds[] = {
 	{cmd_scroll_down, GDK_KEY_e, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE}, \
 	{cmd_scroll_up, GDK_KEY_y, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE}, \
 	{cmd_scroll_center, GDK_KEY_z, GDK_KEY_z, 0, 0, FALSE, FALSE}, \
+	{cmd_scroll_top, GDK_KEY_z, GDK_KEY_t, 0, 0, FALSE, FALSE}, \
+	{cmd_scroll_bottom, GDK_KEY_z, GDK_KEY_b, 0, 0, FALSE, FALSE}, \
+	{cmd_scroll_center_nonempty, GDK_KEY_z, GDK_KEY_period, 0, 0, FALSE, FALSE}, \
+	{cmd_scroll_top_nonempty, GDK_KEY_z, GDK_KEY_Return, 0, 0, FALSE, FALSE}, \
+	{cmd_scroll_top_nonempty, GDK_KEY_z, GDK_KEY_KP_Enter, 0, 0, FALSE, FALSE}, \
+	{cmd_scroll_top_nonempty, GDK_KEY_z, GDK_KEY_ISO_Enter, 0, 0, FALSE, FALSE}, \
+	{cmd_scroll_top_next_nonempty, GDK_KEY_z, GDK_KEY_plus, 0, 0, FALSE, FALSE}, \
+	{cmd_scroll_bottom_nonempty, GDK_KEY_z, GDK_KEY_minus, 0, 0, FALSE, FALSE}, \
 	/* END */
 
 
