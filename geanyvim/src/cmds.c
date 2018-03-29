@@ -41,8 +41,8 @@ typedef struct
 	KeyPress *last_kp;
 	/* current position in scintilla */
 	gint pos;
-	/* if running as a "motion" command */
-	gboolean is_motion_cmd;
+	/* if running as an "operator" command */
+	gboolean is_operator_cmd;
 	/* selection start or selection made by movement command */
 	gint sel_start;
 	/* selection length or selection made by movement command */
@@ -832,7 +832,7 @@ static void cmd_range_unindent(CmdContext *c, CmdParams *p)
 static void cmd_range_delete(CmdContext *c, CmdParams *p)
 {
 	gint sel_end_pos = p->sel_start + p->sel_len;
-	if (p->is_motion_cmd && p->line_end_pos < sel_end_pos)
+	if (p->is_operator_cmd && p->line_end_pos < sel_end_pos)
 		sel_end_pos = p->line_end_pos;
 	c->line_copy = FALSE;
 	SSM(p->sci, SCI_COPYRANGE, p->sel_start, sel_end_pos);
@@ -843,7 +843,7 @@ static void cmd_range_delete(CmdContext *c, CmdParams *p)
 static void cmd_range_copy(CmdContext *c, CmdParams *p)
 {
 	gint sel_end_pos = p->sel_start + p->sel_len;
-	if (p->is_motion_cmd && p->line_end_pos < sel_end_pos)
+	if (p->is_operator_cmd && p->line_end_pos < sel_end_pos)
 		sel_end_pos = p->line_end_pos;
 	c->line_copy = FALSE;
 	SSM(p->sci, SCI_COPYRANGE, p->sel_start, sel_end_pos);
@@ -854,7 +854,7 @@ static void cmd_range_copy(CmdContext *c, CmdParams *p)
 static void cmd_range_change(CmdContext *c, CmdParams *p)
 {
 	gint sel_end_pos = p->sel_start + p->sel_len;
-	if (p->is_motion_cmd && p->line_end_pos < sel_end_pos)
+	if (p->is_operator_cmd && p->line_end_pos < sel_end_pos)
 		sel_end_pos = p->line_end_pos;
 	c->line_copy = FALSE;
 	SSM(p->sci, SCI_COPYRANGE, p->sel_start, sel_end_pos);
@@ -1002,6 +1002,50 @@ static void cmd_paste_inserted_text_leave(CmdContext *c, CmdParams *p)
 	set_vi_mode(VI_MODE_COMMAND);
 }
 
+static gint find_text(ScintillaObject *sci, const gchar *txt, gboolean forward)
+{
+	struct Sci_TextToFind ttf;
+	gint pos = sci_get_current_position(sci);
+	gint len = sci_get_length(sci);
+
+	ttf.lpstrText = txt;
+	if (forward)
+	{
+		ttf.chrg.cpMin = pos + 1;
+		ttf.chrg.cpMax = len;
+	}
+	else
+	{
+		ttf.chrg.cpMin = pos;
+		ttf.chrg.cpMax = 0;
+	}
+
+	return sci_find_text(sci, 0, &ttf);
+}
+
+static void cmd_select_quotedbl(CmdContext *c, CmdParams *p)
+{
+}
+
+static void cmd_select_brace(CmdContext *c, CmdParams *p)
+{
+	gint start_pos = find_text(p->sci, "{", FALSE);
+	gint end_pos = find_text(p->sci, "}", TRUE);
+	if (start_pos != -1 && end_pos != -1)
+	{
+		if (IS_VISUAL(get_vi_mode()))
+		{
+			c->sel_anchor = start_pos;
+			sci_set_current_position(p->sci, end_pos, TRUE);
+		}
+		else
+		{
+			p->sel_start = start_pos;
+			p->sel_len = end_pos - start_pos;
+		}
+	}
+}
+
 static void cmd_nop(CmdContext *c, CmdParams *p)
 {
 	// do nothing
@@ -1135,7 +1179,7 @@ CmdDef movement_cmds[] = {
 	{NULL, 0, 0, 0, 0, FALSE, FALSE}
 };
 
-#define RANGE_CMDS \
+#define OPERATOR_CMDS \
 	{cmd_range_delete, GDK_KEY_d, 0, 0, 0, FALSE, TRUE}, \
 	{cmd_range_copy, GDK_KEY_y, 0, 0, 0, FALSE, TRUE}, \
 	{cmd_range_change, GDK_KEY_c, 0, 0, 0, FALSE, TRUE}, \
@@ -1148,8 +1192,18 @@ CmdDef movement_cmds[] = {
 	/* END */
 
 
-CmdDef range_cmds[] = {
-	RANGE_CMDS
+CmdDef operator_cmds[] = {
+	OPERATOR_CMDS
+	{NULL, 0, 0, 0, 0, FALSE, FALSE}
+};
+
+#define TEXT_OBJECT_CMDS \
+	{cmd_select_brace, GDK_KEY_a, GDK_KEY_braceleft, 0, 0, FALSE, FALSE}, \
+	{cmd_select_quotedbl, GDK_KEY_a, GDK_KEY_quotedbl, 0, 0, FALSE, FALSE}, \
+	/* END */
+
+CmdDef text_object_cmds[] = {
+	TEXT_OBJECT_CMDS
 	{NULL, 0, 0, 0, 0, FALSE, FALSE}
 };
 
@@ -1216,7 +1270,8 @@ CmdDef cmd_mode_cmds[] = {
 
 	SEARCH_CMDS
 	MOVEMENT_CMDS
-	RANGE_CMDS
+	OPERATOR_CMDS
+	TEXT_OBJECT_CMDS
 
 	/* special */
 	{cmd_repeat_last_command, GDK_KEY_period, 0, 0, 0, FALSE, FALSE},
@@ -1253,7 +1308,8 @@ CmdDef vis_mode_cmds[] = {
 	{cmd_replace_char_vis, GDK_KEY_r, 0, 0, 0, TRUE, FALSE},
 	SEARCH_CMDS
 	MOVEMENT_CMDS
-	RANGE_CMDS
+	TEXT_OBJECT_CMDS
+	OPERATOR_CMDS
 	ENTER_CMDLINE_CMDS
 	{NULL, 0, 0, 0, 0, FALSE, FALSE}
 };
@@ -1313,11 +1369,28 @@ static gboolean key_equals(KeyPress *kp, guint key, guint modif)
 }
 
 
+/* is the current keypress the first character of a 2-keypress command? */
+static gboolean is_cmdpart(GSList *kpl, CmdDef *cmds)
+{
+	gint i;
+	KeyPress *curr = g_slist_nth_data(kpl, 0);
+
+	for (i = 0; cmds[i].cmd != NULL; i++)
+	{
+		CmdDef *cmd = &cmds[i];
+		if ((cmd->key2 != 0 || cmd->param) && key_equals(curr, cmd->key1, cmd->modif1))
+			return TRUE;
+	}
+
+	return FALSE;
+}
+
 static CmdDef *get_cmd_to_run(GSList *kpl, CmdDef *cmds, gboolean have_selection)
 {
 	gint i;
 	KeyPress *curr = g_slist_nth_data(kpl, 0);
 	KeyPress *prev = g_slist_nth_data(kpl, 1);
+	GSList *below = g_slist_next(kpl);
 	ViMode mode = get_vi_mode();
 
 	if (!kpl)
@@ -1369,8 +1442,9 @@ static CmdDef *get_cmd_to_run(GSList *kpl, CmdDef *cmds, gboolean have_selection
 			}
 			else if (curr->key == GDK_KEY_percent && !IS_INSERT(mode))
 			{
+				// % when preceded by a number jumps to N% of the file, otherwise
+				// % goes to matching brace
 				Cmd c = cmd_goto_matching_brace;
-				GSList *below = g_slist_next(kpl);
 				gint val = kpl_get_int(below, NULL);
 				if (val != -1)
 					c = cmd_goto_doc_percentage;
@@ -1379,10 +1453,18 @@ static CmdDef *get_cmd_to_run(GSList *kpl, CmdDef *cmds, gboolean have_selection
 			}
 			else if (prev && prev->key == GDK_KEY_g)
 			{
-				//takes care of motion commands like g~, gu, gU etc. where we
-				//have no selection yet so the 2-letter command isn't found
-				//above and a corresponding 1-letter command ~, u, U exists and
-				//would be used incorrectly
+				// takes care of operator commands like g~, gu, gU where we
+				// have no selection yet so the 2-letter command isn't found
+				// above and a corresponding 1-letter command ~, u, U exists and
+				// would be used instead of waiting for the full command
+			}
+			else if (is_cmdpart(kpl, text_object_cmds) &&
+					get_cmd_to_run(below, operator_cmds, TRUE))
+			{
+				// if we received "a" or "i", we have to check if there's not
+				// an operator command below because these can be part of
+				// text object commands (like a<) and in this case we don't
+				// want to have "a" or "i" executed yet
 			}
 			else
 				return cmd;
@@ -1392,21 +1474,6 @@ static CmdDef *get_cmd_to_run(GSList *kpl, CmdDef *cmds, gboolean have_selection
 	return NULL;
 }
 
-/* is the current keypress the first character of a 2-keypress command? */
-static gboolean is_cmdpart(GSList *kpl, CmdDef *cmds)
-{
-	gint i;
-	KeyPress *curr = g_slist_nth_data(kpl, 0);
-
-	for (i = 0; cmds[i].cmd != NULL; i++)
-	{
-		CmdDef *cmd = &cmds[i];
-		if ((cmd->key2 != 0 || cmd->param) && key_equals(curr, cmd->key1, cmd->modif1))
-			return TRUE;
-	}
-
-	return FALSE;
-}
 
 static void perform_cmd(CmdDef *def, ScintillaObject *sci, CmdContext *ctx, GSList *kpl)
 {
@@ -1431,7 +1498,7 @@ static void perform_cmd(CmdDef *def, ScintillaObject *sci, CmdContext *ctx, GSLi
 	param.num = num_present ? num : 1;
 	param.num_present = num_present;
 	param.last_kp = g_slist_nth_data(kpl, 0);
-	param.is_motion_cmd = FALSE;
+	param.is_operator_cmd = FALSE;
 	param.sel_start = SSM(sci, SCI_GETSELECTIONSTART, 0, 0);
 	param.sel_len = sci_get_selection_end(sci) - sci_get_selection_start(sci);
 	param.pos = orig_pos;
@@ -1449,9 +1516,10 @@ static void perform_cmd(CmdDef *def, ScintillaObject *sci, CmdContext *ctx, GSLi
 
 	if (IS_COMMAND(get_vi_mode()))
 	{
-		if (is_in_cmd_group(movement_cmds, def))
+		gboolean is_text_object_cmd = is_in_cmd_group(text_object_cmds, def);
+		if (is_text_object_cmd ||is_in_cmd_group(movement_cmds, def))
 		{
-			def = get_cmd_to_run(top, range_cmds, TRUE);
+			def = get_cmd_to_run(top, operator_cmds, TRUE);
 			if (def)
 			{
 				gint new_pos = sci_get_current_position(sci);
@@ -1461,9 +1529,12 @@ static void perform_cmd(CmdDef *def, ScintillaObject *sci, CmdContext *ctx, GSLi
 				param.num = 1;
 				param.num_present = FALSE;
 				param.last_kp = g_slist_nth_data(top, 0);
-				param.is_motion_cmd = TRUE;
-				param.sel_start = MIN(new_pos, param.pos);
-				param.sel_len = ABS(new_pos - param.pos);
+				param.is_operator_cmd = TRUE;
+				if (!is_text_object_cmd)
+				{
+					param.sel_start = MIN(new_pos, param.pos);
+					param.sel_len = ABS(new_pos - param.pos);
+				}
 				param.pos = orig_pos;
 				param.line = sci_get_current_line(sci);
 				param.line_end_pos = SSM(sci, SCI_GETLINEENDPOSITION, param.line, 0);
