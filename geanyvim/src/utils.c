@@ -92,10 +92,13 @@ gboolean kp_isdigit(KeyPress *kp)
 
 KeyPress *kp_from_event_key(GdkEventKey *ev)
 {
+	guint mask = GDK_MODIFIER_MASK & ~(GDK_SHIFT_MASK | GDK_LOCK_MASK | GDK_CONTROL_MASK);
 	KeyPress *kp;
-	guint k = ev->keyval;
 
-	switch (k)
+	if (ev->state & mask)
+		return NULL;
+
+	switch (ev->keyval)
 	{
 		case GDK_KEY_Shift_L:
 		case GDK_KEY_Shift_R:

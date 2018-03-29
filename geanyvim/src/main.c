@@ -242,9 +242,6 @@ static void set_vi_mode_full(ViMode mode, ScintillaObject *sci)
 			else if (IS_VISUAL(prev_mode))
 				SSM(sci, SCI_SETEMPTYSELECTION, pos, 0);
 
-			g_slist_free_full(state.kpl, g_free);
-			state.kpl = NULL;
-
 			SSM(sci, SCI_SETOVERTYPE, 0, 0);
 			SSM(sci, SCI_SETCARETSTYLE, CARETSTYLE_BLOCK, 0);
 			SSM(sci, SCI_SETCARETPERIOD, 0, 0);
@@ -487,12 +484,12 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 	if (!kp)
 		return FALSE;
 
+	state.kpl = g_slist_prepend(state.kpl, kp);
+	printf("key: %x, state: %d\n", event->keyval, event->state);
+	//kpl_printf(state.kpl);
+	//kpl_printf(state.prev_kpl);
 	if (IS_COMMAND(state.vi_mode) || IS_VISUAL(state.vi_mode))
 	{
-		state.kpl = g_slist_prepend(state.kpl, kp);
-		printf("key: %x, state: %d\n", event->keyval, event->state);
-		//kpl_printf(state.kpl);
-		//kpl_printf(state.prev_kpl);
 		if (IS_COMMAND(state.vi_mode))
 			command_performed = process_event_cmd_mode(sci, &ctx, state.kpl, state.prev_kpl,
 				&is_repeat_command, &consumed);
@@ -502,16 +499,8 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 	}
 	else //insert, replace mode
 	{
-		if (!is_printable(event) && (!state.insert_for_dummies || kp->key == GDK_KEY_Escape))
-		{
-			state.kpl = g_slist_prepend(state.kpl, kp);
+		if (!state.insert_for_dummies || kp->key == GDK_KEY_Escape)
 			command_performed = process_event_ins_mode(sci, &ctx, state.kpl, &consumed);
-		}
-		else
-		{
-			g_free(kp);
-			kp = NULL;
-		}
 	}
 
 	if (command_performed)
@@ -527,6 +516,11 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 
 		if (orig_mode == VI_MODE_COMMAND_SINGLE)
 			set_vi_mode(VI_MODE_INSERT);
+	}
+	else if (!consumed)
+	{
+		g_free(kp);
+		state.kpl = g_slist_delete_link(state.kpl, state.kpl);
 	}
 
 	return consumed;

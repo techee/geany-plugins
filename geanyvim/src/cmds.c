@@ -358,7 +358,7 @@ static void cmd_paste(CmdContext *c, CmdParams *p, gboolean after)
 		SSM(p->sci, SCI_PASTE, 0, 0);
 	if (c->line_copy)
 		sci_set_current_position(p->sci, pos, TRUE);
-	else
+	else if (!IS_INSERT(get_vi_mode()))
 		SSM(p->sci, SCI_CHARLEFT, 0, 0);
 }
 
@@ -1289,6 +1289,7 @@ CmdDef ins_mode_cmds[] = {
 	{cmd_unindent_ins, GDK_KEY_d, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
 	{cmd_copy_char_from_below, GDK_KEY_e, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
 	{cmd_copy_char_from_above, GDK_KEY_y, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
+	{cmd_paste_before, GDK_KEY_r, 0, GDK_CONTROL_MASK, 0, TRUE, FALSE},
 
 	{NULL, 0, 0, 0, 0, FALSE, FALSE}
 };
@@ -1400,7 +1401,7 @@ static gboolean is_cmdpart(GSList *kpl, CmdDef *cmds)
 	for (i = 0; cmds[i].cmd != NULL; i++)
 	{
 		CmdDef *cmd = &cmds[i];
-		if (cmd->key2 != 0 && key_equals(curr, cmd->key1, cmd->modif1))
+		if ((cmd->key2 != 0 || cmd->param) && key_equals(curr, cmd->key1, cmd->modif1))
 			return TRUE;
 	}
 

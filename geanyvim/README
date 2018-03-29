@@ -190,6 +190,8 @@ l             l               1  cursor N chars to the right
 n             n               1  repeat the latest '/' or '?' N times
 o             o               2  begin a new line below the cursor and
                                    insert text, repeat N times
+p             ["x]p           2  put the text [from register x] after the
+                                   cursor N times
 r             r{char}         2  replace N chars with {char}
 s             ["x]s           2  (substitute) delete N characters [into
                                    register x] and start insert
