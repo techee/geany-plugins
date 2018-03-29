@@ -1041,26 +1041,33 @@ static gint find_char(ScintillaObject *sci, gint pos, gint ch, gboolean forward)
 
 static void select_brace(CmdContext *c, CmdParams *p, gint open_brace, gint close_brace, gboolean inner)
 {
-	gint start_pos;
-	gint end_pos;
+	gint pos = p->pos;
+	gint start_pos = 0;
+	gint end_pos = 0;
+	gint i;
 
-	if (open_brace == close_brace)
+	for (i = 0; i < p->num; i++)
 	{
-		start_pos = find_char(p->sci, p->pos, open_brace, FALSE);
-		if (start_pos < 0)
-			return;
-		end_pos = find_char(p->sci, p->pos, close_brace, TRUE);
-	}
-	else
-	{
-		start_pos = find_upper_level_brace(p->sci, p->pos, open_brace, close_brace);
-		if (start_pos < 0)
-			return;
-		end_pos = SSM(p->sci, SCI_BRACEMATCH, start_pos, 0);
-	}
+		if (open_brace == close_brace)
+		{
+			start_pos = find_char(p->sci, pos, open_brace, FALSE);
+			if (start_pos < 0)
+				return;
+			end_pos = find_char(p->sci, pos, close_brace, TRUE);
+		}
+		else
+		{
+			start_pos = find_upper_level_brace(p->sci, pos, open_brace, close_brace);
+			if (start_pos < 0)
+				return;
+			end_pos = SSM(p->sci, SCI_BRACEMATCH, start_pos, 0);
+		}
 
-	if (end_pos < 0)
-		return;
+		if (end_pos < 0)
+			return;
+
+		pos = start_pos;
+	}
 
 	if (inner)
 		start_pos = NEXT(p->sci, start_pos);
