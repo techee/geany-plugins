@@ -1002,48 +1002,151 @@ static void cmd_paste_inserted_text_leave(CmdContext *c, CmdParams *p)
 	set_vi_mode(VI_MODE_COMMAND);
 }
 
-static gint find_text(ScintillaObject *sci, const gchar *txt, gboolean forward)
+static gint find_upper_level_brace(ScintillaObject *sci, gint pos, gint open_brace, gint close_brace)
 {
-	struct Sci_TextToFind ttf;
-	gint pos = sci_get_current_position(sci);
-	gint len = sci_get_length(sci);
-
-	ttf.lpstrText = txt;
-	if (forward)
+	while (pos > 0)
 	{
-		ttf.chrg.cpMin = pos + 1;
-		ttf.chrg.cpMax = len;
+		pos = PREV(sci, pos);
+		gchar c = SSM(sci, SCI_GETCHARAT, pos, 0);
+
+		if (c == open_brace)
+			return pos;
+		else if (c == close_brace) 
+		{
+			pos = SSM(sci, SCI_BRACEMATCH, pos, 0);
+			if (pos < 0)
+				break;
+		}
+	}
+	return -1;
+}
+
+static gint find_char(ScintillaObject *sci, gint pos, gint ch, gboolean forward)
+{
+	while (pos > 0)
+	{
+		gint last_pos = pos;
+		gchar c;
+
+		pos = forward ? NEXT(sci, pos) : PREV(sci, pos);
+		c = SSM(sci, SCI_GETCHARAT, pos, 0);
+
+		if (c == ch)
+			return pos;
+		if (pos == last_pos)
+			break;
+	}
+	return -1;
+}
+
+static void select_brace(CmdContext *c, CmdParams *p, gint open_brace, gint close_brace, gboolean inner)
+{
+	gint start_pos;
+	gint end_pos;
+
+	if (open_brace == close_brace)
+	{
+		start_pos = find_char(p->sci, p->pos, open_brace, FALSE);
+		if (start_pos < 0)
+			return;
+		end_pos = find_char(p->sci, p->pos, close_brace, TRUE);
 	}
 	else
 	{
-		ttf.chrg.cpMin = pos;
-		ttf.chrg.cpMax = 0;
+		start_pos = find_upper_level_brace(p->sci, p->pos, open_brace, close_brace);
+		if (start_pos < 0)
+			return;
+		end_pos = SSM(p->sci, SCI_BRACEMATCH, start_pos, 0);
 	}
 
-	return sci_find_text(sci, 0, &ttf);
+	if (end_pos < 0)
+		return;
+
+	if (inner)
+		start_pos = NEXT(p->sci, start_pos);
+	else
+		end_pos = NEXT(p->sci, end_pos);
+	
+	if (IS_VISUAL(get_vi_mode()))
+	{
+		c->sel_anchor = start_pos;
+		sci_set_current_position(p->sci, end_pos, TRUE);
+	}
+	else
+	{
+		p->sel_start = start_pos;
+		p->sel_len = end_pos - start_pos;
+	}
 }
 
 static void cmd_select_quotedbl(CmdContext *c, CmdParams *p)
 {
+	select_brace(c, p, '\"', '\"', FALSE);
+}
+
+static void cmd_select_quoteleft(CmdContext *c, CmdParams *p)
+{
+	select_brace(c, p, '`', '`', FALSE);
+}
+
+static void cmd_select_apostrophe(CmdContext *c, CmdParams *p)
+{
+	select_brace(c, p, '\'', '\'', FALSE);
 }
 
 static void cmd_select_brace(CmdContext *c, CmdParams *p)
 {
-	gint start_pos = find_text(p->sci, "{", FALSE);
-	gint end_pos = find_text(p->sci, "}", TRUE);
-	if (start_pos != -1 && end_pos != -1)
-	{
-		if (IS_VISUAL(get_vi_mode()))
-		{
-			c->sel_anchor = start_pos;
-			sci_set_current_position(p->sci, end_pos, TRUE);
-		}
-		else
-		{
-			p->sel_start = start_pos;
-			p->sel_len = end_pos - start_pos;
-		}
-	}
+	select_brace(c, p, '{', '}', FALSE);
+}
+
+static void cmd_select_paren(CmdContext *c, CmdParams *p)
+{
+	select_brace(c, p, '(', ')', FALSE);
+}
+
+static void cmd_select_less(CmdContext *c, CmdParams *p)
+{
+	select_brace(c, p, '<', '>', FALSE);
+}
+
+static void cmd_select_bracket(CmdContext *c, CmdParams *p)
+{
+	select_brace(c, p, '[', ']', FALSE);
+}
+
+static void cmd_select_quotedbl_inner(CmdContext *c, CmdParams *p)
+{
+	select_brace(c, p, '\"', '\"', TRUE);
+}
+
+static void cmd_select_quoteleft_inner(CmdContext *c, CmdParams *p)
+{
+	select_brace(c, p, '`', '`', TRUE);
+}
+
+static void cmd_select_apostrophe_inner(CmdContext *c, CmdParams *p)
+{
+	select_brace(c, p, '\'', '\'', TRUE);
+}
+
+static void cmd_select_brace_inner(CmdContext *c, CmdParams *p)
+{
+	select_brace(c, p, '{', '}', TRUE);
+}
+
+static void cmd_select_paren_inner(CmdContext *c, CmdParams *p)
+{
+	select_brace(c, p, '(', ')', TRUE);
+}
+
+static void cmd_select_less_inner(CmdContext *c, CmdParams *p)
+{
+	select_brace(c, p, '<', '>', TRUE);
+}
+
+static void cmd_select_bracket_inner(CmdContext *c, CmdParams *p)
+{
+	select_brace(c, p, '[', ']', TRUE);
 }
 
 static void cmd_nop(CmdContext *c, CmdParams *p)
@@ -1198,8 +1301,33 @@ CmdDef operator_cmds[] = {
 };
 
 #define TEXT_OBJECT_CMDS \
-	{cmd_select_brace, GDK_KEY_a, GDK_KEY_braceleft, 0, 0, FALSE, FALSE}, \
 	{cmd_select_quotedbl, GDK_KEY_a, GDK_KEY_quotedbl, 0, 0, FALSE, FALSE}, \
+	{cmd_select_quoteleft, GDK_KEY_a, GDK_KEY_quoteleft, 0, 0, FALSE, FALSE}, \
+	{cmd_select_apostrophe, GDK_KEY_a, GDK_KEY_apostrophe, 0, 0, FALSE, FALSE}, \
+	{cmd_select_brace, GDK_KEY_a, GDK_KEY_braceleft, 0, 0, FALSE, FALSE}, \
+	{cmd_select_brace, GDK_KEY_a, GDK_KEY_braceright, 0, 0, FALSE, FALSE}, \
+	{cmd_select_brace, GDK_KEY_a, GDK_KEY_B, 0, 0, FALSE, FALSE}, \
+	{cmd_select_paren, GDK_KEY_a, GDK_KEY_parenleft, 0, 0, FALSE, FALSE}, \
+	{cmd_select_paren, GDK_KEY_a, GDK_KEY_parenright, 0, 0, FALSE, FALSE}, \
+	{cmd_select_paren, GDK_KEY_a, GDK_KEY_b, 0, 0, FALSE, FALSE}, \
+	{cmd_select_less, GDK_KEY_a, GDK_KEY_less, 0, 0, FALSE, FALSE}, \
+	{cmd_select_less, GDK_KEY_a, GDK_KEY_greater, 0, 0, FALSE, FALSE}, \
+	{cmd_select_bracket, GDK_KEY_a, GDK_KEY_bracketleft, 0, 0, FALSE, FALSE}, \
+	{cmd_select_bracket, GDK_KEY_a, GDK_KEY_bracketright, 0, 0, FALSE, FALSE}, \
+	/* inner */ \
+	{cmd_select_quotedbl_inner, GDK_KEY_i, GDK_KEY_quotedbl, 0, 0, FALSE, FALSE}, \
+	{cmd_select_quoteleft_inner, GDK_KEY_i, GDK_KEY_quoteleft, 0, 0, FALSE, FALSE}, \
+	{cmd_select_apostrophe_inner, GDK_KEY_i, GDK_KEY_apostrophe, 0, 0, FALSE, FALSE}, \
+	{cmd_select_brace_inner, GDK_KEY_i, GDK_KEY_braceleft, 0, 0, FALSE, FALSE}, \
+	{cmd_select_brace_inner, GDK_KEY_i, GDK_KEY_braceright, 0, 0, FALSE, FALSE}, \
+	{cmd_select_brace_inner, GDK_KEY_i, GDK_KEY_B, 0, 0, FALSE, FALSE}, \
+	{cmd_select_paren_inner, GDK_KEY_i, GDK_KEY_parenleft, 0, 0, FALSE, FALSE}, \
+	{cmd_select_paren_inner, GDK_KEY_i, GDK_KEY_parenright, 0, 0, FALSE, FALSE}, \
+	{cmd_select_paren_inner, GDK_KEY_i, GDK_KEY_b, 0, 0, FALSE, FALSE}, \
+	{cmd_select_less_inner, GDK_KEY_i, GDK_KEY_less, 0, 0, FALSE, FALSE}, \
+	{cmd_select_less_inner, GDK_KEY_i, GDK_KEY_greater, 0, 0, FALSE, FALSE}, \
+	{cmd_select_bracket_inner, GDK_KEY_i, GDK_KEY_bracketleft, 0, 0, FALSE, FALSE}, \
+	{cmd_select_bracket_inner, GDK_KEY_i, GDK_KEY_bracketright, 0, 0, FALSE, FALSE}, \
 	/* END */
 
 CmdDef text_object_cmds[] = {
