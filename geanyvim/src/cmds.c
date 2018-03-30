@@ -660,7 +660,7 @@ static void cmd_goto_screen_bottom(CmdContext *c, CmdParams *p)
 
 static void replace_char(CmdParams *p, gint pos, gint num, gint line)
 {
-	gchar repl[2] = {kp_to_char(p->last_kp), '\0'};
+	const gchar *repl = kp_to_str(p->last_kp);
 	gint i;
 
 	for (i = 0; i < num; i++)
@@ -704,28 +704,37 @@ static void change_case(ScintillaObject *sci, gint pos, gint num, gint line,
 	gboolean force_upper, gboolean force_lower)
 {
 	gint i;
-
 	for (i = 0; i < num; i++)
 	{
-		gboolean is_lower = islower(sci_get_char_at(sci, pos));
-		gchar uppercase[2] = {toupper(sci_get_char_at(sci, pos)), '\0'};
-		gchar lowercase[2] = {tolower(sci_get_char_at(sci, pos)), '\0'};
-		gchar *upper = force_lower ? lowercase : uppercase;
-		gchar *lower = force_upper ? uppercase : lowercase;
+		gint line_end_pos = sci_get_line_end_position(sci, line);
+		gint next_pos = NEXT(sci, pos);
+		struct Sci_TextRange tr;
+		gchar *uppercase, *lowercase, *replacement;
+		gchar buf[MAX_CHAR_SIZE];
+		gunichar c;
+
+		if (pos == next_pos || (line != -1 && next_pos > line_end_pos))
+			break;
+
+		tr.chrg.cpMin = pos;
+		tr.chrg.cpMax = next_pos;
+		tr.lpstrText = buf;
+		SSM(sci, SCI_GETTEXTRANGE, 0, (sptr_t)&tr);
+
+		c = g_utf8_get_char(buf);
+		uppercase = g_utf8_strup(buf, -1);
+		lowercase = g_utf8_strdown(buf, -1);
+		replacement = g_unichar_islower(c) ? uppercase : lowercase;
+		replacement = force_upper ? uppercase : replacement;
+		replacement = force_lower ? lowercase : replacement;
 
 		sci_set_target_start(sci, pos);
-		pos = NEXT(sci, pos);
-		if (line != -1)
-		{
-			//line end position can change because of the replacement and different
-			//character lengths
-			gint line_end_pos = sci_get_line_end_position(sci, line);
-			if (pos > line_end_pos)
-				break;
-		}
+		pos = next_pos;
 		sci_set_target_end(sci, pos);
-		sci_replace_target(sci, is_lower ? upper : lower, FALSE);
+		sci_replace_target(sci, replacement, FALSE);
 		sci_set_current_position(sci, pos, FALSE);
+		g_free(uppercase);
+		g_free(lowercase);
 	}
 }
 
@@ -734,11 +743,12 @@ static void switch_case(CmdContext *c, CmdParams *p,
 {
 	if (IS_VISUAL(get_vi_mode()) || p->sel_len > 0)
 	{
-		change_case(p->sci, p->sel_start, p->sel_len, -1, FALSE, FALSE);
+		gint num = SSM(p->sci, SCI_COUNTCHARACTERS, p->sel_start, p->sel_start + p->sel_len);
+		change_case(p->sci, p->sel_start, num, -1, force_upper, force_lower);
 		set_vi_mode(VI_MODE_COMMAND);
 	}
 	else
-		change_case(p->sci, p->pos, p->num, p->line, FALSE, FALSE);
+		change_case(p->sci, p->pos, p->num, p->line, force_upper, force_lower);
 }
 
 static void cmd_switch_case(CmdContext *c, CmdParams *p)
@@ -803,33 +813,29 @@ static void cmd_find_char(CmdContext *c, CmdParams *p, gboolean invert)
 
 static void cmd_find_next_char(CmdContext *c, CmdParams *p)
 {
-	gchar to_find[3] = {'f', kp_to_char(p->last_kp), '\0'};
 	g_free(c->search_char);
-	c->search_char = g_strdup(to_find);
+	c->search_char = g_strconcat("f", kp_to_str(p->last_kp), NULL);
 	cmd_find_char(c, p, FALSE);
 }
 
 static void cmd_find_prev_char(CmdContext *c, CmdParams *p)
 {
-	gchar to_find[3] = {'F', kp_to_char(p->last_kp), '\0'};
 	g_free(c->search_char);
-	c->search_char = g_strdup(to_find);
+	c->search_char = g_strconcat("F", kp_to_str(p->last_kp), NULL);
 	cmd_find_char(c, p, FALSE);
 }
 
 static void cmd_find_next_char_before(CmdContext *c, CmdParams *p)
 {
-	gchar to_find[3] = {'t', kp_to_char(p->last_kp), '\0'};
 	g_free(c->search_char);
-	c->search_char = g_strdup(to_find);
+	c->search_char = g_strconcat("t", kp_to_str(p->last_kp), NULL);
 	cmd_find_char(c, p, FALSE);
 }
 
 static void cmd_find_prev_char_before(CmdContext *c, CmdParams *p)
 {
-	gchar to_find[3] = {'T', kp_to_char(p->last_kp), '\0'};
 	g_free(c->search_char);
-	c->search_char = g_strdup(to_find);
+	c->search_char = g_strconcat("T", kp_to_str(p->last_kp), NULL);
 	cmd_find_char(c, p, FALSE);
 }
 

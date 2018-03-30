@@ -141,7 +141,7 @@ ViMode get_vi_mode(void)
 void enter_cmdline_mode()
 {
 	KeyPress *kp = g_slist_nth_data(state.kpl, 0);
-	gchar val[2] = {kp_to_char(kp), '\0'};
+	const gchar *val = kp_to_str(kp);
 	gtk_widget_show(vi_widgets.prompt);
 	gtk_entry_set_text(GTK_ENTRY(vi_widgets.entry), val);
 	gtk_editable_set_position(GTK_EDITABLE(vi_widgets.entry), 1);
@@ -553,7 +553,7 @@ static gboolean on_editor_notify(GObject *object, GeanyEditor *editor,
 
 	if (nt->nmhdr.code == SCN_CHARADDED && IS_INSERT(state.vi_mode))
 	{
-		gchar buf[7];
+		gchar buf[MAX_CHAR_SIZE];
 		gint len = g_unichar_to_utf8(nt->ch, buf);
 
 		if (ctx.insert_buf_len + len + 1 < INSERT_BUF_LEN)

@@ -28,9 +28,10 @@
 #define PREV(s, pos) scintilla_send_message((s), SCI_POSITIONBEFORE, (pos), 0)
 #define REL(s, pos, rel) scintilla_send_message((s), SCI_POSITIONRELATIVE, (pos), (rel))
 
+#define MAX_CHAR_SIZE 16
 
 KeyPress *kp_from_event_key(GdkEventKey *ev);
-gchar kp_to_char(KeyPress *kp);
+const gchar *kp_to_str(KeyPress *kp);
 gboolean kp_isdigit(KeyPress *kp);
 
 GSList *kpl_copy(GSList *kpl);

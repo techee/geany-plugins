@@ -20,18 +20,22 @@
 # include "config.h"
 #endif
 
-#include <ctype.h>
 #include <gdk/gdkkeysyms.h>
 
 #include "utils.h"
 
 
-gchar kp_to_char(KeyPress *kp)
+const gchar *kp_to_str(KeyPress *kp)
 {
-	gchar utf8[7];
+	static gchar *utf8 = NULL;
 	gunichar key = gdk_keyval_to_unicode(kp->key);
-	g_unichar_to_utf8(key, utf8);
-	return utf8[0];
+	gint len;
+
+	if (!utf8)
+		utf8 = g_malloc0(MAX_CHAR_SIZE);
+	len = g_unichar_to_utf8(key, utf8);
+	utf8[len] = '\0';
+	return utf8;
 }
 
 gboolean is_printable(GdkEventKey *ev)
@@ -167,7 +171,7 @@ void kpl_printf(GSList *kpl)
 	while (pos != NULL)
 	{
 		KeyPress *kp = pos->data;
-		printf("%c<%d>", kp_to_char(kp), kp->key);
+		printf("%s<%d>", kp_to_str(kp), kp->key);
 		pos = g_slist_next(pos);
 	}
 	printf("\n");
