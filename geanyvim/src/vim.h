@@ -19,6 +19,10 @@
 #ifndef __GEANYVIM_VIM_H__
 #define __GEANYVIM_VIM_H__
 
+#include <gtk/gtk.h>
+#include "Scintilla.h"
+#include "ScintillaWidget.h"
+
 #define IS_VISUAL(m) ((m) == VI_MODE_VISUAL || (m) == VI_MODE_VISUAL_LINE || (m) == VI_MODE_VISUAL_BLOCK)
 #define IS_COMMAND(m) ((m) == VI_MODE_COMMAND || (m) == VI_MODE_COMMAND_SINGLE)
 #define IS_INSERT(m) ((m) == VI_MODE_INSERT || (m) == VI_MODE_REPLACE)
@@ -40,5 +44,23 @@ void set_vi_mode(ViMode mode);
 ViMode get_vi_mode(void);
 
 const gchar *get_inserted_text(void);
+
+
+gboolean on_sc_notification(SCNotification *nt);
+gboolean on_key_press_notification(GdkEventKey *event);
+
+void vim_init(GtkWidget *window);
+void vim_cleanup(void);
+
+void vim_sc_init(ScintillaObject *sci);
+void vim_sc_cleanup(ScintillaObject *sci);
+
+void set_vim_enabled(gboolean enabled);
+void set_start_in_insert(gboolean enabled);
+void set_insert_for_dummies(gboolean enabled);
+
+gboolean get_vim_enabled(void);
+gboolean get_start_in_insert(void);
+gboolean get_insert_for_dummies(void);
 
 #endif
