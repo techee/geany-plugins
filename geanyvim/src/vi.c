@@ -24,7 +24,7 @@
 #include <gtk/gtk.h>
 #include <gdk/gdkkeysyms.h>
 
-#include "vim.h"
+#include "vi.h"
 #include "cmds.h"
 #include "utils.h"
 
@@ -73,12 +73,12 @@ CmdContext ctx =
 };
 
 
-ViMode get_vi_mode(void)
+ViMode vi_get_mode(void)
 {
 	return state.vi_mode;
 }
 
-void enter_cmdline_mode()
+void vi_enter_cmdline_mode()
 {
 	KeyPress *kp = g_slist_nth_data(state.kpl, 0);
 	const gchar *val = kp_to_str(kp);
@@ -88,7 +88,7 @@ void enter_cmdline_mode()
 }
 
 
-const gchar *get_inserted_text(void)
+const gchar *vi_get_inserted_text(void)
 {
 	ctx.insert_buf[ctx.insert_buf_len] = '\0';
 	return ctx.insert_buf;
@@ -135,7 +135,7 @@ static void repeat_insert(gboolean replace)
 }
 
 
-void set_vi_mode(ViMode mode)
+void vi_set_mode(ViMode mode)
 {
 	ScintillaObject *sci = vi_widgets.sci;
 	ViMode prev_mode = state.vi_mode;
@@ -167,7 +167,7 @@ void set_vi_mode(ViMode mode)
 		case VI_MODE_COMMAND_SINGLE:
 		{
 			gint pos = SSM(sci, SCI_GETCURRENTPOS, 0, 0);
-			if (mode == VI_MODE_COMMAND && IS_INSERT(prev_mode))
+			if (mode == VI_MODE_COMMAND && VI_IS_INSERT(prev_mode))
 			{
 				repeat_insert(prev_mode == VI_MODE_REPLACE);
 
@@ -177,7 +177,7 @@ void set_vi_mode(ViMode mode)
 				if (pos > start_pos)
 					SET_POS(sci, PREV(sci, pos), FALSE);
 			}
-			else if (IS_VISUAL(prev_mode))
+			else if (VI_IS_VISUAL(prev_mode))
 				SSM(sci, SCI_SETEMPTYSELECTION, pos, 0);
 
 			SSM(sci, SCI_SETOVERTYPE, 0, 0);
@@ -214,7 +214,7 @@ void set_vi_mode(ViMode mode)
 	}
 }
 
-void vim_set_active_sci(ScintillaObject *sci)
+void vi_set_active_sci(ScintillaObject *sci)
 {
 	if (vi_widgets.sci && state.default_caret_style != -1)
 	{
@@ -224,7 +224,7 @@ void vim_set_active_sci(ScintillaObject *sci)
 
 	vi_widgets.sci = sci;
 	if (sci)
-		set_vi_mode(state.vi_mode);
+		vi_set_mode(state.vi_mode);
 }
 
 
@@ -312,7 +312,7 @@ static void on_prompt_show(GtkWidget *widget, gpointer dummy)
 	gtk_widget_grab_focus(vi_widgets.entry);
 }
 
-gboolean on_key_press_notification(GdkEventKey *event)
+gboolean vi_notify_key_press(GdkEventKey *event)
 {
 	ScintillaObject *sci = vi_widgets.sci;
 	gboolean command_performed = FALSE;
@@ -332,9 +332,9 @@ gboolean on_key_press_notification(GdkEventKey *event)
 	printf("key: %x, state: %d\n", event->keyval, event->state);
 	//kpl_printf(state.kpl);
 	//kpl_printf(state.prev_kpl);
-	if (IS_COMMAND(state.vi_mode) || IS_VISUAL(state.vi_mode))
+	if (VI_IS_COMMAND(state.vi_mode) || VI_IS_VISUAL(state.vi_mode))
 	{
-		if (IS_COMMAND(state.vi_mode))
+		if (VI_IS_COMMAND(state.vi_mode))
 			command_performed = process_event_cmd_mode(sci, &ctx, state.kpl, state.prev_kpl,
 				&is_repeat_command, &consumed);
 		else
@@ -359,7 +359,7 @@ gboolean on_key_press_notification(GdkEventKey *event)
 		state.kpl = NULL;
 
 		if (orig_mode == VI_MODE_COMMAND_SINGLE)
-			set_vi_mode(VI_MODE_INSERT);
+			vi_set_mode(VI_MODE_INSERT);
 	}
 	else if (!consumed)
 	{
@@ -370,14 +370,14 @@ gboolean on_key_press_notification(GdkEventKey *event)
 	return consumed;
 }
 
-gboolean on_sc_notification(SCNotification *nt)
+gboolean vi_notify_sci(SCNotification *nt)
 {
 	ScintillaObject *sci = vi_widgets.sci;
 
 	if (!state.vim_enabled || !sci)
 		return FALSE;
 
-	if (nt->nmhdr.code == SCN_CHARADDED && IS_INSERT(state.vi_mode))
+	if (nt->nmhdr.code == SCN_CHARADDED && VI_IS_INSERT(state.vi_mode))
 	{
 		gchar buf[MAX_CHAR_SIZE];
 		gint len = g_unichar_to_utf8(nt->ch, buf);
@@ -393,7 +393,7 @@ gboolean on_sc_notification(SCNotification *nt)
 		}
 	}
 
-	if (nt->nmhdr.code == SCN_UPDATEUI && IS_VISUAL(state.vi_mode))
+	if (nt->nmhdr.code == SCN_UPDATEUI && VI_IS_VISUAL(state.vi_mode))
 	{
 		if (state.vi_mode == VI_MODE_VISUAL)
 		{
@@ -447,34 +447,34 @@ gboolean on_sc_notification(SCNotification *nt)
 }
 
 
-void set_vim_enabled(gboolean enabled)
+void vi_set_enabled(gboolean enabled)
 {
 	state.vim_enabled = enabled;
 	if (enabled)
-		 set_vi_mode(get_start_in_insert() ? VI_MODE_INSERT : VI_MODE_COMMAND);
+		 vi_set_mode(vi_get_start_in_insert() ? VI_MODE_INSERT : VI_MODE_COMMAND);
 }
 
-void set_start_in_insert(gboolean enabled)
+void vi_set_start_in_insert(gboolean enabled)
 {
 	state.start_in_insert = enabled;
 }
 
-void set_insert_for_dummies(gboolean enabled)
+void vi_set_insert_for_dummies(gboolean enabled)
 {
 	state.insert_for_dummies = enabled;
 }
 
-gboolean get_vim_enabled(void)
+gboolean vi_get_enabled(void)
 {
 	return state.vim_enabled;
 }
 
-gboolean get_start_in_insert(void)
+gboolean vi_get_start_in_insert(void)
 {
 	return state.start_in_insert;
 }
 
-gboolean get_insert_for_dummies(void)
+gboolean vi_get_insert_for_dummies(void)
 {
 	return state.insert_for_dummies;
 }
@@ -486,7 +486,7 @@ static void init_cb(ViCallback *cb)
 	state.cb = cb;
 }
 
-void vim_init(GtkWidget *window, ViCallback *cb)
+void vi_init(GtkWidget *window, ViCallback *cb)
 {
 	GtkWidget *frame;
 
@@ -517,12 +517,12 @@ void vim_init(GtkWidget *window, ViCallback *cb)
 
 	gtk_widget_show_all(frame);
 
-	set_vi_mode(state.start_in_insert ? VI_MODE_INSERT : VI_MODE_COMMAND);
+	vi_set_mode(state.start_in_insert ? VI_MODE_INSERT : VI_MODE_COMMAND);
 }
 
-void vim_cleanup(void)
+void vi_cleanup(void)
 {
-	vim_set_active_sci(NULL);
+	vi_set_active_sci(NULL);
 	gtk_widget_destroy(vi_widgets.prompt);
 	g_free(ctx.search_text);
 	g_free(ctx.search_char);

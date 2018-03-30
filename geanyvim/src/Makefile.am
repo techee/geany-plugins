@@ -5,8 +5,8 @@ geanyplugins_LTLIBRARIES = geanyvim.la
 
 geanyvim_la_SOURCES = \
 	backend-geany.c \
-	vim.h \
-	vim.c \
+	vi.h \
+	vi.c \
 	cmds.h \
 	cmds.c \
 	utils.h \

@@ -23,7 +23,7 @@
 #include <geanyplugin.h>
 #include <gdk/gdkkeysyms.h>
 
-#include "vim.h"
+#include "vi.h"
 #include "cmds.h"
 #include "utils.h"
 
@@ -105,44 +105,44 @@ static void init_cmd_params(CmdParams *param, ScintillaObject *sci,
 static void cmd_mode_cmdline(CmdContext *c, CmdParams *p)
 {
 	c->num = p->num;
-	enter_cmdline_mode();
+	vi_enter_cmdline_mode();
 }
 
 static void cmd_mode_insert(CmdContext *c, CmdParams *p)
 {
 	c->num = p->num;
 	c->newline_insert = FALSE;
-	set_vi_mode(VI_MODE_INSERT);
+	vi_set_mode(VI_MODE_INSERT);
 }
 
 static void cmd_mode_replace(CmdContext *c, CmdParams *p)
 {
 	c->num = p->num;
 	c->newline_insert = FALSE;
-	set_vi_mode(VI_MODE_REPLACE);
+	vi_set_mode(VI_MODE_REPLACE);
 }
 
 static void cmd_mode_visual(CmdContext *c, CmdParams *p)
 {
-	if (get_vi_mode() == VI_MODE_VISUAL)
+	if (vi_get_mode() == VI_MODE_VISUAL)
 	{
 		SSM(p->sci, SCI_SETEMPTYSELECTION, p->pos, 0);
-		set_vi_mode(VI_MODE_COMMAND);
+		vi_set_mode(VI_MODE_COMMAND);
 	}
 	else
-		set_vi_mode(VI_MODE_VISUAL);
+		vi_set_mode(VI_MODE_VISUAL);
 }
 
 static void cmd_mode_visual_line(CmdContext *c, CmdParams *p)
 {
-	if (get_vi_mode() == VI_MODE_VISUAL_LINE)
+	if (vi_get_mode() == VI_MODE_VISUAL_LINE)
 	{
 		SSM(p->sci, SCI_SETEMPTYSELECTION, p->pos, 0);
-		set_vi_mode(VI_MODE_COMMAND);
+		vi_set_mode(VI_MODE_COMMAND);
 	}
 	else
 	{
-		set_vi_mode(VI_MODE_VISUAL_LINE);
+		vi_set_mode(VI_MODE_VISUAL_LINE);
 		/* just to force the scintilla notification callback to be called so we can
 		 * select the current line */
 		SSM(p->sci, SCI_LINEEND, 0, 0);
@@ -192,7 +192,7 @@ static void cmd_mode_insert_next_line(CmdContext *c, CmdParams *p)
 	SSM(p->sci, SCI_DELLINELEFT, 0, 0);
 	c->num = p->num;
 	c->newline_insert = TRUE;
-	set_vi_mode(VI_MODE_INSERT);
+	vi_set_mode(VI_MODE_INSERT);
 }
 
 static void cmd_mode_insert_prev_line(CmdContext *c, CmdParams *p)
@@ -202,7 +202,7 @@ static void cmd_mode_insert_prev_line(CmdContext *c, CmdParams *p)
 	SSM(p->sci, SCI_LINEUP, 0, 0);
 	c->num = p->num;
 	c->newline_insert = TRUE;
-	set_vi_mode(VI_MODE_INSERT);
+	vi_set_mode(VI_MODE_INSERT);
 }
 
 static gint get_line_number_rel(CmdParams *p, gint shift)
@@ -458,7 +458,7 @@ static void cmd_paste(CmdContext *c, CmdParams *p, gboolean after)
 		SSM(p->sci, SCI_PASTE, 0, 0);
 	if (c->line_copy)
 		SET_POS(p->sci, pos, TRUE);
-	else if (!IS_INSERT(get_vi_mode()))
+	else if (!VI_IS_INSERT(vi_get_mode()))
 		SSM(p->sci, SCI_CHARLEFT, 0, 0);
 }
 
@@ -729,7 +729,7 @@ static void cmd_replace_char_vis(CmdContext *c, CmdParams *p)
 	gint num = SSM(p->sci, SCI_COUNTCHARACTERS, p->sel_start, p->sel_start + p->sel_len);
 	replace_char(p, p->sel_start, num, -1);
 	SET_POS(p->sci, p->sel_start, FALSE);
-	set_vi_mode(VI_MODE_COMMAND);
+	vi_set_mode(VI_MODE_COMMAND);
 }
 
 static void change_case(ScintillaObject *sci, gint pos, gint num, gint line,
@@ -775,11 +775,11 @@ static void change_case(ScintillaObject *sci, gint pos, gint num, gint line,
 static void switch_case(CmdContext *c, CmdParams *p,
 	gboolean force_upper, gboolean force_lower)
 {
-	if (IS_VISUAL(get_vi_mode()) || p->sel_len > 0)
+	if (VI_IS_VISUAL(vi_get_mode()) || p->sel_len > 0)
 	{
 		gint num = SSM(p->sci, SCI_COUNTCHARACTERS, p->sel_start, p->sel_start + p->sel_len);
 		change_case(p->sci, p->sel_start, num, -1, force_upper, force_lower);
-		set_vi_mode(VI_MODE_COMMAND);
+		vi_set_mode(VI_MODE_COMMAND);
 	}
 	else
 		change_case(p->sci, p->pos, p->num, p->line, force_upper, force_lower);
@@ -917,7 +917,7 @@ static void cmd_unindent(CmdContext *c, CmdParams *p)
 static void range_indent(CmdContext *c, CmdParams *p, gboolean unindent)
 {
 	indent(p->sci, unindent, p->sel_start, p->sel_last_line - p->sel_first_line + 1, p->line_num);
-	set_vi_mode(VI_MODE_COMMAND);
+	vi_set_mode(VI_MODE_COMMAND);
 }
 
 static void cmd_range_indent(CmdContext *c, CmdParams *p)
@@ -939,7 +939,7 @@ static void cmd_range_delete(CmdContext *c, CmdParams *p)
 	SSM(p->sci, SCI_COPYRANGE, p->sel_start, sel_end_pos);
 
 	SSM(p->sci, SCI_DELETERANGE, p->sel_start, sel_end_pos - p->sel_start);
-	set_vi_mode(VI_MODE_COMMAND);
+	vi_set_mode(VI_MODE_COMMAND);
 }
 
 static void cmd_range_copy(CmdContext *c, CmdParams *p)
@@ -951,7 +951,7 @@ static void cmd_range_copy(CmdContext *c, CmdParams *p)
 	SSM(p->sci, SCI_COPYRANGE, p->sel_start, sel_end_pos);
 	
 	SSM(p->sci, SCI_SETCURRENTPOS, p->sel_start, 0);
-	set_vi_mode(VI_MODE_COMMAND);
+	vi_set_mode(VI_MODE_COMMAND);
 }
 
 static void cmd_range_change(CmdContext *c, CmdParams *p)
@@ -986,7 +986,7 @@ static void cmd_delete_lines_vis(CmdContext *c, CmdParams *p)
 
 	SSM(p->sci, SCI_DELETERANGE, begin, end - begin);
 	SET_POS(p->sci, begin, TRUE);
-	set_vi_mode(VI_MODE_COMMAND);
+	vi_set_mode(VI_MODE_COMMAND);
 }
 
 static void cmd_yank_lines_vis(CmdContext *c, CmdParams *p)
@@ -997,7 +997,7 @@ static void cmd_yank_lines_vis(CmdContext *c, CmdParams *p)
 	SSM(p->sci, SCI_COPYRANGE, begin, end);
 
 	SET_POS(p->sci, begin, TRUE);
-	set_vi_mode(VI_MODE_COMMAND);
+	vi_set_mode(VI_MODE_COMMAND);
 }
 
 static void cmd_repeat_last_command(CmdContext *c, CmdParams *p)
@@ -1017,12 +1017,12 @@ static void cmd_escape(CmdContext *c, CmdParams *p)
 	if (SSM(p->sci, SCI_AUTOCACTIVE, 0, 0) || SSM(p->sci, SCI_CALLTIPACTIVE, 0, 0))
 		SSM(p->sci, SCI_CANCEL, 0, 0);
 	else
-		set_vi_mode(VI_MODE_COMMAND);
+		vi_set_mode(VI_MODE_COMMAND);
 }
 
 static void cmd_run_single_command(CmdContext *c, CmdParams *p)
 {
-	set_vi_mode(VI_MODE_COMMAND_SINGLE);
+	vi_set_mode(VI_MODE_COMMAND_SINGLE);
 }
 
 static void cmd_newline(CmdContext *c, CmdParams *p)
@@ -1097,14 +1097,14 @@ static void cmd_copy_char_from_below(CmdContext *c, CmdParams *p)
 
 static void cmd_paste_inserted_text(CmdContext *c, CmdParams *p)
 {
-	const gchar *txt = get_inserted_text();
+	const gchar *txt = vi_get_inserted_text();
 	SSM(p->sci, SCI_ADDTEXT, strlen(txt), (sptr_t) txt);
 }
 
 static void cmd_paste_inserted_text_leave(CmdContext *c, CmdParams *p)
 {
 	cmd_paste_inserted_text(c, p);
-	set_vi_mode(VI_MODE_COMMAND);
+	vi_set_mode(VI_MODE_COMMAND);
 }
 
 static gint find_upper_level_brace(ScintillaObject *sci, gint pos, gint open_brace, gint close_brace)
@@ -1179,7 +1179,7 @@ static void select_brace(CmdContext *c, CmdParams *p, gint open_brace, gint clos
 	else
 		end_pos = NEXT(p->sci, end_pos);
 	
-	if (IS_VISUAL(get_vi_mode()))
+	if (VI_IS_VISUAL(vi_get_mode()))
 	{
 		c->sel_anchor = start_pos;
 		SET_POS(p->sci, end_pos, TRUE);
@@ -1660,7 +1660,7 @@ static CmdDef *get_cmd_to_run(GSList *kpl, CmdDef *cmds, gboolean have_selection
 	KeyPress *curr = g_slist_nth_data(kpl, 0);
 	KeyPress *prev = g_slist_nth_data(kpl, 1);
 	GSList *below = g_slist_next(kpl);
-	ViMode mode = get_vi_mode();
+	ViMode mode = vi_get_mode();
 
 	if (!kpl)
 		return NULL;
@@ -1702,14 +1702,14 @@ static CmdDef *get_cmd_to_run(GSList *kpl, CmdDef *cmds, gboolean have_selection
 			key_equals(curr, cmd->key1, cmd->modif1))
 		{
 			// now solve some quirks manually
-			if (curr->key == GDK_KEY_0 && !IS_INSERT(mode))
+			if (curr->key == GDK_KEY_0 && !VI_IS_INSERT(mode))
 			{
 				// 0 jumps to the beginning of line only when not preceded
 				// by another number in which case we want to add it to the accumulator
 				if (prev == NULL || !kp_isdigit(prev))
 					return cmd;
 			}
-			else if (curr->key == GDK_KEY_percent && !IS_INSERT(mode))
+			else if (curr->key == GDK_KEY_percent && !VI_IS_INSERT(mode))
 			{
 				// % when preceded by a number jumps to N% of the file, otherwise
 				// % goes to matching brace
@@ -1777,7 +1777,7 @@ static void perform_cmd(CmdDef *def, ScintillaObject *sci, CmdContext *ctx, GSLi
 
 	def->cmd(ctx, &param);
 
-	if (IS_COMMAND(get_vi_mode()))
+	if (VI_IS_COMMAND(vi_get_mode()))
 	{
 		gboolean is_text_object_cmd = is_in_cmd_group(text_object_cmds, def);
 		if (is_text_object_cmd ||is_in_cmd_group(movement_cmds, def))
@@ -1809,7 +1809,7 @@ static void perform_cmd(CmdDef *def, ScintillaObject *sci, CmdContext *ctx, GSLi
 	}
 
 	/* mode could have changed after performing command */
-	if (IS_COMMAND(get_vi_mode()))
+	if (VI_IS_COMMAND(vi_get_mode()))
 		clamp_cursor_pos(sci);
 
 	SSM(sci, SCI_ENDUNDOACTION, 0, 0);
