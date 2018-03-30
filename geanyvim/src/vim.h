@@ -16,8 +16,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef __GEANYVIM_STATE_H__
-#define __GEANYVIM_STATE_H__
+#ifndef __GEANYVIM_VIM_H__
+#define __GEANYVIM_VIM_H__
 
 #define IS_VISUAL(m) ((m) == VI_MODE_VISUAL || (m) == VI_MODE_VISUAL_LINE || (m) == VI_MODE_VISUAL_BLOCK)
 #define IS_COMMAND(m) ((m) == VI_MODE_COMMAND || (m) == VI_MODE_COMMAND_SINGLE)

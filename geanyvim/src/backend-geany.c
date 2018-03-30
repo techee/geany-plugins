@@ -27,7 +27,8 @@
 
 #include <geanyplugin.h>
 
-#include "state.h"
+#include "backend-geany.h"
+#include "vim.h"
 #include "cmds.h"
 #include "utils.h"
 

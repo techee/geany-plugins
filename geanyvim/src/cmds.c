@@ -23,7 +23,7 @@
 #include <geanyplugin.h>
 #include <gdk/gdkkeysyms.h>
 
-#include "state.h"
+#include "vim.h"
 #include "cmds.h"
 #include "utils.h"
 

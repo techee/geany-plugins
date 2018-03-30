@@ -4,8 +4,10 @@ plugin = geanyvim
 geanyplugins_LTLIBRARIES = geanyvim.la
 
 geanyvim_la_SOURCES = \
-	state.h \
-	main.c \
+	backend-geany.h \
+	backend-geany.c \
+	vim.h \
+	vim.c \
 	cmds.h \
 	cmds.c \
 	utils.h \
