@@ -27,7 +27,6 @@
 #include "vim.h"
 #include "cmds.h"
 #include "utils.h"
-#include "backend-geany.h"
 
 struct
 {
@@ -46,6 +45,8 @@ struct
 	/* caret period used by Scintilla we can revert to when disabling vi mode */
 	gint default_caret_period;
 
+	/* callbacks for the backend */
+	ViCallback *cb;
 	/* whether vi mode is enabled or disabled */
 	gboolean vim_enabled;
 	/* whether insert mode should be used by default when loading the plugin */
@@ -62,7 +63,7 @@ struct
 } state =
 {
 	-1, -1,
-	TRUE, FALSE, FALSE,
+	NULL, TRUE, FALSE, FALSE,
 	VI_MODE_COMMAND, NULL, NULL
 };
 
@@ -156,7 +157,7 @@ static void set_vi_mode_full(ViMode mode, ScintillaObject *sci)
 	}
 
 	if (mode != prev_mode)
-		on_mode_change(mode);
+		state.cb->on_mode_change(mode);
 
 	switch (mode)
 	{
@@ -256,9 +257,9 @@ static void perform_command(const gchar *cmd)
 		{
 			const gchar *c = cmd + 1;
 			if (strcmp(c, "w") || strcmp(c, "w!") || strcmp(c, "write") || strcmp(c, "write!"))
-				on_save();
+				state.cb->on_save();
 			else if (strcmp(c, "wall") || strcmp(c, "wall!"))
-				on_save_all();
+				state.cb->on_save_all();
 			break;
 		}
 		case '/':
@@ -455,6 +456,8 @@ gboolean on_sc_notification(SCNotification *nt)
 void set_vim_enabled(gboolean enabled)
 {
 	state.vim_enabled = enabled;
+	if (enabled)
+		 set_vi_mode(get_start_in_insert() ? VI_MODE_INSERT : VI_MODE_COMMAND);
 }
 
 void set_start_in_insert(gboolean enabled)
@@ -482,9 +485,18 @@ gboolean get_insert_for_dummies(void)
 	return state.insert_for_dummies;
 }
 
-void vim_init(GtkWidget *window)
+static void init_cb(ViCallback *cb)
+{
+	g_assert(cb->on_mode_change && cb->on_save && cb->on_save_all);
+
+	state.cb = cb;
+}
+
+void vim_init(GtkWidget *window, ViCallback *cb)
 {
 	GtkWidget *frame;
+
+	init_cb(cb);
 
 	/* prompt */
 	vi_widgets.prompt = g_object_new(GTK_TYPE_WINDOW,

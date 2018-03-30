@@ -37,6 +37,12 @@ typedef enum {
 	VI_MODE_REPLACE,
 } ViMode;
 
+typedef struct
+{
+	void (*on_mode_change)(ViMode mode);
+	void (*on_save)(void);
+	void (*on_save_all)(void);
+} ViCallback;
 
 void enter_cmdline_mode(void);
 
@@ -49,7 +55,7 @@ const gchar *get_inserted_text(void);
 gboolean on_sc_notification(SCNotification *nt);
 gboolean on_key_press_notification(GdkEventKey *event);
 
-void vim_init(GtkWidget *window);
+void vim_init(GtkWidget *window, ViCallback *cb);
 void vim_cleanup(void);
 
 void vim_set_active_sci(ScintillaObject *sci);

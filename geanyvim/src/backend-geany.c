@@ -24,7 +24,6 @@
 
 #include <geanyplugin.h>
 
-#include "backend-geany.h"
 #include "vim.h"
 
 #define CONF_GROUP "Settings"
@@ -65,6 +64,7 @@ struct
 	NULL, NULL, NULL, NULL
 };
 
+static ViCallback cb;
 
 static gchar *get_config_filename(void)
 {
@@ -118,7 +118,6 @@ static void on_enable_vim_mode(void)
 {
 	gboolean enabled = gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(menu_items.enable_vim_item));
 	set_vim_enabled(enabled);
-	set_vi_mode(get_start_in_insert() ? VI_MODE_INSERT : VI_MODE_COMMAND);
 	if (!enabled)
 		ui_set_statusbar(FALSE, "Vim Mode Disabled");
 	save_config();
@@ -137,7 +136,6 @@ static void on_start_in_insert(void)
 {
 	gboolean enabled = gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(menu_items.start_in_insert_item));
 	set_start_in_insert(enabled);
-		
 	save_config();
 }
 
@@ -146,10 +144,10 @@ static void on_insert_for_dummies(void)
 {
 	gboolean enabled = gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(menu_items.insert_for_dummies_item));
 	set_insert_for_dummies(enabled);
-
 	ui_set_statusbar(FALSE, _("Insert Mode for Dummies: %s"), enabled ? _("ON") : _("OFF"));
 	save_config();
 }
+
 
 static gboolean on_insert_for_dummies_kb(GeanyKeyBinding *kb, guint key_id, gpointer data)
 {
@@ -174,11 +172,13 @@ static void on_doc_activate(G_GNUC_UNUSED GObject *obj, GeanyDocument *doc,
 	vim_set_active_sci(doc->editor->sci);
 }
 
+
 static gboolean on_editor_notify(GObject *object, GeanyEditor *editor,
 		SCNotification *nt, gpointer data)
 {
 	return on_sc_notification(nt);
 }
+
 
 static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer user_data)
 {
@@ -191,6 +191,7 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 	return on_key_press_notification(event);
 }
 
+
 PluginCallback plugin_callbacks[] = {
 	{"document-open", (GCallback) &on_doc_open, TRUE, NULL},
 	{"document-activate", (GCallback) &on_doc_activate, TRUE, NULL},
@@ -198,6 +199,58 @@ PluginCallback plugin_callbacks[] = {
 	{"key-press", (GCallback) &on_key_press, TRUE, NULL},
 	{NULL, NULL, FALSE, NULL}
 };
+
+
+static const gchar *get_mode_name(ViMode vi_mode)
+{
+	switch (vi_mode)
+	{
+		case VI_MODE_COMMAND:
+			return "NORMAL";
+			break;
+		case VI_MODE_COMMAND_SINGLE:
+			return "(insert)";
+			break;
+		case VI_MODE_INSERT:
+			return "INSERT";
+			break;
+		case VI_MODE_REPLACE:
+			return "REPLACE";
+			break;
+		case VI_MODE_VISUAL:
+			return "VISUAL";
+			break;
+		case VI_MODE_VISUAL_LINE:
+			return "VISUAL LINE";
+			break;
+		case VI_MODE_VISUAL_BLOCK:
+			return "VISUAL BLOCK";
+			break;
+	}
+	return "";
+}
+
+
+static void on_mode_change(ViMode mode)
+{
+	ui_set_statusbar(FALSE, "Vim Mode: -- %s --", get_mode_name(mode));
+}
+
+
+static void on_save(void)
+{
+	GeanyDocument *doc = document_get_current();
+	if (doc != NULL)
+		document_save_file(doc, FALSE);
+}
+
+
+static void on_save_all(void)
+{
+	gint i;
+	foreach_document(i)
+		document_save_file(documents[i], FALSE);
+}
 
 
 void plugin_init(GeanyData *data)
@@ -239,56 +292,12 @@ void plugin_init(GeanyData *data)
 
 	gtk_widget_show_all(menu_items.parent_item);
 
-	vim_init(geany_data->main_widgets->window);
+	cb.on_mode_change = on_mode_change;
+	cb.on_save = on_save;
+	cb.on_save_all = on_save_all;
+	vim_init(geany_data->main_widgets->window, &cb);
 }
 
-static const gchar *get_mode_name(ViMode vi_mode)
-{
-	switch (vi_mode)
-	{
-		case VI_MODE_COMMAND:
-			return "NORMAL";
-			break;
-		case VI_MODE_COMMAND_SINGLE:
-			return "(insert)";
-			break;
-		case VI_MODE_INSERT:
-			return "INSERT";
-			break;
-		case VI_MODE_REPLACE:
-			return "REPLACE";
-			break;
-		case VI_MODE_VISUAL:
-			return "VISUAL";
-			break;
-		case VI_MODE_VISUAL_LINE:
-			return "VISUAL LINE";
-			break;
-		case VI_MODE_VISUAL_BLOCK:
-			return "VISUAL BLOCK";
-			break;
-	}
-	return "";
-}
-
-void on_mode_change(ViMode mode)
-{
-	ui_set_statusbar(FALSE, "Vim Mode: -- %s --", get_mode_name(mode));
-}
-
-void on_save(void)
-{
-	GeanyDocument *doc = document_get_current();
-	if (doc != NULL)
-		document_save_file(doc, FALSE);
-}
-
-void on_save_all(void)
-{
-	gint i;
-	foreach_document(i)
-		document_save_file(documents[i], FALSE);
-}
 
 void plugin_cleanup(void)
 {
