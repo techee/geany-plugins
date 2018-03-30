@@ -134,8 +134,10 @@ static void repeat_insert(gboolean replace)
 	ctx.newline_insert = FALSE;
 }
 
-static void set_vi_mode_full(ViMode mode, ScintillaObject *sci)
+
+void set_vi_mode(ViMode mode)
 {
+	ScintillaObject *sci = vi_widgets.sci;
 	ViMode prev_mode = state.vi_mode;
 
 	state.vi_mode = mode;
@@ -222,15 +224,7 @@ void vim_set_active_sci(ScintillaObject *sci)
 
 	vi_widgets.sci = sci;
 	if (sci)
-		set_vi_mode_full(state.vi_mode, sci);
-}
-
-void set_vi_mode(ViMode mode)
-{
-	ScintillaObject *sci = vi_widgets.sci;
-
-	if (sci)
-		set_vi_mode_full(mode, sci);
+		set_vi_mode(state.vi_mode);
 }
 
 
