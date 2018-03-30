@@ -19,8 +19,9 @@
 #ifndef __GEANYVIM_CMDS_H__
 #define __GEANYVIM_CMDS_H__
 
-#include <glib.h>
-#include <geanyplugin.h>
+#include <gtk/gtk.h>
+#include "Scintilla.h"
+#include "ScintillaWidget.h"
 
 #define INSERT_BUF_LEN 4096
 

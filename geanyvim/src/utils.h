@@ -24,9 +24,14 @@
 #include "cmds.h"
 
 #define SSM(s, m, w, l) scintilla_send_message((s), (m), (w), (l))
+
 #define NEXT(s, pos) scintilla_send_message((s), SCI_POSITIONAFTER, (pos), 0)
 #define PREV(s, pos) scintilla_send_message((s), SCI_POSITIONBEFORE, (pos), 0)
 #define REL(s, pos, rel) scintilla_send_message((s), SCI_POSITIONRELATIVE, (pos), (rel))
+
+#define SET_POS(s, pos, scr) set_current_position((s), (pos), (scr))
+#define GET_CUR_LINE(s) scintilla_send_message((s), SCI_LINEFROMPOSITION, \
+	SSM((s), SCI_GETCURRENTPOS, 0, 0), 0)
 
 #define MAX_CHAR_SIZE 16
 
@@ -44,5 +49,7 @@ void clamp_cursor_pos(ScintillaObject *sci);
 void perform_search(ScintillaObject *sci, CmdContext *c, gint num, gboolean invert);
 
 gboolean is_printable(GdkEventKey *ev);
+
+void set_current_position(ScintillaObject *sci, gint position, gboolean scroll_to_caret);
 
 #endif

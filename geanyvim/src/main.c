@@ -168,7 +168,7 @@ static void repeat_insert(gboolean replace)
 
 		ctx.insert_buf[ctx.insert_buf_len] = '\0';
 
-		sci_start_undo_action(sci);
+		SSM(sci, SCI_BEGINUNDOACTION, 0, 0);
 		for (i = 0; i < ctx.num - 1; i++)
 		{
 			gint line;
@@ -177,21 +177,21 @@ static void repeat_insert(gboolean replace)
 			if (ctx.newline_insert)
 				SSM(sci, SCI_NEWLINE, 0, 0);
 
-			line = sci_get_current_line(sci);
+			line = GET_CUR_LINE(sci);
 			line_len = SSM(sci, SCI_LINELENGTH, line, 0);
 
 			SSM(sci, SCI_ADDTEXT, ctx.insert_buf_len, (sptr_t) ctx.insert_buf);
 
 			if (replace)
 			{
-				gint pos = sci_get_current_position(sci);
-				gint line_end_pos = sci_get_line_end_position(sci, line);
+				gint pos = SSM(sci, SCI_GETCURRENTPOS, 0, 0);
+				gint line_end_pos = SSM(sci, SCI_GETLINEENDPOSITION, line, 0);
 				gint diff = SSM(sci, SCI_LINELENGTH, line, 0) - line_len;
 				diff = pos + diff > line_end_pos ? line_end_pos - pos : diff;
 				SSM(sci, SCI_DELETERANGE, pos, diff);
 			}
 		}
-		sci_end_undo_action(sci);
+		SSM(sci, SCI_ENDUNDOACTION, 0, 0);
 	}
 	ctx.num = 1;
 	ctx.insert_buf_len = 0;
@@ -228,16 +228,16 @@ static void set_vi_mode_full(ViMode mode, ScintillaObject *sci)
 		case VI_MODE_COMMAND:
 		case VI_MODE_COMMAND_SINGLE:
 		{
-			gint pos = sci_get_current_position(sci);
+			gint pos = SSM(sci, SCI_GETCURRENTPOS, 0, 0);
 			if (mode == VI_MODE_COMMAND && IS_INSERT(prev_mode))
 			{
 				repeat_insert(prev_mode == VI_MODE_REPLACE);
 
 				//repeat_insert() can change current position
-				pos = sci_get_current_position(sci);
-				gint start_pos = sci_get_position_from_line(sci, sci_get_current_line(sci));
+				pos = SSM(sci, SCI_GETCURRENTPOS, 0, 0);
+				gint start_pos = SSM(sci, SCI_POSITIONFROMLINE, GET_CUR_LINE(sci), 0);
 				if (pos > start_pos)
-					sci_set_current_position(sci, PREV(sci, pos), FALSE);
+					SET_POS(sci, PREV(sci, pos), FALSE);
 			}
 			else if (IS_VISUAL(prev_mode))
 				SSM(sci, SCI_SETEMPTYSELECTION, pos, 0);
@@ -271,7 +271,7 @@ static void set_vi_mode_full(ViMode mode, ScintillaObject *sci)
 			 * line caret here which makes it more clear what's being selected. */
 			SSM(sci, SCI_SETCARETSTYLE, CARETSTYLE_LINE, 0);
 			SSM(sci, SCI_SETCARETPERIOD, 0, 0);
-			ctx.sel_anchor = sci_get_current_position(sci);
+			ctx.sel_anchor = SSM(sci, SCI_GETCURRENTPOS, 0, 0);
 			break;
 	}
 }
@@ -577,7 +577,7 @@ static gboolean on_editor_notify(GObject *object, GeanyEditor *editor,
 		}
 		else if (state.vi_mode == VI_MODE_VISUAL_LINE)
 		{
-			gint pos = sci_get_current_position(sci);
+			gint pos = SSM(sci, SCI_GETCURRENTPOS, 0, 0);
 			gint anchor_line = SSM(sci, SCI_LINEFROMPOSITION, ctx.sel_anchor, 0);
 			gint pos_line = SSM(sci, SCI_LINEFROMPOSITION, pos, 0);
 			gint anchor_linepos, pos_linepos;
@@ -606,10 +606,10 @@ static gboolean on_editor_notify(GObject *object, GeanyEditor *editor,
 	//if (nt->nmhdr.code == SCN_MODIFIED && nt->modificationType & SC_MOD_CONTAINER)
 	//{
 	//	printf("token: %d\n", nt->token);
-	//	sci_set_current_position(sci, nt->token, TRUE);
+	//	SET_POS(sci, nt->token, TRUE);
 	//}
 
-	//if (sci_get_selected_text_length(sci) > 0)
+	//if (SSM(sci, SCI_GETSELTEXT, 0, 0) > 0)
 	//	return FALSE;
 
 	/* this makes sure that when we click behind the end of line in command mode,

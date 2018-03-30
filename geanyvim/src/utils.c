@@ -219,11 +219,25 @@ gint kpl_get_int(GSList *kpl, GSList **new_kpl)
 
 void clamp_cursor_pos(ScintillaObject *sci)
 {
-	gint pos = sci_get_current_position(sci);
-	gint start_pos = sci_get_position_from_line(sci, sci_get_current_line(sci));
-	gint end_pos = sci_get_line_end_position(sci, sci_get_current_line(sci));
+	gint pos = SSM(sci, SCI_GETCURRENTPOS, 0, 0);
+	gint line = GET_CUR_LINE(sci);
+	gint start_pos = SSM(sci, SCI_POSITIONFROMLINE, line, 0);
+	gint end_pos = SSM(sci, SCI_GETLINEENDPOSITION, line, 0);
 	if (pos == end_pos && pos != start_pos)
 		SSM(sci, SCI_CHARLEFT, 0, 0);
+}
+
+static gchar *get_contents_range(ScintillaObject *sci, gint start, gint end)
+{
+	struct Sci_TextRange tr;
+	gchar *text = g_malloc(end - start + 1);
+
+	tr.chrg.cpMin = start;
+	tr.chrg.cpMax = end;
+	tr.lpstrText = text;
+
+	SSM(sci, SCI_GETTEXTRANGE, 0, (sptr_t)&tr);
+	return text;
 }
 
 gchar *get_current_word(ScintillaObject *sci)
@@ -233,24 +247,21 @@ gchar *get_current_word(ScintillaObject *sci)
 	if (!sci)
 		return NULL;
 
-	pos = sci_get_current_position(sci);
-	SSM(sci, SCI_WORDSTARTPOSITION, pos, TRUE);
+	pos = SSM(sci, SCI_GETCURRENTPOS, 0, 0);
 	start = SSM(sci, SCI_WORDSTARTPOSITION, pos, TRUE);
 	end = SSM(sci, SCI_WORDENDPOSITION, pos, TRUE);
 
 	if (start == end)
 		return NULL;
 
-	if (end - start >= GEANY_MAX_WORD_LENGTH)
-		end = start + GEANY_MAX_WORD_LENGTH - 1;
-	return sci_get_contents_range(sci, start, end);
+	return get_contents_range(sci, start, end);
 }
 
 void perform_search(ScintillaObject *sci, CmdContext *c, gint num, gboolean invert)
 {
 	struct Sci_TextToFind ttf;
-	gint pos = sci_get_current_position(sci);
-	gint len = sci_get_length(sci);
+	gint pos = SSM(sci, SCI_GETCURRENTPOS, 0, 0);
+	gint len = SSM(sci, SCI_GETLENGTH, 0, 0);
 	gboolean forward;
 	gint i;
 
@@ -276,7 +287,7 @@ void perform_search(ScintillaObject *sci, CmdContext *c, gint num, gboolean inve
 			ttf.chrg.cpMax = 0;
 		}
 
-		new_pos = sci_find_text(sci, 0, &ttf);
+		new_pos = SSM(sci, SCI_FINDTEXT, 0, (sptr_t)&ttf);
 		if (new_pos < 0)
 		{
 			/* wrap */
@@ -291,7 +302,7 @@ void perform_search(ScintillaObject *sci, CmdContext *c, gint num, gboolean inve
 				ttf.chrg.cpMax = pos;
 			}
 
-			new_pos = sci_find_text(sci, 0, &ttf);
+			new_pos = SSM(sci, SCI_FINDTEXT, 0, (sptr_t)&ttf);
 		}
 
 		if (new_pos < 0)
@@ -300,5 +311,18 @@ void perform_search(ScintillaObject *sci, CmdContext *c, gint num, gboolean inve
 	}
 
 	if (pos >= 0)
-		sci_set_current_position(sci, pos, TRUE);
+		SET_POS(sci, pos, TRUE);
+}
+
+// stolen from Geany
+void set_current_position(ScintillaObject *sci, gint position, gboolean scroll_to_caret)
+{
+	if (scroll_to_caret)
+		SSM(sci, SCI_GOTOPOS, (uptr_t) position, 0);
+	else
+	{
+		SSM(sci, SCI_SETCURRENTPOS, (uptr_t) position, 0);
+		SSM(sci, SCI_SETANCHOR, (uptr_t) position, 0); /* to avoid creation of a selection */
+	}
+	SSM(sci, SCI_CHOOSECARETX, 0, 0);
 }
