@@ -21,8 +21,6 @@
 
 #include "vim.h"
 
-ScintillaObject *get_current_doc_sci(void);
-
 void on_mode_change(ViMode mode);
 void on_save(void);
 void on_save_all(void);

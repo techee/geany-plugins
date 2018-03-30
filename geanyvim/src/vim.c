@@ -21,7 +21,6 @@
 #endif
 
 #include <string.h>
-#include <glib.h>
 #include <gtk/gtk.h>
 #include <gdk/gdkkeysyms.h>
 
@@ -32,11 +31,12 @@
 
 struct
 {
+	ScintillaObject *sci;
 	GtkWidget *prompt;
 	GtkWidget *entry;
 } vi_widgets =
 {
-	NULL, NULL
+	NULL, NULL, NULL
 };
 
 struct
@@ -95,9 +95,10 @@ const gchar *get_inserted_text(void)
 
 static void repeat_insert(gboolean replace)
 {
-	if (ctx.num > 1 && ctx.insert_buf_len > 0)
+	ScintillaObject *sci = vi_widgets.sci;
+
+	if (sci && ctx.num > 1 && ctx.insert_buf_len > 0)
 	{
-		ScintillaObject *sci = get_current_doc_sci();
 		gint i;
 
 		ctx.insert_buf[ctx.insert_buf_len] = '\0';
@@ -210,23 +211,25 @@ static void set_vi_mode_full(ViMode mode, ScintillaObject *sci)
 	}
 }
 
-void vim_sc_init(ScintillaObject *sci)
+void vim_set_active_sci(ScintillaObject *sci)
 {
-	set_vi_mode_full(state.vi_mode, sci);
-}
-
-void vim_sc_cleanup(ScintillaObject *sci)
-{
-	if (state.default_caret_style != -1)
+	if (vi_widgets.sci && state.default_caret_style != -1)
 	{
-		SSM(sci, SCI_SETCARETSTYLE, state.default_caret_style, 0);
-		SSM(sci, SCI_SETCARETPERIOD, state.default_caret_period, 0);
+		SSM(vi_widgets.sci, SCI_SETCARETSTYLE, state.default_caret_style, 0);
+		SSM(vi_widgets.sci, SCI_SETCARETPERIOD, state.default_caret_period, 0);
 	}
+
+	vi_widgets.sci = sci;
+	if (sci)
+		set_vi_mode_full(state.vi_mode, sci);
 }
 
 void set_vi_mode(ViMode mode)
 {
-	set_vi_mode_full(mode, get_current_doc_sci());
+	ScintillaObject *sci = vi_widgets.sci;
+
+	if (sci)
+		set_vi_mode_full(mode, sci);
 }
 
 
@@ -239,7 +242,7 @@ static void close_prompt()
 static void perform_command(const gchar *cmd)
 {
 	guint len = strlen(cmd);
-	ScintillaObject *sci = get_current_doc_sci();
+	ScintillaObject *sci = vi_widgets.sci;
 
 	if (!sci)
 		return;
@@ -316,14 +319,14 @@ static void on_prompt_show(GtkWidget *widget, gpointer dummy)
 
 gboolean on_key_press_notification(GdkEventKey *event)
 {
-	ScintillaObject *sci = get_current_doc_sci();
+	ScintillaObject *sci = vi_widgets.sci;
 	gboolean command_performed = FALSE;
 	gboolean is_repeat_command = FALSE;
 	gboolean consumed = FALSE;
 	ViMode orig_mode = state.vi_mode;
 	KeyPress *kp;
 
-	if (!state.vim_enabled)
+	if (!sci || !state.vim_enabled)
 		return FALSE;
 
 	kp = kp_from_event_key(event);
@@ -374,7 +377,7 @@ gboolean on_key_press_notification(GdkEventKey *event)
 
 gboolean on_sc_notification(SCNotification *nt)
 {
-	ScintillaObject *sci = get_current_doc_sci();
+	ScintillaObject *sci = vi_widgets.sci;
 
 	if (!state.vim_enabled || !sci)
 		return FALSE;
@@ -513,6 +516,7 @@ void vim_init(GtkWidget *window)
 
 void vim_cleanup(void)
 {
+	vim_set_active_sci(NULL);
 	gtk_widget_destroy(vi_widgets.prompt);
 	g_free(ctx.search_text);
 	g_free(ctx.search_char);

@@ -26,8 +26,6 @@
 
 #include "backend-geany.h"
 #include "vim.h"
-#include "cmds.h"
-#include "utils.h"
 
 #define CONF_GROUP "Settings"
 #define CONF_ENABLE_VIM "enable_vim"
@@ -67,12 +65,6 @@ struct
 	NULL, NULL, NULL, NULL
 };
 
-
-ScintillaObject *get_current_doc_sci(void)
-{
-	GeanyDocument *doc = document_get_current();
-	return doc != NULL ? doc->editor->sci : NULL;
-}
 
 static gchar *get_config_filename(void)
 {
@@ -167,13 +159,11 @@ static gboolean on_insert_for_dummies_kb(GeanyKeyBinding *kb, guint key_id, gpoi
 }
 
 
-
-
 static void on_doc_open(G_GNUC_UNUSED GObject *obj, GeanyDocument *doc,
 		G_GNUC_UNUSED gpointer user_data)
 {
 	g_return_if_fail(doc != NULL);
-	vim_sc_init(doc->editor->sci);
+	vim_set_active_sci(doc->editor->sci);
 }
 
 
@@ -181,7 +171,7 @@ static void on_doc_activate(G_GNUC_UNUSED GObject *obj, GeanyDocument *doc,
 		G_GNUC_UNUSED gpointer user_data)
 {
 	g_return_if_fail(doc != NULL);
-	vim_sc_init(doc->editor->sci);
+	vim_set_active_sci(doc->editor->sci);
 }
 
 static gboolean on_editor_notify(GObject *object, GeanyEditor *editor,
@@ -192,7 +182,8 @@ static gboolean on_editor_notify(GObject *object, GeanyEditor *editor,
 
 static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer user_data)
 {
-	ScintillaObject *sci = get_current_doc_sci();
+	GeanyDocument *doc = document_get_current();
+	ScintillaObject *sci = doc != NULL ? doc->editor->sci : NULL;
 
 	if (!sci || gtk_window_get_focus(GTK_WINDOW(geany->main_widgets->window)) != GTK_WIDGET(sci))
 		return FALSE;
@@ -296,22 +287,12 @@ void on_save_all(void)
 {
 	gint i;
 	foreach_document(i)
-	{
 		document_save_file(documents[i], FALSE);
-	}
 }
 
 void plugin_cleanup(void)
 {
-	gsize i;
-	foreach_document(i)
-	{
-		ScintillaObject *sci = documents[i]->editor->sci;
-		vim_sc_cleanup(sci);
-	}
-
 	gtk_widget_destroy(menu_items.parent_item);
-
 	vim_cleanup();
 }
 

@@ -52,8 +52,7 @@ gboolean on_key_press_notification(GdkEventKey *event);
 void vim_init(GtkWidget *window);
 void vim_cleanup(void);
 
-void vim_sc_init(ScintillaObject *sci);
-void vim_sc_cleanup(ScintillaObject *sci);
+void vim_set_active_sci(ScintillaObject *sci);
 
 void set_vim_enabled(gboolean enabled);
 void set_start_in_insert(gboolean enabled);
