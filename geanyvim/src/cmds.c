@@ -664,27 +664,24 @@ static void replace_char(CmdParams *p, gint pos, gint num, gint line)
 
 	for (i = 0; i < num; i++)
 	{
-		sci_set_current_position(p->sci, pos, FALSE);
-		sci_set_target_start(p->sci, pos);
+		gint next_pos = NEXT(p->sci, pos);
+		gint curr_line = sci_get_line_from_position(p->sci, pos);
+		gint line_end_pos = sci_get_line_end_position(p->sci, curr_line);
+
+		if (line != -1 && pos == line_end_pos)
+			break;
+
+		if (pos != line_end_pos) //skip newline replacement
+		{
+			sci_set_target_start(p->sci, pos);
+			sci_set_target_end(p->sci, next_pos);
+			sci_replace_target(p->sci, repl, FALSE);
+		}
+
+		// the next position has changed because of the replacement - call NEXT() again
 		pos = NEXT(p->sci, pos);
-		if (line != -1)
-		{
-			//line end position can change because of the replacement and different
-			//character lengths
-			gint line_end_pos = sci_get_line_end_position(p->sci, line);
-			if (pos > line_end_pos)
-				break;
-		}
-		else
-		{
-			gint ln = sci_get_current_line(p->sci);
-			gint line_end_pos = sci_get_line_end_position(p->sci, ln);
-			if (pos == NEXT(p->sci, line_end_pos))
-				continue;
-		}
-		sci_set_target_end(p->sci, pos);
-		sci_replace_target(p->sci, repl, FALSE);
 	}
+	sci_set_current_position(p->sci, PREV(p->sci, pos), FALSE);
 }
 
 static void cmd_replace_char(CmdContext *c, CmdParams *p)
@@ -694,7 +691,8 @@ static void cmd_replace_char(CmdContext *c, CmdParams *p)
 
 static void cmd_replace_char_vis(CmdContext *c, CmdParams *p)
 {
-	replace_char(p, p->sel_start, p->sel_len, -1);
+	gint num = SSM(p->sci, SCI_COUNTCHARACTERS, p->sel_start, p->sel_start + p->sel_len);
+	replace_char(p, p->sel_start, num, -1);
 	sci_set_current_position(p->sci, p->sel_start, FALSE);
 	set_vi_mode(VI_MODE_COMMAND);
 }
@@ -728,9 +726,11 @@ static void change_case(ScintillaObject *sci, gint pos, gint num, gint line,
 		replacement = force_lower ? lowercase : replacement;
 
 		sci_set_target_start(sci, pos);
-		pos = next_pos;
-		sci_set_target_end(sci, pos);
+		sci_set_target_end(sci, next_pos);
 		sci_replace_target(sci, replacement, FALSE);
+
+		// the next position has changed because of the replacement - call NEXT() again
+		pos = NEXT(sci, pos);
 		sci_set_current_position(sci, pos, FALSE);
 		g_free(uppercase);
 		g_free(lowercase);
@@ -905,6 +905,7 @@ static void cmd_range_delete(CmdContext *c, CmdParams *p)
 		sel_end_pos = p->line_end_pos;
 	c->line_copy = FALSE;
 	SSM(p->sci, SCI_COPYRANGE, p->sel_start, sel_end_pos);
+
 	SSM(p->sci, SCI_DELETERANGE, p->sel_start, sel_end_pos - p->sel_start);
 	set_vi_mode(VI_MODE_COMMAND);
 }
@@ -916,6 +917,7 @@ static void cmd_range_copy(CmdContext *c, CmdParams *p)
 		sel_end_pos = p->line_end_pos;
 	c->line_copy = FALSE;
 	SSM(p->sci, SCI_COPYRANGE, p->sel_start, sel_end_pos);
+	
 	SSM(p->sci, SCI_SETCURRENTPOS, p->sel_start, 0);
 	set_vi_mode(VI_MODE_COMMAND);
 }
@@ -927,6 +929,7 @@ static void cmd_range_change(CmdContext *c, CmdParams *p)
 		sel_end_pos = p->line_end_pos;
 	c->line_copy = FALSE;
 	SSM(p->sci, SCI_COPYRANGE, p->sel_start, sel_end_pos);
+
 	SSM(p->sci, SCI_DELETERANGE, p->sel_start, sel_end_pos - p->sel_start);
 	cmd_mode_insert(c, p);
 }
@@ -939,6 +942,7 @@ static void cmd_delete_lines_insert_vis(CmdContext *c, CmdParams *p)
 	gint line_end_pos = sci_get_line_end_position(p->sci, line_end);
 	c->line_copy = TRUE;
 	SSM(p->sci, SCI_COPYRANGE, line_start_pos, line_end_pos);
+
 	SSM(p->sci, SCI_DELETERANGE, line_start_pos, line_end_pos - line_start_pos);
 	cmd_mode_insert(c, p);
 }
@@ -952,6 +956,7 @@ static void cmd_delete_lines_vis(CmdContext *c, CmdParams *p)
 	line_end_pos = NEXT(p->sci, line_end_pos);
 	c->line_copy = TRUE;
 	SSM(p->sci, SCI_COPYRANGE, line_start_pos, line_end_pos);
+
 	SSM(p->sci, SCI_DELETERANGE, line_start_pos, line_end_pos - line_start_pos);
 	sci_set_current_position(p->sci, line_start_pos, TRUE);
 	set_vi_mode(VI_MODE_COMMAND);
@@ -966,6 +971,7 @@ static void cmd_yank_lines_vis(CmdContext *c, CmdParams *p)
 	line_end_pos = NEXT(p->sci, line_end_pos);
 	c->line_copy = TRUE;
 	SSM(p->sci, SCI_COPYRANGE, line_start_pos, line_end_pos);
+
 	sci_set_current_position(p->sci, line_start_pos, TRUE);
 	set_vi_mode(VI_MODE_COMMAND);
 }
