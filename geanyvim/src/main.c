@@ -715,6 +715,7 @@ void plugin_cleanup(void)
 	gtk_widget_destroy(vi_widgets.parent_item);
 
 	g_free(ctx.search_text);
+	g_free(ctx.search_char);
 }
 
 

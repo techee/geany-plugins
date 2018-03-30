@@ -22,7 +22,6 @@
 
 #include <geanyplugin.h>
 #include <gdk/gdkkeysyms.h>
-#include <ctype.h>
 
 #include "state.h"
 #include "cmds.h"
@@ -120,7 +119,7 @@ static void goto_nonempty(CmdParams *p, gint line, gboolean scroll)
 	gint line_end_pos = SSM(p->sci, SCI_GETLINEENDPOSITION, line, 0);
 	gint pos = SSM(p->sci, SCI_POSITIONFROMLINE, line, 0);
 
-	while (isspace(sci_get_char_at(p->sci, pos)) && pos < line_end_pos)
+	while (g_ascii_isspace(sci_get_char_at(p->sci, pos)) && pos < line_end_pos)
 		pos = NEXT(p->sci, pos);
 	sci_set_current_position(p->sci, pos, scroll);
 }
