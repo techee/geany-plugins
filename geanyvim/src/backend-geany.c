@@ -237,21 +237,28 @@ static void on_mode_change(ViMode mode)
 }
 
 
-static void on_save(void)
+static gboolean on_save(gboolean force)
 {
 	GeanyDocument *doc = document_get_current();
 	if (doc != NULL)
-		document_save_file(doc, FALSE);
+		return document_save_file(doc, force);
+	return TRUE;
 }
 
 
-static void on_save_all(void)
+static gboolean on_save_all(gboolean force)
 {
 	gint i;
+	gboolean success = TRUE;
 	foreach_document(i)
-		document_save_file(documents[i], FALSE);
+		success = success && document_save_file(documents[i], force);
+	return success;
 }
 
+static void on_quit(gboolean force)
+{
+	//TODO: we need to extend Geany API for this
+}
 
 void plugin_init(GeanyData *data)
 {
@@ -295,6 +302,7 @@ void plugin_init(GeanyData *data)
 	cb.on_mode_change = on_mode_change;
 	cb.on_save = on_save;
 	cb.on_save_all = on_save_all;
+	cb.on_quit = on_quit;
 	vi_init(geany_data->main_widgets->window, &cb);
 }
 

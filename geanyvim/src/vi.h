@@ -40,8 +40,9 @@ typedef enum {
 typedef struct
 {
 	void (*on_mode_change)(ViMode mode);
-	void (*on_save)(void);
-	void (*on_save_all)(void);
+	gboolean (*on_save)(gboolean force);
+	gboolean (*on_save_all)(gboolean force);
+	void (*on_quit)(gboolean force);
 } ViCallback;
 
 

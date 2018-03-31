@@ -249,11 +249,39 @@ static void perform_command(const gchar *cmd)
 	{
 		case ':':
 		{
-			const gchar *c = cmd + 1;
-			if (strcmp(c, "w") || strcmp(c, "w!") || strcmp(c, "write") || strcmp(c, "write!"))
-				state.cb->on_save();
-			else if (strcmp(c, "wall") || strcmp(c, "wall!"))
-				state.cb->on_save_all();
+			gchar *c = g_strdup(cmd + 1);
+			gboolean force = FALSE;
+
+			if (c[strlen(c)-1] == '!')
+			{
+				c[strlen(c)-1] = '\0';
+				force = TRUE;
+			}
+
+			if (!strcmp(c, "w") || !strcmp(c, "write") || !strcmp(c, "up"))
+				state.cb->on_save(force);
+			else if (!strcmp(c, "wall"))
+				state.cb->on_save_all(force);
+			else if (!strcmp(c, "q") || !strcmp(c, "quit") ||
+				!strcmp(c, "qa") || !strcmp(c, "qall") ||
+				!strcmp(c, "cq"))
+			{
+				state.cb->on_quit(force);
+			}
+			else if (!strcmp(c, "wq") ||
+				!strcmp(c, "x") || !strcmp(c, "xit"))
+			{
+				if (state.cb->on_save(force))
+					state.cb->on_quit(force);
+			}
+			else if (!strcmp(c, "xa") || !strcmp(c, "xall") || !strcmp(c, "wqall") ||
+				!strcmp(c, "x") || !strcmp(c, "xit"))
+			{
+				if (state.cb->on_save_all(force))
+					state.cb->on_quit(force);
+			}
+
+			g_free(c);
 			break;
 		}
 		case '/':
@@ -481,7 +509,7 @@ gboolean vi_get_insert_for_dummies(void)
 
 static void init_cb(ViCallback *cb)
 {
-	g_assert(cb->on_mode_change && cb->on_save && cb->on_save_all);
+	g_assert(cb->on_mode_change && cb->on_save && cb->on_save_all && cb->on_quit);
 
 	state.cb = cb;
 }
