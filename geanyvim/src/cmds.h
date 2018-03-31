@@ -23,6 +23,8 @@
 #include "Scintilla.h"
 #include "ScintillaWidget.h"
 
+#include "vi.h"
+
 #define INSERT_BUF_LEN 4096
 
 typedef struct
@@ -51,12 +53,16 @@ typedef struct
 	/* whether insert mode was entered using 'o' or 'O' - we need to add newlines
 	 * when copying it N times */
 	gboolean newline_insert;
+	/* callbacks for the backend */
+	ViCallback *cb;
+	/* current scintilla object */
+	ScintillaObject *sci;
 } CmdContext;
 
 
-gboolean process_event_cmd_mode(ScintillaObject *sci, CmdContext *ctx, GSList *kpl,
+gboolean process_event_cmd_mode(CmdContext *ctx, GSList *kpl,
 	GSList *prev_kpl, gboolean *is_repeat, gboolean *consumed);
-gboolean process_event_vis_mode(ScintillaObject *sci, CmdContext *ctx, GSList *kpl, gboolean *consumed);
-gboolean process_event_ins_mode(ScintillaObject *sci, CmdContext *ctx, GSList *kpl, gboolean *consumed);
+gboolean process_event_vis_mode(CmdContext *ctx, GSList *kpl, gboolean *consumed);
+gboolean process_event_ins_mode(CmdContext *ctx, GSList *kpl, gboolean *consumed);
 
 #endif

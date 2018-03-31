@@ -27,15 +27,15 @@
 #include "vi.h"
 #include "cmds.h"
 #include "utils.h"
+#include "cmdline.h"
 
 struct
 {
-	ScintillaObject *sci;
 	GtkWidget *prompt;
 	GtkWidget *entry;
 } vi_widgets =
 {
-	NULL, NULL, NULL
+	NULL, NULL
 };
 
 struct
@@ -45,8 +45,6 @@ struct
 	/* caret period used by Scintilla we can revert to when disabling vi mode */
 	gint default_caret_period;
 
-	/* callbacks for the backend */
-	ViCallback *cb;
 	/* whether vi mode is enabled or disabled */
 	gboolean vim_enabled;
 	/* whether insert mode should be used by default when loading the plugin */
@@ -63,13 +61,13 @@ struct
 } state =
 {
 	-1, -1,
-	NULL, TRUE, FALSE, FALSE,
+	TRUE, FALSE, FALSE,
 	VI_MODE_COMMAND, NULL, NULL
 };
 
 CmdContext ctx =
 {
-	NULL, NULL, FALSE, 0, 1, "", 0
+	NULL, NULL, FALSE, 0, 1, "", 0, FALSE, NULL, NULL
 };
 
 
@@ -96,7 +94,7 @@ const gchar *vi_get_inserted_text(void)
 
 static void repeat_insert(gboolean replace)
 {
-	ScintillaObject *sci = vi_widgets.sci;
+	ScintillaObject *sci = ctx.sci;
 
 	if (sci && ctx.num > 1 && ctx.insert_buf_len > 0)
 	{
@@ -137,7 +135,7 @@ static void repeat_insert(gboolean replace)
 
 void vi_set_mode(ViMode mode)
 {
-	ScintillaObject *sci = vi_widgets.sci;
+	ScintillaObject *sci = ctx.sci;
 	ViMode prev_mode = state.vi_mode;
 
 	state.vi_mode = mode;
@@ -159,7 +157,7 @@ void vi_set_mode(ViMode mode)
 	}
 
 	if (mode != prev_mode)
-		state.cb->on_mode_change(mode);
+		ctx.cb->on_mode_change(mode);
 
 	switch (mode)
 	{
@@ -216,13 +214,13 @@ void vi_set_mode(ViMode mode)
 
 void vi_set_active_sci(ScintillaObject *sci)
 {
-	if (vi_widgets.sci && state.default_caret_style != -1)
+	if (ctx.sci && state.default_caret_style != -1)
 	{
-		SSM(vi_widgets.sci, SCI_SETCARETSTYLE, state.default_caret_style, 0);
-		SSM(vi_widgets.sci, SCI_SETCARETPERIOD, state.default_caret_period, 0);
+		SSM(ctx.sci, SCI_SETCARETSTYLE, state.default_caret_style, 0);
+		SSM(ctx.sci, SCI_SETCARETPERIOD, state.default_caret_period, 0);
 	}
 
-	vi_widgets.sci = sci;
+	ctx.sci = sci;
 	if (sci)
 		vi_set_mode(state.vi_mode);
 }
@@ -231,74 +229,6 @@ void vi_set_active_sci(ScintillaObject *sci)
 static void close_prompt()
 {
 	gtk_widget_hide(vi_widgets.prompt);
-}
-
-
-static void perform_command(const gchar *cmd)
-{
-	guint len = strlen(cmd);
-	ScintillaObject *sci = vi_widgets.sci;
-
-	if (!sci)
-		return;
-
-	if (cmd == NULL || len == 0)
-		return;
-
-	switch (cmd[0])
-	{
-		case ':':
-		{
-			gchar *c = g_strdup(cmd + 1);
-			gboolean force = FALSE;
-
-			if (c[strlen(c)-1] == '!')
-			{
-				c[strlen(c)-1] = '\0';
-				force = TRUE;
-			}
-
-			if (!strcmp(c, "w") || !strcmp(c, "write") || !strcmp(c, "up"))
-				state.cb->on_save(force);
-			else if (!strcmp(c, "wall"))
-				state.cb->on_save_all(force);
-			else if (!strcmp(c, "q") || !strcmp(c, "quit") ||
-				!strcmp(c, "qa") || !strcmp(c, "qall") ||
-				!strcmp(c, "cq"))
-			{
-				state.cb->on_quit(force);
-			}
-			else if (!strcmp(c, "wq") ||
-				!strcmp(c, "x") || !strcmp(c, "xit"))
-			{
-				if (state.cb->on_save(force))
-					state.cb->on_quit(force);
-			}
-			else if (!strcmp(c, "xa") || !strcmp(c, "xall") || !strcmp(c, "wqall") ||
-				!strcmp(c, "x") || !strcmp(c, "xit"))
-			{
-				if (state.cb->on_save_all(force))
-					state.cb->on_quit(force);
-			}
-
-			g_free(c);
-			break;
-		}
-		case '/':
-		case '?':
-			if (len == 1)
-			{
-				if (ctx.search_text && strlen(ctx.search_text) > 1)
-					ctx.search_text[0] = cmd[0];
-			}
-			else
-			{
-				g_free(ctx.search_text);
-				ctx.search_text = g_strdup(cmd);
-			}
-			perform_search(sci, &ctx, ctx.num, FALSE);
-			break;
-	}
 }
 
 
@@ -317,7 +247,7 @@ static gboolean on_prompt_key_press_event(GtkWidget *widget, GdkEventKey *event,
 		case GDK_KEY_Return:
 		case GDK_KEY_KP_Enter:
 		case GDK_KEY_ISO_Enter:
-			perform_command(gtk_entry_get_text(GTK_ENTRY(vi_widgets.entry)));
+			perform_cmdline_cmd(&ctx, gtk_entry_get_text(GTK_ENTRY(vi_widgets.entry)));
 			close_prompt();
 			return TRUE;
 	}
@@ -342,7 +272,7 @@ static void on_prompt_show(GtkWidget *widget, gpointer dummy)
 
 gboolean vi_notify_key_press(GdkEventKey *event)
 {
-	ScintillaObject *sci = vi_widgets.sci;
+	ScintillaObject *sci = ctx.sci;
 	gboolean command_performed = FALSE;
 	gboolean is_repeat_command = FALSE;
 	gboolean consumed = FALSE;
@@ -363,16 +293,16 @@ gboolean vi_notify_key_press(GdkEventKey *event)
 	if (VI_IS_COMMAND(state.vi_mode) || VI_IS_VISUAL(state.vi_mode))
 	{
 		if (VI_IS_COMMAND(state.vi_mode))
-			command_performed = process_event_cmd_mode(sci, &ctx, state.kpl, state.prev_kpl,
+			command_performed = process_event_cmd_mode(&ctx, state.kpl, state.prev_kpl,
 				&is_repeat_command, &consumed);
 		else
-			command_performed = process_event_vis_mode(sci, &ctx, state.kpl, &consumed);
+			command_performed = process_event_vis_mode(&ctx, state.kpl, &consumed);
 		consumed = consumed || is_printable(event);
 	}
 	else //insert, replace mode
 	{
 		if (!state.insert_for_dummies || kp->key == GDK_KEY_Escape)
-			command_performed = process_event_ins_mode(sci, &ctx, state.kpl, &consumed);
+			command_performed = process_event_ins_mode(&ctx, state.kpl, &consumed);
 	}
 
 	if (command_performed)
@@ -400,7 +330,7 @@ gboolean vi_notify_key_press(GdkEventKey *event)
 
 gboolean vi_notify_sci(SCNotification *nt)
 {
-	ScintillaObject *sci = vi_widgets.sci;
+	ScintillaObject *sci = ctx.sci;
 
 	if (!state.vim_enabled || !sci)
 		return FALSE;
@@ -511,7 +441,7 @@ static void init_cb(ViCallback *cb)
 {
 	g_assert(cb->on_mode_change && cb->on_save && cb->on_save_all && cb->on_quit);
 
-	state.cb = cb;
+	ctx.cb = cb;
 }
 
 void vi_init(GtkWidget *window, ViCallback *cb)

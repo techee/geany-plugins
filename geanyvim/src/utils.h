@@ -46,7 +46,7 @@ void kpl_printf(GSList *kpl);
 gchar *get_current_word(ScintillaObject *sci);
 
 void clamp_cursor_pos(ScintillaObject *sci);
-void perform_search(ScintillaObject *sci, CmdContext *c, gint num, gboolean invert);
+void perform_search(CmdContext *c, gint num, gboolean invert);
 
 gboolean is_printable(GdkEventKey *ev);
 

@@ -257,11 +257,11 @@ gchar *get_current_word(ScintillaObject *sci)
 	return get_contents_range(sci, start, end);
 }
 
-void perform_search(ScintillaObject *sci, CmdContext *c, gint num, gboolean invert)
+void perform_search(CmdContext *c, gint num, gboolean invert)
 {
 	struct Sci_TextToFind ttf;
-	gint pos = SSM(sci, SCI_GETCURRENTPOS, 0, 0);
-	gint len = SSM(sci, SCI_GETLENGTH, 0, 0);
+	gint pos = SSM(c->sci, SCI_GETCURRENTPOS, 0, 0);
+	gint len = SSM(c->sci, SCI_GETLENGTH, 0, 0);
 	gboolean forward;
 	gint i;
 
@@ -287,7 +287,7 @@ void perform_search(ScintillaObject *sci, CmdContext *c, gint num, gboolean inve
 			ttf.chrg.cpMax = 0;
 		}
 
-		new_pos = SSM(sci, SCI_FINDTEXT, 0, (sptr_t)&ttf);
+		new_pos = SSM(c->sci, SCI_FINDTEXT, 0, (sptr_t)&ttf);
 		if (new_pos < 0)
 		{
 			/* wrap */
@@ -302,7 +302,7 @@ void perform_search(ScintillaObject *sci, CmdContext *c, gint num, gboolean inve
 				ttf.chrg.cpMax = pos;
 			}
 
-			new_pos = SSM(sci, SCI_FINDTEXT, 0, (sptr_t)&ttf);
+			new_pos = SSM(c->sci, SCI_FINDTEXT, 0, (sptr_t)&ttf);
 		}
 
 		if (new_pos < 0)
@@ -311,7 +311,7 @@ void perform_search(ScintillaObject *sci, CmdContext *c, gint num, gboolean inve
 	}
 
 	if (pos >= 0)
-		SET_POS(sci, pos, TRUE);
+		SET_POS(c->sci, pos, TRUE);
 }
 
 // stolen from Geany

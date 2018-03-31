@@ -10,6 +10,8 @@ vi_srcs = \
 	vi.c \
 	cmds.h \
 	cmds.c \
+	cmdline.h \
+	cmdline.c \
 	utils.h \
 	utils.c
 

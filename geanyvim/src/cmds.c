@@ -30,7 +30,8 @@
 
 typedef struct
 {
-	/* current Scintilla object */
+	/* current Scintilla object - the same one as in CmdContext, added here
+	 * for convenience */
 	ScintillaObject *sci;
 
 	/* number preceding command - defaults to 1 when not present */
@@ -488,7 +489,7 @@ static void cmd_search_next(CmdContext *c, CmdParams *p)
 	if (p->last_kp->key == GDK_KEY_N)
 		invert = TRUE;
 
-	perform_search(p->sci, c, p->num, invert);
+	perform_search(c, p->num, invert);
 }
 
 static void search_current(CmdContext *c, CmdParams *p, gboolean next)
@@ -503,7 +504,7 @@ static void search_current(CmdContext *c, CmdParams *p, gboolean next)
 		c->search_text = g_strconcat(prefix, word, NULL);
 	}
 	g_free(word);
-	perform_search(p->sci, c, p->num, FALSE);
+	perform_search(c, p->num, FALSE);
 }
 
 static void cmd_search_current_next(CmdContext *c, CmdParams *p)
@@ -1744,14 +1745,14 @@ static CmdDef *get_cmd_to_run(GSList *kpl, CmdDef *cmds, gboolean have_selection
 }
 
 
-static void perform_cmd(CmdDef *def, ScintillaObject *sci, CmdContext *ctx, GSList *kpl)
+static void perform_cmd(CmdDef *def, CmdContext *ctx, GSList *kpl)
 {
 	GSList *top;
 	gint num;
 	gint cmd_len = 0;
 	gboolean num_present;
 	CmdParams param;
-	gint orig_pos = SSM(sci, SCI_GETCURRENTPOS, 0, 0);
+	gint orig_pos = SSM(ctx->sci, SCI_GETCURRENTPOS, 0, 0);
 	gint sel_start, sel_len;
 
 	if (def->key1 != 0)
@@ -1764,13 +1765,13 @@ static void perform_cmd(CmdDef *def, ScintillaObject *sci, CmdContext *ctx, GSLi
 	num = kpl_get_int(top, &top);
 	num_present = num != -1;
 
-	sel_start = SSM(sci, SCI_GETSELECTIONSTART, 0, 0);
-	sel_len = SSM(sci, SCI_GETSELECTIONEND, 0, 0) - sel_start;
-	init_cmd_params(&param, sci,
+	sel_start = SSM(ctx->sci, SCI_GETSELECTIONSTART, 0, 0);
+	sel_len = SSM(ctx->sci, SCI_GETSELECTIONEND, 0, 0) - sel_start;
+	init_cmd_params(&param, ctx->sci,
 		num_present ? num : 1, num_present, kpl, FALSE,
 		sel_start, sel_len);
 
-	SSM(sci, SCI_BEGINUNDOACTION, 0, 0);
+	SSM(ctx->sci, SCI_BEGINUNDOACTION, 0, 0);
 
 //	if (def->cmd != cmd_undo && def->cmd != cmd_redo)
 //		SSM(sci, SCI_ADDUNDOACTION, param.pos, UNDO_MAY_COALESCE);
@@ -1785,9 +1786,9 @@ static void perform_cmd(CmdDef *def, ScintillaObject *sci, CmdContext *ctx, GSLi
 			def = get_cmd_to_run(top, operator_cmds, TRUE);
 			if (def)
 			{
-				gint new_pos = SSM(sci, SCI_GETCURRENTPOS, 0, 0);
+				gint new_pos = SSM(ctx->sci, SCI_GETCURRENTPOS, 0, 0);
 
-				SET_POS(sci, orig_pos, FALSE);
+				SET_POS(ctx->sci, orig_pos, FALSE);
 
 				if (is_text_object_cmd)
 				{
@@ -1799,7 +1800,7 @@ static void perform_cmd(CmdDef *def, ScintillaObject *sci, CmdContext *ctx, GSLi
 					sel_start = MIN(new_pos, orig_pos);
 					sel_len = ABS(new_pos - orig_pos);
 				}
-				init_cmd_params(&param, sci,
+				init_cmd_params(&param, ctx->sci,
 					1, FALSE, top, TRUE,
 					sel_start, sel_len);
 
@@ -1810,13 +1811,13 @@ static void perform_cmd(CmdDef *def, ScintillaObject *sci, CmdContext *ctx, GSLi
 
 	/* mode could have changed after performing command */
 	if (VI_IS_COMMAND(vi_get_mode()))
-		clamp_cursor_pos(sci);
+		clamp_cursor_pos(ctx->sci);
 
-	SSM(sci, SCI_ENDUNDOACTION, 0, 0);
+	SSM(ctx->sci, SCI_ENDUNDOACTION, 0, 0);
 }
 
 
-static gboolean perform_repeat_cmd(ScintillaObject *sci, CmdContext *ctx, GSList *kpl,
+static gboolean perform_repeat_cmd(CmdContext *ctx, GSList *kpl,
 	GSList *prev_kpl)
 {
 	GSList *top = g_slist_next(kpl);  // get behind "."
@@ -1830,17 +1831,17 @@ static gboolean perform_repeat_cmd(ScintillaObject *sci, CmdContext *ctx, GSList
 
 	num = num == -1 ? 1 : num;
 	for (i = 0; i < num; i++)
-		perform_cmd(def, sci, ctx, prev_kpl);
+		perform_cmd(def, ctx, prev_kpl);
 
 	return TRUE;
 }
 
 
-static gboolean process_event_mode(CmdDef *cmds, ScintillaObject *sci, CmdContext *ctx,
+static gboolean process_event_mode(CmdDef *cmds, CmdContext *ctx,
 	GSList *kpl, GSList *prev_kpl, gboolean *is_repeat, gboolean *consumed)
 {
 	gboolean have_selection =
-		SSM(sci, SCI_GETSELECTIONEND, 0, 0) - SSM(sci, SCI_GETSELECTIONSTART, 0, 0) > 0;
+		SSM(ctx->sci, SCI_GETSELECTIONEND, 0, 0) - SSM(ctx->sci, SCI_GETSELECTIONSTART, 0, 0) > 0;
 	CmdDef *def = get_cmd_to_run(kpl, cmds, have_selection);
 
 	*consumed = is_cmdpart(kpl, cmds);
@@ -1853,7 +1854,7 @@ static gboolean process_event_mode(CmdDef *cmds, ScintillaObject *sci, CmdContex
 		*is_repeat = def->cmd == cmd_repeat_last_command;
 		if (*is_repeat)
 		{
-			if (!perform_repeat_cmd(sci, ctx, kpl, prev_kpl))
+			if (!perform_repeat_cmd(ctx, kpl, prev_kpl))
 				return FALSE;
 
 			*consumed = TRUE;
@@ -1861,24 +1862,24 @@ static gboolean process_event_mode(CmdDef *cmds, ScintillaObject *sci, CmdContex
 		}
 	}
 
-	perform_cmd(def, sci, ctx, kpl);
+	perform_cmd(def, ctx, kpl);
 
 	*consumed = TRUE;
 	return TRUE;
 }
 
-gboolean process_event_cmd_mode(ScintillaObject *sci, CmdContext *ctx, GSList *kpl,
+gboolean process_event_cmd_mode(CmdContext *ctx, GSList *kpl,
 	GSList *prev_kpl, gboolean *is_repeat, gboolean *consumed)
 {
-	return process_event_mode(cmd_mode_cmds, sci, ctx, kpl, prev_kpl, is_repeat, consumed);
+	return process_event_mode(cmd_mode_cmds, ctx, kpl, prev_kpl, is_repeat, consumed);
 }
 
-gboolean process_event_vis_mode(ScintillaObject *sci, CmdContext *ctx, GSList *kpl, gboolean *consumed)
+gboolean process_event_vis_mode(CmdContext *ctx, GSList *kpl, gboolean *consumed)
 {
-	return process_event_mode(vis_mode_cmds, sci, ctx, kpl, NULL, NULL, consumed);
+	return process_event_mode(vis_mode_cmds, ctx, kpl, NULL, NULL, consumed);
 }
 
-gboolean process_event_ins_mode(ScintillaObject *sci, CmdContext *ctx, GSList *kpl, gboolean *consumed)
+gboolean process_event_ins_mode(CmdContext *ctx, GSList *kpl, gboolean *consumed)
 {
-	return process_event_mode(ins_mode_cmds, sci, ctx, kpl, NULL, NULL, consumed);
+	return process_event_mode(ins_mode_cmds, ctx, kpl, NULL, NULL, consumed);
 }
