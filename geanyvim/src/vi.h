@@ -60,10 +60,8 @@ void vi_cleanup(void);
 void vi_set_active_sci(ScintillaObject *sci);
 
 void vi_set_enabled(gboolean enabled);
-void vi_set_start_in_insert(gboolean enabled);
 void vi_set_insert_for_dummies(gboolean enabled);
 gboolean vi_get_enabled(void);
-gboolean vi_get_start_in_insert(void);
 gboolean vi_get_insert_for_dummies(void);
 
 #endif
