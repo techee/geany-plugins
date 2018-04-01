@@ -48,7 +48,6 @@ PLUGIN_SET_TRANSLATABLE_INFO(
 enum
 {
 	KB_ENABLE_VIM,
-	KB_START_IN_INSERT,
 	KB_INSERT_FOR_DUMMIES,
 	KB_COUNT
 };
@@ -57,12 +56,14 @@ struct
 {
 	GtkWidget *parent_item;
 	GtkWidget *enable_vim_item;
-	GtkWidget *start_in_insert_item;
 	GtkWidget *insert_for_dummies_item;
+	GtkWidget *start_in_insert_item;
 } menu_items =
 {
 	NULL, NULL, NULL, NULL
 };
+
+static gboolean start_in_insert;
 
 static ViCallback cb;
 
@@ -80,10 +81,10 @@ static void load_config(void)
 	if (g_key_file_load_from_file(kf, filename, G_KEY_FILE_NONE, NULL))
 	{
 		vi_set_enabled(utils_get_setting_boolean(kf, CONF_GROUP, CONF_ENABLE_VIM, TRUE));
-		vi_set_start_in_insert(utils_get_setting_boolean(kf,
-			CONF_GROUP, CONF_START_IN_INSERT, FALSE));
 		vi_set_insert_for_dummies(utils_get_setting_boolean(kf,
 			CONF_GROUP, CONF_INSERT_FOR_DUMMIES, FALSE));
+		start_in_insert = utils_get_setting_boolean(kf,
+			CONF_GROUP, CONF_START_IN_INSERT, FALSE);
 	}
   
 	g_key_file_free(kf);
@@ -100,8 +101,8 @@ static void save_config(void)
 	gsize length;
 
 	g_key_file_set_boolean(kf, CONF_GROUP, CONF_ENABLE_VIM, vi_get_enabled());
-	g_key_file_set_boolean(kf, CONF_GROUP, CONF_START_IN_INSERT, vi_get_start_in_insert());
 	g_key_file_set_boolean(kf, CONF_GROUP, CONF_INSERT_FOR_DUMMIES, vi_get_insert_for_dummies());
+	g_key_file_set_boolean(kf, CONF_GROUP, CONF_START_IN_INSERT, start_in_insert);
 
 	utils_mkdir(dirname, TRUE);
 	data = g_key_file_to_data(kf, &length, NULL);
@@ -118,6 +119,7 @@ static void on_enable_vim_mode(void)
 {
 	gboolean enabled = gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(menu_items.enable_vim_item));
 	vi_set_enabled(enabled);
+	vi_set_mode(start_in_insert ? VI_MODE_INSERT : VI_MODE_COMMAND);
 	if (!enabled)
 		ui_set_statusbar(FALSE, "Vim Mode Disabled");
 	save_config();
@@ -129,14 +131,6 @@ static gboolean on_enable_vim_mode_kb(GeanyKeyBinding *kb, guint key_id, gpointe
 	gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(menu_items.enable_vim_item),
 			!vi_get_enabled());
 	return TRUE;
-}
-
-
-static void on_start_in_insert(void)
-{
-	gboolean enabled = gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(menu_items.start_in_insert_item));
-	vi_set_start_in_insert(enabled);
-	save_config();
 }
 
 
@@ -154,6 +148,14 @@ static gboolean on_insert_for_dummies_kb(GeanyKeyBinding *kb, guint key_id, gpoi
 	gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(menu_items.insert_for_dummies_item),
 			!vi_get_insert_for_dummies());
 	return TRUE;
+}
+
+
+static void on_start_in_insert(void)
+{
+	gboolean enabled = gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(menu_items.start_in_insert_item));
+	start_in_insert = enabled;
+	save_config();
 }
 
 
@@ -295,19 +297,19 @@ void plugin_init(GeanyData *data)
 	keybindings_set_item_full(group, KB_ENABLE_VIM, 0, 0, "enable_vim",
 			_("Enable Vim Mode"), NULL, on_enable_vim_mode_kb, NULL, NULL);
 
-	menu_items.start_in_insert_item = gtk_check_menu_item_new_with_mnemonic(_("Start in _Insert Mode"));
-	gtk_container_add(GTK_CONTAINER(menu), menu_items.start_in_insert_item);
-	g_signal_connect((gpointer) menu_items.start_in_insert_item, "activate",
-		G_CALLBACK(on_start_in_insert), NULL);
-	gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(menu_items.start_in_insert_item), vi_get_start_in_insert());
-
 	menu_items.insert_for_dummies_item = gtk_check_menu_item_new_with_mnemonic(_("Insert Mode for _Dummies"));
 	gtk_container_add(GTK_CONTAINER(menu), menu_items.insert_for_dummies_item);
 	g_signal_connect((gpointer) menu_items.insert_for_dummies_item, "activate",
 		G_CALLBACK(on_insert_for_dummies), NULL);
 	gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(menu_items.insert_for_dummies_item), vi_get_insert_for_dummies());
-	keybindings_set_item_full(group, KB_START_IN_INSERT, 0, 0, "insert_for_dummies",
+	keybindings_set_item_full(group, KB_INSERT_FOR_DUMMIES, 0, 0, "insert_for_dummies",
 			_("Insert Mode for Dummies"), NULL, on_insert_for_dummies_kb, NULL, NULL);
+
+	menu_items.start_in_insert_item = gtk_check_menu_item_new_with_mnemonic(_("Start in _Insert Mode"));
+	gtk_container_add(GTK_CONTAINER(menu), menu_items.start_in_insert_item);
+	g_signal_connect((gpointer) menu_items.start_in_insert_item, "activate",
+		G_CALLBACK(on_start_in_insert), NULL);
+	gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(menu_items.start_in_insert_item), start_in_insert);
 
 	gtk_widget_show_all(menu_items.parent_item);
 
@@ -316,6 +318,7 @@ void plugin_init(GeanyData *data)
 	cb.on_save_all = on_save_all;
 	cb.on_quit = on_quit;
 	vi_init(geany_data->main_widgets->window, &cb);
+	vi_set_mode(start_in_insert ? VI_MODE_INSERT : VI_MODE_COMMAND);
 }
 
 

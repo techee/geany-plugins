@@ -50,8 +50,6 @@ struct
 
 	/* whether vi mode is enabled or disabled */
 	gboolean vim_enabled;
-	/* whether insert mode should be used by default when loading the plugin */
-	gboolean start_in_insert;
 	/* whether insert mode is normal Scintilla ("dummies mode") or normal vim insert mode */
 	gboolean insert_for_dummies;
 
@@ -417,14 +415,9 @@ gboolean vi_notify_sci(SCNotification *nt)
 
 void vi_set_enabled(gboolean enabled)
 {
+	ViMode mode = enabled ? VI_MODE_COMMAND : VI_MODE_INSERT;
 	state.vim_enabled = enabled;
-	if (enabled)
-		 vi_set_mode(vi_get_start_in_insert() ? VI_MODE_INSERT : VI_MODE_COMMAND);
-}
-
-void vi_set_start_in_insert(gboolean enabled)
-{
-	state.start_in_insert = enabled;
+	vi_set_mode(mode);
 }
 
 void vi_set_insert_for_dummies(gboolean enabled)
@@ -435,11 +428,6 @@ void vi_set_insert_for_dummies(gboolean enabled)
 gboolean vi_get_enabled(void)
 {
 	return state.vim_enabled;
-}
-
-gboolean vi_get_start_in_insert(void)
-{
-	return state.start_in_insert;
 }
 
 gboolean vi_get_insert_for_dummies(void)
@@ -486,8 +474,6 @@ void vi_init(GtkWidget *parent_window, ViCallback *cb)
 	g_signal_connect(vi_widgets.entry, "notify::text", G_CALLBACK(on_entry_text_notify), NULL);
 
 	gtk_widget_show_all(frame);
-
-	vi_set_mode(state.start_in_insert ? VI_MODE_INSERT : VI_MODE_COMMAND);
 }
 
 void vi_cleanup(void)
