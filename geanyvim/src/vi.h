@@ -54,7 +54,7 @@ ViMode vi_get_mode(void);
 gboolean vi_notify_sci(SCNotification *nt);
 gboolean vi_notify_key_press(GdkEventKey *event);
 
-void vi_init(GtkWidget *window, ViCallback *cb);
+void vi_init(GtkWidget *parent_window, ViCallback *cb);
 void vi_cleanup(void);
 
 void vi_set_active_sci(ScintillaObject *sci);

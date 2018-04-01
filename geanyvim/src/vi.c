@@ -29,13 +29,16 @@
 #include "utils.h"
 #include "cmdline.h"
 
+#define PROMPT_WIDTH 500
+
 struct
 {
 	GtkWidget *prompt;
 	GtkWidget *entry;
+	GtkWidget *parent_window;
 } vi_widgets =
 {
-	NULL, NULL
+	NULL, NULL, NULL
 };
 
 struct
@@ -76,11 +79,23 @@ ViMode vi_get_mode(void)
 	return state.vi_mode;
 }
 
+static void position_prompt(void)
+{
+	gint sci_x, sci_y;
+	gint sci_width = GTK_WIDGET(ctx.sci)->allocation.width;
+	gint prompt_width = PROMPT_WIDTH > sci_width ? sci_width : PROMPT_WIDTH;
+	gint prompt_height = GTK_WIDGET(vi_widgets.prompt)->allocation.height;
+	gdk_window_get_origin(gtk_widget_get_window(GTK_WIDGET(ctx.sci)), &sci_x, &sci_y);
+	gtk_window_resize(GTK_WINDOW(vi_widgets.prompt), prompt_width, prompt_height);
+	gtk_window_move(GTK_WINDOW(vi_widgets.prompt), sci_x + (sci_width - prompt_width) / 2, sci_y);
+}
+
 void vi_enter_cmdline_mode()
 {
 	KeyPress *kp = g_slist_nth_data(state.kpl, 0);
 	const gchar *val = kp_to_str(kp);
 	gtk_widget_show(vi_widgets.prompt);
+	position_prompt();
 	gtk_entry_set_text(GTK_ENTRY(vi_widgets.entry), val);
 	gtk_editable_set_position(GTK_EDITABLE(vi_widgets.entry), 1);
 }
@@ -439,17 +454,19 @@ static void init_cb(ViCallback *cb)
 	ctx.cb = cb;
 }
 
-void vi_init(GtkWidget *window, ViCallback *cb)
+void vi_init(GtkWidget *parent_window, ViCallback *cb)
 {
 	GtkWidget *frame;
 
 	init_cb(cb);
 
+	vi_widgets.parent_window = parent_window;
+
 	/* prompt */
 	vi_widgets.prompt = g_object_new(GTK_TYPE_WINDOW,
 			"decorated", FALSE,
-			"default-width", 500,
-			"transient-for", window,
+			"default-width", PROMPT_WIDTH,
+			"transient-for", parent_window,
 			"window-position", GTK_WIN_POS_CENTER_ON_PARENT,
 			"type-hint", GDK_WINDOW_TYPE_HINT_DIALOG,
 			"skip-taskbar-hint", TRUE,

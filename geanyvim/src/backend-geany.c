@@ -173,6 +173,17 @@ static void on_doc_activate(G_GNUC_UNUSED GObject *obj, GeanyDocument *doc,
 }
 
 
+static void on_doc_close(G_GNUC_UNUSED GObject * obj, GeanyDocument * doc,
+		G_GNUC_UNUSED gpointer user_data)
+{
+	g_return_if_fail(doc != NULL);
+	/* This makes sure we don't hold an invalid scintilla inside the plugin and
+	 * that vi_set_active_sci() doesn't crash in plugin_cleanup(). Fortunately
+	 * Geany calls document-close before document-activate in which case this
+	 * wouldn't work correctly. */
+	vi_set_active_sci(NULL);
+}
+
 static gboolean on_editor_notify(GObject *object, GeanyEditor *editor,
 		SCNotification *nt, gpointer data)
 {
@@ -195,6 +206,7 @@ static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer use
 PluginCallback plugin_callbacks[] = {
 	{"document-open", (GCallback) &on_doc_open, TRUE, NULL},
 	{"document-activate", (GCallback) &on_doc_activate, TRUE, NULL},
+	{"document-close", (GCallback) &on_doc_close, TRUE, NULL},
 	{"editor-notify", (GCallback) &on_editor_notify, TRUE, NULL},
 	{"key-press", (GCallback) &on_key_press, TRUE, NULL},
 	{NULL, NULL, FALSE, NULL}
@@ -309,8 +321,8 @@ void plugin_init(GeanyData *data)
 
 void plugin_cleanup(void)
 {
-	gtk_widget_destroy(menu_items.parent_item);
 	vi_cleanup();
+	gtk_widget_destroy(menu_items.parent_item);
 }
 
 
