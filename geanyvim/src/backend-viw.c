@@ -149,7 +149,7 @@ static void on_sci_notify_cb(G_GNUC_UNUSED GtkWidget *widget, G_GNUC_UNUSED gint
 }
 
 // stolen from Geany
-static void init_font(void)
+static void use_monospaced_font(void)
 {
 	gint style, size;
 	gchar *font_name;
@@ -199,8 +199,11 @@ int main(int argc, char **argv)
 	editor = scintilla_new();
 	sci = SCINTILLA(editor);
 	SSM(sci, SCI_SETCODEPAGE, SC_CP_UTF8, 0);
-	// just to use a monospaced font
-	init_font();
+	use_monospaced_font();
+	//show line number margin
+	SSM(sci, SCI_SETMARGINWIDTHN, 0, 40);
+	//hide symbol margin
+	SSM(sci, SCI_SETMARGINWIDTHN, 1, 0);
 	if (argc > 1)
 		open_file(argv[1]);
 
