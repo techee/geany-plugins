@@ -20,26 +20,12 @@
 # include "config.h"
 #endif
 
-#include <string.h>
 #include <gtk/gtk.h>
 #include <gdk/gdkkeysyms.h>
 
 #include "vi.h"
-#include "cmds.h"
 #include "utils.h"
-#include "cmdline.h"
-
-#define PROMPT_WIDTH 500
-
-struct
-{
-	GtkWidget *prompt;
-	GtkWidget *entry;
-	GtkWidget *parent_window;
-} vi_widgets =
-{
-	NULL, NULL, NULL
-};
+#include "ex_prompt.h"
 
 struct
 {
@@ -77,25 +63,12 @@ ViMode vi_get_mode(void)
 	return state.vi_mode;
 }
 
-static void position_prompt(void)
-{
-	gint sci_x, sci_y;
-	gint sci_width = GTK_WIDGET(ctx.sci)->allocation.width;
-	gint prompt_width = PROMPT_WIDTH > sci_width ? sci_width : PROMPT_WIDTH;
-	gint prompt_height = GTK_WIDGET(vi_widgets.prompt)->allocation.height;
-	gdk_window_get_origin(gtk_widget_get_window(GTK_WIDGET(ctx.sci)), &sci_x, &sci_y);
-	gtk_window_resize(GTK_WINDOW(vi_widgets.prompt), prompt_width, prompt_height);
-	gtk_window_move(GTK_WINDOW(vi_widgets.prompt), sci_x + (sci_width - prompt_width) / 2, sci_y);
-}
 
 void vi_enter_cmdline_mode()
 {
 	KeyPress *kp = g_slist_nth_data(state.kpl, 0);
 	const gchar *val = kp_to_str(kp);
-	gtk_widget_show(vi_widgets.prompt);
-	position_prompt();
-	gtk_entry_set_text(GTK_ENTRY(vi_widgets.entry), val);
-	gtk_editable_set_position(GTK_EDITABLE(vi_widgets.entry), 1);
+	ex_prompt_show(val);
 }
 
 
@@ -232,50 +205,6 @@ void vi_set_active_sci(ScintillaObject *sci)
 		vi_set_mode(state.vi_mode);
 }
 
-
-static void close_prompt()
-{
-	gtk_widget_hide(vi_widgets.prompt);
-}
-
-
-static gboolean on_prompt_key_press_event(GtkWidget *widget, GdkEventKey *event, gpointer dummy)
-{
-	switch (event->keyval)
-	{
-		case GDK_KEY_Escape:
-			close_prompt();
-			return TRUE;
-
-		case GDK_KEY_Tab:
-			/* avoid leaving the entry */
-			return TRUE;
-
-		case GDK_KEY_Return:
-		case GDK_KEY_KP_Enter:
-		case GDK_KEY_ISO_Enter:
-			perform_cmdline_cmd(&ctx, gtk_entry_get_text(GTK_ENTRY(vi_widgets.entry)));
-			close_prompt();
-			return TRUE;
-	}
-
-	return FALSE;
-}
-
-
-static void on_entry_text_notify(GObject *object, GParamSpec *pspec, gpointer dummy)
-{
-	const gchar* cmd = gtk_entry_get_text(GTK_ENTRY(vi_widgets.entry));
-
-	if (cmd == NULL || strlen(cmd) == 0)
-		close_prompt();
-}
-
-
-static void on_prompt_show(GtkWidget *widget, gpointer dummy)
-{
-	gtk_widget_grab_focus(vi_widgets.entry);
-}
 
 gboolean vi_notify_key_press(GdkEventKey *event)
 {
@@ -444,42 +373,14 @@ static void init_cb(ViCallback *cb)
 
 void vi_init(GtkWidget *parent_window, ViCallback *cb)
 {
-	GtkWidget *frame;
-
 	init_cb(cb);
-
-	vi_widgets.parent_window = parent_window;
-
-	/* prompt */
-	vi_widgets.prompt = g_object_new(GTK_TYPE_WINDOW,
-			"decorated", FALSE,
-			"default-width", PROMPT_WIDTH,
-			"transient-for", parent_window,
-			"window-position", GTK_WIN_POS_CENTER_ON_PARENT,
-			"type-hint", GDK_WINDOW_TYPE_HINT_DIALOG,
-			"skip-taskbar-hint", TRUE,
-			"skip-pager-hint", TRUE,
-			NULL);
-	g_signal_connect(vi_widgets.prompt, "focus-out-event", G_CALLBACK(close_prompt), NULL);
-	g_signal_connect(vi_widgets.prompt, "show", G_CALLBACK(on_prompt_show), NULL);
-	g_signal_connect(vi_widgets.prompt, "key-press-event", G_CALLBACK(on_prompt_key_press_event), NULL);
-
-	frame = gtk_frame_new(NULL);
-	gtk_frame_set_shadow_type(GTK_FRAME(frame), GTK_SHADOW_IN);
-	gtk_container_add(GTK_CONTAINER(vi_widgets.prompt), frame);
-  
-	vi_widgets.entry = gtk_entry_new();
-	gtk_container_add(GTK_CONTAINER(frame), vi_widgets.entry);
-
-	g_signal_connect(vi_widgets.entry, "notify::text", G_CALLBACK(on_entry_text_notify), NULL);
-
-	gtk_widget_show_all(frame);
+	ex_prompt_init(parent_window, &ctx);
 }
 
 void vi_cleanup(void)
 {
 	vi_set_active_sci(NULL);
-	gtk_widget_destroy(vi_widgets.prompt);
+	ex_prompt_cleanup();
 	g_free(ctx.search_text);
 	g_free(ctx.search_char);
 }

@@ -12,6 +12,8 @@ vi_srcs = \
 	cmds.c \
 	cmdline.h \
 	cmdline.c \
+	ex_prompt.h \
+	ex_prompt.c \
 	utils.h \
 	utils.c
 
