@@ -1098,8 +1098,7 @@ static void cmd_copy_char_from_below(CmdContext *c, CmdParams *p)
 
 static void cmd_paste_inserted_text(CmdContext *c, CmdParams *p)
 {
-	const gchar *txt = vi_get_inserted_text();
-	SSM(p->sci, SCI_ADDTEXT, strlen(txt), (sptr_t) txt);
+	SSM(p->sci, SCI_ADDTEXT, c->insert_buf_len, (sptr_t) c->insert_buf);
 }
 
 static void cmd_paste_inserted_text_leave(CmdContext *c, CmdParams *p)
@@ -1260,6 +1259,17 @@ static void cmd_select_less_inner(CmdContext *c, CmdParams *p)
 static void cmd_select_bracket_inner(CmdContext *c, CmdParams *p)
 {
 	select_brace(c, p, '[', ']', TRUE);
+}
+
+static void cmd_write_exit(CmdContext *c, CmdParams *p)
+{
+	if (c->cb->on_save(FALSE))
+		c->cb->on_quit(FALSE);
+}
+
+static void cmd_force_exit(CmdContext *c, CmdParams *p)
+{
+	c->cb->on_quit(TRUE);
 }
 
 static void cmd_nop(CmdContext *c, CmdParams *p)
@@ -1535,6 +1545,8 @@ CmdDef cmd_mode_cmds[] = {
 	{cmd_escape, GDK_KEY_Escape, 0, 0, 0, FALSE, FALSE},
 	{cmd_nop, GDK_KEY_Insert, 0, 0, 0, FALSE, FALSE},
 	{cmd_nop, GDK_KEY_KP_Insert, 0, 0, 0, FALSE, FALSE},
+	{cmd_write_exit, GDK_KEY_Z, GDK_KEY_Z, 0, 0, FALSE, FALSE},
+	{cmd_force_exit, GDK_KEY_Z, GDK_KEY_Q, 0, 0, FALSE, FALSE},
 
 	SEARCH_CMDS
 	MOVEMENT_CMDS

@@ -50,7 +50,6 @@ void vi_enter_cmdline_mode(void);
 void vi_set_mode(ViMode mode);
 ViMode vi_get_mode(void);
 
-const gchar *vi_get_inserted_text(void);
 
 gboolean vi_notify_sci(SCNotification *nt);
 gboolean vi_notify_key_press(GdkEventKey *event);

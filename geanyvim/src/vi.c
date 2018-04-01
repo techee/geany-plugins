@@ -86,12 +86,6 @@ void vi_enter_cmdline_mode()
 }
 
 
-const gchar *vi_get_inserted_text(void)
-{
-	ctx.insert_buf[ctx.insert_buf_len] = '\0';
-	return ctx.insert_buf;
-}
-
 static void repeat_insert(gboolean replace)
 {
 	ScintillaObject *sci = ctx.sci;
@@ -99,8 +93,6 @@ static void repeat_insert(gboolean replace)
 	if (sci && ctx.num > 1 && ctx.insert_buf_len > 0)
 	{
 		gint i;
-
-		ctx.insert_buf[ctx.insert_buf_len] = '\0';
 
 		SSM(sci, SCI_BEGINUNDOACTION, 0, 0);
 		for (i = 0; i < ctx.num - 1; i++)
@@ -129,6 +121,7 @@ static void repeat_insert(gboolean replace)
 	}
 	ctx.num = 1;
 	ctx.insert_buf_len = 0;
+	ctx.insert_buf[0] = '\0';
 	ctx.newline_insert = FALSE;
 }
 
@@ -194,6 +187,7 @@ void vi_set_mode(ViMode mode)
 			SSM(sci, SCI_SETCARETSTYLE, CARETSTYLE_LINE, 0);
 			SSM(sci, SCI_SETCARETPERIOD, state.default_caret_period, 0);
 			ctx.insert_buf_len = 0;
+			ctx.insert_buf[0] = '\0';
 			break;
 		case VI_MODE_VISUAL:
 		case VI_MODE_VISUAL_LINE:
@@ -348,6 +342,7 @@ gboolean vi_notify_sci(SCNotification *nt)
 				ctx.insert_buf[ctx.insert_buf_len] = buf[i];
 				ctx.insert_buf_len++;
 			}
+			ctx.insert_buf[ctx.insert_buf_len] = '\0';
 		}
 	}
 

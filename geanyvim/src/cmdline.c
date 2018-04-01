@@ -71,21 +71,28 @@ CmdlineCmdDef cmdline_cmds[] = {
 	{cmd_save, "w"},
 	{cmd_save, "write"},
 	{cmd_save, "up"},
+	{cmd_save, "update"},
 
 	{cmd_save_all, "wall"},
 
 	{cmd_quit, "q"},
 	{cmd_quit, "quit"},
+	{cmd_quit, "quita"},
+	{cmd_quit, "quitall"},
 	{cmd_quit, "qa"},
 	{cmd_quit, "qall"},
 	{cmd_quit, "cq"},
+	{cmd_quit, "cquit"},
 	
 	{cmd_save_quit, "wq"},
 	{cmd_save_quit, "x"},
 	{cmd_save_quit, "xit"},
+	{cmd_save_quit, "exi"},
+	{cmd_save_quit, "exit"},
 
 	{cmd_save_all_quit, "xa"},
 	{cmd_save_all_quit, "xall"},
+	{cmd_save_all_quit, "wqa"},
 	{cmd_save_all_quit, "wqall"},
 	{cmd_save_all_quit, "x"},
 	{cmd_save_all_quit, "xit"},

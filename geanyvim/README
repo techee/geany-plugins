@@ -2,6 +2,9 @@ TODO: description, FAQ, implementation limitations
 
 
 problems:
+- despite being mentioned below, none of the commands for quitting (:q, ZZ, etc.)
+  works because the corresponding function isn't in Geany yet - everything is
+  ready in the plugin though
 - goto next, previous word desn't work the same way as in vim
 - J (join lines) should remove whitespace between lines
 - TODO: & repeat last :s once replace is implemented
@@ -168,6 +171,8 @@ X             ["x]X           2  delete N characters before the cursor [into
                                    register x]
 Y             ["x]Y              yank N lines [into register x]; synonym for
                                    "yy"
+ZZ            ZZ                 store current file if modified, and exit
+ZQ            ZQ                 exit current file always
 ^             ^               1  cursor to the first CHAR of the line
 _             _               1  cursor to the first CHAR N - 1 lines lower
 a             a               2  append text after the cursor N times
@@ -332,3 +337,25 @@ v_v           v                  make Visual mode characterwise or stop
 v_x           x               2  delete the highlighted area
 v_y           y                  yank the highlighted area
 v_~           ~               2  swap case for the highlighted area
+
+==============================================================================
+5. EX commands                                  ex-cmd-index :index
+
+This is a brief but complete listing of all the ":" commands, without
+mentioning any arguments.  The optional part of the command name is inside [].
+The commands are sorted on the non-optional part of their name.
+
+tag           command         action 
+------------------------------------------------------------------------------
+:cquit        :cq[uit]        quit Vim with an error code
+:exit         :exi[t]         same as ":xit"
+:quit         :q[uit]         quit current window (when one window quit Vim)
+:quitall      :quita[ll]      quit Vim
+:qall         :qa[ll]         quit Vim
+:update       :up[date]       write buffer if modified
+:write        :w[rite]        write to a file
+:wall         :wa[ll]         write all (changed) buffers
+:wq           :wq             write to a file and quit window or Vim
+:wqall        :wqa[ll]        write all changed buffers and quit Vim
+:xit          :x[it]          write if buffer changed and quit window or Vim
+:xall         :xa[ll]         same as ":wqall"
