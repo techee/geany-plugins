@@ -241,7 +241,7 @@ static void cmd_mode_insert_clear_right(CmdContext *c, CmdParams *p)
 
 static void cmd_mode_insert_delete_char_yank(CmdContext *c, CmdParams *p)
 {
-	gint end = REL(p->sci, p->pos, p->num);
+	gint end = NTH(p->sci, p->pos, p->num);
 	end = end > p->line_end_pos ? p->line_end_pos : end;
 	c->line_copy = FALSE;
 	SSM(p->sci, SCI_COPYRANGE, p->pos, end);
@@ -519,7 +519,7 @@ static void cmd_search_current_prev(CmdContext *c, CmdParams *p)
 
 static void delete_char(CmdContext *c, CmdParams *p, gboolean yank)
 {
-	gint end_pos = REL(p->sci, p->pos, p->num);
+	gint end_pos = NTH(p->sci, p->pos, p->num);
 	end_pos = end_pos > p->line_end_pos ? p->line_end_pos : end_pos;
 	if (yank)
 	{
@@ -541,7 +541,7 @@ static void cmd_delete_char_yank(CmdContext *c, CmdParams *p)
 
 static void delete_char_back(CmdContext *c, CmdParams *p, gboolean yank)
 {
-	gint start_pos = REL(p->sci, p->pos, -p->num);
+	gint start_pos = NTH(p->sci, p->pos, -p->num);
 	start_pos = start_pos < p->line_start_pos ? p->line_start_pos : start_pos;
 	if (yank)
 	{

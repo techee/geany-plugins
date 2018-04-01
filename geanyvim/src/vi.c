@@ -206,6 +206,74 @@ void vi_set_active_sci(ScintillaObject *sci)
 }
 
 
+static gboolean is_printable(GdkEventKey *ev)
+{
+	guint mask = GDK_MODIFIER_MASK & ~(GDK_SHIFT_MASK | GDK_LOCK_MASK);
+
+	if (ev->state & mask)
+		return FALSE;
+
+	return g_unichar_isprint(gdk_keyval_to_unicode(ev->keyval));
+}
+
+
+static KeyPress *kp_from_event_key(GdkEventKey *ev)
+{
+	guint mask = GDK_MODIFIER_MASK & ~(GDK_SHIFT_MASK | GDK_LOCK_MASK | GDK_CONTROL_MASK);
+	KeyPress *kp;
+
+	if (ev->state & mask)
+		return NULL;
+
+	switch (ev->keyval)
+	{
+		case GDK_KEY_Shift_L:
+		case GDK_KEY_Shift_R:
+		case GDK_KEY_Control_L: 
+		case GDK_KEY_Control_R:
+		case GDK_KEY_Caps_Lock:
+		case GDK_KEY_Shift_Lock:
+		case GDK_KEY_Meta_L:
+		case GDK_KEY_Meta_R:
+		case GDK_KEY_Alt_L:
+		case GDK_KEY_Alt_R:
+		case GDK_KEY_Super_L:
+		case GDK_KEY_Super_R:
+		case GDK_KEY_Hyper_L:
+		case GDK_KEY_Hyper_R:
+			return NULL;
+	}
+
+	kp = g_new0(KeyPress, 1);
+	kp->key = ev->keyval;
+	/* We are interested only in Ctrl presses - Alt is not used in Vim and
+	 * shift is included in letter capitalisation implicitly. The only case
+	 * we are interested in shift is for insert mode shift+arrow keystrokes. */
+	switch (ev->keyval)
+	{
+		case GDK_KEY_Left:
+		case GDK_KEY_KP_Left:
+		case GDK_KEY_leftarrow:
+		case GDK_KEY_Up:
+		case GDK_KEY_KP_Up:
+		case GDK_KEY_uparrow:
+		case GDK_KEY_Right:
+		case GDK_KEY_KP_Right:
+		case GDK_KEY_rightarrow:
+		case GDK_KEY_Down:
+		case GDK_KEY_KP_Down:
+		case GDK_KEY_downarrow:
+			kp->modif = ev->state & (GDK_SHIFT_MASK | GDK_CONTROL_MASK);
+			break;
+		default:
+			kp->modif = ev->state & GDK_CONTROL_MASK;
+			break;
+	}
+
+	return kp;
+}
+
+
 gboolean vi_notify_key_press(GdkEventKey *event)
 {
 	ScintillaObject *sci = ctx.sci;
