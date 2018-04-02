@@ -408,10 +408,9 @@ static void cmd_undo(CmdContext *c, CmdParams *p)
 	gint i;
 	for (i = 0; i < p->num; i++)
 	{
-		if (SSM(p->sci, SCI_CANUNDO, 0, 0))
-			SSM(p->sci, SCI_UNDO, 0, 0);
-		else
+		if (!SSM(p->sci, SCI_CANUNDO, 0, 0))
 			break;
+		SSM(p->sci, SCI_UNDO, 0, 0);
 	}
 }
 
@@ -420,10 +419,9 @@ static void cmd_redo(CmdContext *c, CmdParams *p)
 	gint i;
 	for (i = 0; i < p->num; i++)
 	{
-		if (SSM(p->sci, SCI_CANREDO, 0, 0))
-			SSM(p->sci, SCI_REDO, 0, 0);
-		else
+		if (!SSM(p->sci, SCI_CANREDO, 0, 0))
 			break;
+		SSM(p->sci, SCI_REDO, 0, 0);
 	}
 }
 
@@ -581,16 +579,14 @@ static void cmd_join_lines(CmdContext *c, CmdParams *p)
 	gint next_line = get_line_number_rel(p, p->num);
 	gint next_line_pos = SSM(p->sci, SCI_POSITIONFROMLINE, next_line, 0);
 
-	SSM(p->sci, SCI_SETTARGETSTART, p->pos, 0);
-	SSM(p->sci, SCI_SETTARGETEND, next_line_pos, 0);
+	SSM(p->sci, SCI_SETTARGETRANGE, p->pos, next_line_pos);
 	SSM(p->sci, SCI_LINESJOIN, 0, 0);
 }
 
 static void cmd_join_lines_vis(CmdContext *c, CmdParams *p)
 {
 	//TODO: remove whitespace between lines
-	SSM(p->sci, SCI_SETTARGETSTART, p->sel_start, 0);
-	SSM(p->sci, SCI_SETTARGETEND, p->sel_start + p->sel_len, 0);
+	SSM(p->sci, SCI_SETTARGETRANGE, p->sel_start, p->sel_start + p->sel_len);
 	SSM(p->sci, SCI_LINESJOIN, 0, 0);
 }
 
@@ -749,8 +745,7 @@ static void replace_char(ScintillaObject *sci, gint pos, gint num, gint line,
 	}
 	*repl = '\0';
 
-	SSM(sci, SCI_SETTARGETSTART, pos, 0);
-	SSM(sci, SCI_SETTARGETEND, last_pos, 0);
+	SSM(sci, SCI_SETTARGETRANGE, pos, last_pos);
 	SSM(sci, SCI_REPLACETARGET, -1, (sptr_t)replacement);
 
 	if (line != -1)
