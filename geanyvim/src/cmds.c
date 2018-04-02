@@ -737,40 +737,56 @@ static void change_case(ScintillaObject *sci, gint pos, gint num, gint line,
 	gboolean force_upper, gboolean force_lower)
 {
 	gint i;
+	gint max_num;
+	gint last_pos;
+	struct Sci_TextRange tr;
+	gchar *original, *replacement, *repl, *orig;
+
+	max_num = DIFF(sci, pos, SSM(sci, SCI_GETLINEENDPOSITION, line, 0));
+	if (line != -1 && num > max_num)
+		num = max_num;
+
+	max_num = DIFF(sci, pos, SSM(sci, SCI_GETLENGTH, 0, 0));
+	if (num > max_num)
+		num = max_num;
+
+	if (num <= 0)
+		return;
+
+	last_pos = NTH(sci, pos, num);
+	original = g_malloc(last_pos - pos + 1);
+	replacement = g_malloc(6 * num + 1);
+	repl = replacement;
+	orig = original;
+
+	tr.chrg.cpMin = pos;
+	tr.chrg.cpMax = last_pos;
+	tr.lpstrText = orig;
+	SSM(sci, SCI_GETTEXTRANGE, 0, (sptr_t)&tr);
+
 	for (i = 0; i < num; i++)
 	{
-		gint line_end_pos = SSM(sci, SCI_GETLINEENDPOSITION, line, 0);
-		gint next_pos = NEXT(sci, pos);
-		struct Sci_TextRange tr;
-		gchar *uppercase, *lowercase, *replacement;
-		gchar buf[MAX_CHAR_SIZE];
-		gunichar c;
+		gunichar c = g_utf8_get_char(orig);
+		if ((force_upper || g_unichar_islower(c)) && !force_lower)
+			c = g_unichar_toupper(c);
+		else if (force_lower || g_unichar_isupper(c))
+			c = g_unichar_tolower(c);
 
-		if (pos == next_pos || (line != -1 && next_pos > line_end_pos))
-			break;
+		repl += g_unichar_to_utf8(c, repl);
+		orig = g_utf8_find_next_char(orig, NULL);
 
-		tr.chrg.cpMin = pos;
-		tr.chrg.cpMax = next_pos;
-		tr.lpstrText = buf;
-		SSM(sci, SCI_GETTEXTRANGE, 0, (sptr_t)&tr);
-
-		c = g_utf8_get_char(buf);
-		uppercase = g_utf8_strup(buf, -1);
-		lowercase = g_utf8_strdown(buf, -1);
-		replacement = g_unichar_islower(c) ? uppercase : lowercase;
-		replacement = force_upper ? uppercase : replacement;
-		replacement = force_lower ? lowercase : replacement;
-
-		SSM(sci, SCI_SETTARGETSTART, pos, 0);
-		SSM(sci, SCI_SETTARGETEND, next_pos, 0);
-		SSM(sci, SCI_REPLACETARGET, -1, (sptr_t)replacement);
-
-		// the next position has changed because of the replacement - call NEXT() again
-		pos = NEXT(sci, pos);
-		SET_POS(sci, pos, FALSE);
-		g_free(uppercase);
-		g_free(lowercase);
 	}
+	*repl = '\0';
+
+	SSM(sci, SCI_SETTARGETSTART, pos, 0);
+	SSM(sci, SCI_SETTARGETEND, last_pos, 0);
+	SSM(sci, SCI_REPLACETARGET, -1, (sptr_t)replacement);
+
+	if (line != -1)
+		SET_POS(sci, last_pos, FALSE);
+
+	g_free(original);
+	g_free(replacement);
 }
 
 static void switch_case(CmdContext *c, CmdParams *p,

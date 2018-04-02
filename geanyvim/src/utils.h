@@ -28,6 +28,7 @@
 #define NEXT(s, pos) scintilla_send_message((s), SCI_POSITIONAFTER, (pos), 0)
 #define PREV(s, pos) scintilla_send_message((s), SCI_POSITIONBEFORE, (pos), 0)
 #define NTH(s, pos, rel) scintilla_send_message((s), SCI_POSITIONRELATIVE, (pos), (rel))
+#define DIFF(s, start, end) scintilla_send_message((s), SCI_COUNTCHARACTERS, (start), (end))
 
 #define SET_POS(s, pos, scr) set_current_position((s), (pos), (scr))
 #define GET_CUR_LINE(s) scintilla_send_message((s), SCI_LINEFROMPOSITION, \
