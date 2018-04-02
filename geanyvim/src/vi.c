@@ -391,19 +391,13 @@ gboolean vi_notify_sci(SCNotification *nt)
 		}
 	}
 
-	//if (nt->nmhdr.code == SCN_MODIFIED && nt->modificationType & SC_MOD_CONTAINER)
-	//{
-	//	printf("token: %d\n", nt->token);
-	//	SET_POS(sci, nt->token, TRUE);
-	//}
-
-	//if (SSM(sci, SCI_GETSELTEXT, 0, 0) > 0)
-	//	return FALSE;
-
-	/* this makes sure that when we click behind the end of line in command mode,
-	 * the cursor is not placed BEHIND the last character but ON the last character */
-	//if (nt->nmhdr.code == SCN_UPDATEUI && nt->updated == SC_UPDATE_SELECTION)
-	//	clamp_cursor_pos(sci);
+	/* This makes sure that when we click behind the end of line in command mode,
+	 * the cursor is not placed BEHIND the last character but ON the last character.
+	 * We want to ignore this when doing selection with mouse as it breaks things. */
+	if (VI_IS_COMMAND(state.vi_mode) &&
+		nt->nmhdr.code == SCN_UPDATEUI && nt->updated == SC_UPDATE_SELECTION &&
+		SSM(sci, SCI_GETSELECTIONEND, 0, 0) - SSM(sci, SCI_GETSELECTIONSTART, 0, 0) == 0)
+		clamp_cursor_pos(sci);
 
 	return FALSE;
 }

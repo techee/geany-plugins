@@ -299,7 +299,7 @@ static void scroll_to_line(CmdParams *p, gint offset, gboolean nonempty)
 	else
 	{
 		gint pos = SSM(p->sci, SCI_FINDCOLUMN, line, column);
-		SET_POS(p->sci, pos, FALSE);
+		SET_POS_NOX(p->sci, pos, FALSE);
 	}
 	SSM(p->sci, SCI_SETFIRSTVISIBLELINE, line + offset, 0);
 }
@@ -352,10 +352,8 @@ static void cmd_goto_left(CmdContext *c, CmdParams *p)
 	gint start_pos = p->line_start_pos;
 	gint pos = p->pos;
 	for (i = 0; i < p->num && pos > start_pos; i++)
-	{
 		pos = PREV(p->sci, pos);
-		SET_POS(p->sci, pos, FALSE);
-	}
+	SET_POS(p->sci, pos, TRUE);
 }
 
 static void cmd_goto_right(CmdContext *c, CmdParams *p)
@@ -363,17 +361,26 @@ static void cmd_goto_right(CmdContext *c, CmdParams *p)
 	gint i;
 	gint pos = p->pos;
 	for (i = 0; i < p->num && pos < p->line_end_pos; i++)
-	{
 		pos = NEXT(p->sci, pos);
-		SET_POS(p->sci, pos, FALSE);
-	}
+	SET_POS(p->sci, pos, TRUE);
 }
 
 static void cmd_goto_up(CmdContext *c, CmdParams *p)
 {
-	gint i;
-	for (i = 0; i < p->num; i++)
-		SSM(p->sci, SCI_LINEUP, 0, 0);
+	gint one_below, pos;
+
+	if (p->line == 0)
+		return;
+
+	/* Calling SCI_LINEUP in a loop for num lines leads to visible slow scrolling.
+	 * On the other hand, SCI_LINEUP preserves the value of SCI_CHOOSECARETX
+	 * we want to keep - perform jump to previous line and one final SCI_LINEUP
+	 * which recovers SCI_CHOOSECARETX for us. */
+	one_below = p->line - p->num + 1;
+	one_below = one_below > 0 ? one_below : 1;
+	pos = SSM(p->sci, SCI_POSITIONFROMLINE, one_below, 0);
+	SET_POS_NOX(p->sci, pos, FALSE);
+	SSM(p->sci, SCI_LINEUP, 0, 0);
 }
 
 static void cmd_goto_up_nonempty(CmdContext *c, CmdParams *p)
@@ -382,24 +389,37 @@ static void cmd_goto_up_nonempty(CmdContext *c, CmdParams *p)
 	goto_nonempty(p->sci, GET_CUR_LINE(p->sci), TRUE);
 }
 
+static void goto_down(CmdParams *p, gint num)
+{
+	gint one_above, pos;
+	gint last_line = p->line_num - 1;
+
+	if (p->line == last_line)
+		return;
+
+	/* see cmd_goto_up() for explanation */
+	one_above = p->line + num - 1;
+	one_above = one_above < last_line ? one_above : last_line - 1;
+	pos = SSM(p->sci, SCI_POSITIONFROMLINE, one_above, 0);
+	SET_POS_NOX(p->sci, pos, FALSE);
+	SSM(p->sci, SCI_LINEDOWN, 0, 0);
+}
+
 static void cmd_goto_down(CmdContext *c, CmdParams *p)
 {
-	gint i;
-	for (i = 0; i < p->num; i++)
-		SSM(p->sci, SCI_LINEDOWN, 0, 0);
+	goto_down(p, p->num);
 }
 
 static void cmd_goto_down_nonempty(CmdContext *c, CmdParams *p)
 {
-	cmd_goto_down(c, p);
+	goto_down(p, p->num);
 	goto_nonempty(p->sci, GET_CUR_LINE(p->sci), TRUE);
 }
 
 static void cmd_goto_down_one_less_nonempty(CmdContext *c, CmdParams *p)
 {
-	gint i;
-	for (i = 0; i < p->num - 1; i++)
-		SSM(p->sci, SCI_LINEDOWN, 0, 0);
+	if (p->num > 1)
+		goto_down(p, p->num - 1);
 	goto_nonempty(p->sci, GET_CUR_LINE(p->sci), TRUE);
 }
 
@@ -635,16 +655,9 @@ static void cmd_goto_line_start_nonempty(CmdContext *c, CmdParams *p)
 
 static void cmd_goto_line_end(CmdContext *c, CmdParams *p)
 {
-	gint i;
-	for (i = 0; i < p->num; i++)
-	{
-		SSM(p->sci, SCI_LINEEND, 0, 0);
-		if (i != p->num - 1)
-		{
-			gint pos = NEXT(p->sci, SSM(p->sci, SCI_GETCURRENTPOS, 0, 0));
-			SET_POS(p->sci, pos, TRUE);
-		}
-	}
+	if (p->num > 1)
+		goto_down(p, p->num - 1);
+	SSM(p->sci, SCI_LINEEND, 0, 0);
 }
 
 static void cmd_goto_column(CmdContext *c, CmdParams *p)

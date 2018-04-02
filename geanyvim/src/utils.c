@@ -147,7 +147,7 @@ void clamp_cursor_pos(ScintillaObject *sci)
 	gint start_pos = SSM(sci, SCI_POSITIONFROMLINE, line, 0);
 	gint end_pos = SSM(sci, SCI_GETLINEENDPOSITION, line, 0);
 	if (pos == end_pos && pos != start_pos)
-		SSM(sci, SCI_CHARLEFT, 0, 0);
+		SET_POS_NOX(sci, pos-1, FALSE);
 }
 
 static gchar *get_contents_range(ScintillaObject *sci, gint start, gint end)
@@ -237,8 +237,8 @@ void perform_search(CmdContext *c, gint num, gboolean invert)
 		SET_POS(c->sci, pos, TRUE);
 }
 
-// stolen from Geany
-void set_current_position(ScintillaObject *sci, gint position, gboolean scroll_to_caret)
+void set_current_position(ScintillaObject *sci, gint position, gboolean scroll_to_caret,
+	gboolean caretx)
 {
 	if (scroll_to_caret)
 		SSM(sci, SCI_GOTOPOS, (uptr_t) position, 0);
@@ -247,5 +247,6 @@ void set_current_position(ScintillaObject *sci, gint position, gboolean scroll_t
 		SSM(sci, SCI_SETCURRENTPOS, (uptr_t) position, 0);
 		SSM(sci, SCI_SETANCHOR, (uptr_t) position, 0); /* to avoid creation of a selection */
 	}
-	SSM(sci, SCI_CHOOSECARETX, 0, 0);
+	if (caretx)
+		SSM(sci, SCI_CHOOSECARETX, 0, 0);
 }

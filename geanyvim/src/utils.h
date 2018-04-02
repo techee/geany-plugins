@@ -30,7 +30,8 @@
 #define NTH(s, pos, rel) scintilla_send_message((s), SCI_POSITIONRELATIVE, (pos), (rel))
 #define DIFF(s, start, end) scintilla_send_message((s), SCI_COUNTCHARACTERS, (start), (end))
 
-#define SET_POS(s, pos, scr) set_current_position((s), (pos), (scr))
+#define SET_POS(s, pos, scr) set_current_position((s), (pos), (scr), TRUE)
+#define SET_POS_NOX(s, pos, scr) set_current_position((s), (pos), (scr), FALSE)
 #define GET_CUR_LINE(s) scintilla_send_message((s), SCI_LINEFROMPOSITION, \
 	SSM((s), SCI_GETCURRENTPOS, 0, 0), 0)
 
@@ -47,6 +48,7 @@ gchar *get_current_word(ScintillaObject *sci);
 void clamp_cursor_pos(ScintillaObject *sci);
 void perform_search(CmdContext *c, gint num, gboolean invert);
 
-void set_current_position(ScintillaObject *sci, gint position, gboolean scroll_to_caret);
+void set_current_position(ScintillaObject *sci, gint position, gboolean scroll_to_caret,
+	gboolean caretx);
 
 #endif
