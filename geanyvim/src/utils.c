@@ -94,7 +94,7 @@ void kpl_printf(GSList *kpl)
 	while (pos != NULL)
 	{
 		KeyPress *kp = pos->data;
-		printf("%s<%d>", kp_to_str(kp), kp->key);
+		printf("<%d>%s", kp_to_str(kp), kp->key);
 		pos = g_slist_next(pos);
 	}
 	printf("\n");

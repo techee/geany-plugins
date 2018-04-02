@@ -169,13 +169,13 @@ static void goto_nonempty(ScintillaObject *sci, gint line, gboolean scroll)
 
 static void cmd_mode_insert_line_start_nonempty(CmdContext *c, CmdParams *p)
 {
-	goto_nonempty(p->sci, p->line, FALSE);
+	goto_nonempty(p->sci, p->line, TRUE);
 	cmd_mode_insert(c, p);
 }
 
 static void cmd_mode_insert_line_start(CmdContext *c, CmdParams *p)
 {
-	SET_POS(p->sci, p->line_start_pos, FALSE);
+	SET_POS(p->sci, p->line_start_pos, TRUE);
 	cmd_mode_insert(c, p);
 }
 
@@ -650,7 +650,7 @@ static void cmd_goto_line_start(CmdContext *c, CmdParams *p)
 
 static void cmd_goto_line_start_nonempty(CmdContext *c, CmdParams *p)
 {
-	goto_nonempty(p->sci, p->line, FALSE);
+	goto_nonempty(p->sci, p->line, TRUE);
 }
 
 static void cmd_goto_line_end(CmdContext *c, CmdParams *p)
@@ -762,7 +762,7 @@ static void replace_char(ScintillaObject *sci, gint pos, gint num, gint line,
 	SSM(sci, SCI_REPLACETARGET, -1, (sptr_t)replacement);
 
 	if (line != -1)
-		SET_POS(sci, last_pos, FALSE);
+		SET_POS(sci, last_pos, TRUE);
 
 	g_free(original);
 	g_free(replacement);
@@ -851,7 +851,7 @@ static void cmd_find_char(CmdContext *c, CmdParams *p, gboolean invert)
 			pos = PREV(p->sci, pos);
 		else if (c->search_char[0] == 'T')
 			pos = NEXT(p->sci, pos);
-		SET_POS(p->sci, pos, FALSE);
+		SET_POS(p->sci, pos, TRUE);
 	}
 }
 
@@ -958,8 +958,8 @@ static void cmd_range_copy(CmdContext *c, CmdParams *p)
 		sel_end_pos = p->line_end_pos;
 	c->line_copy = FALSE;
 	SSM(p->sci, SCI_COPYRANGE, p->sel_start, sel_end_pos);
-	
-	SSM(p->sci, SCI_SETCURRENTPOS, p->sel_start, 0);
+
+	SET_POS(p->sci, p->sel_start, TRUE);
 	vi_set_mode(VI_MODE_COMMAND);
 }
 
@@ -1018,7 +1018,7 @@ static void cmd_swap_anchor(CmdContext *c, CmdParams *p)
 {
 	gint anchor = c->sel_anchor;
 	c->sel_anchor = p->pos;
-	SET_POS(p->sci, anchor, FALSE);
+	SET_POS(p->sci, anchor, TRUE);
 }
 
 static void cmd_escape(CmdContext *c, CmdParams *p)
@@ -1056,7 +1056,7 @@ static void indent_ins(CmdContext *c, CmdParams *p, gboolean indent)
 	SSM(p->sci, SCI_HOME, 0, 0);
 	SSM(p->sci, indent ? SCI_TAB : SCI_BACKTAB, 0, 0);
 	delta = SSM(p->sci, SCI_GETLINEENDPOSITION, p->line, 0) - p->line_end_pos;
-	SET_POS(p->sci, p->pos + delta, FALSE);
+	SET_POS(p->sci, p->pos + delta, TRUE);
 }
 
 static void cmd_indent_ins(CmdContext *c, CmdParams *p)
@@ -1089,7 +1089,7 @@ static void cmd_copy_char(CmdContext *c, CmdParams *p, gboolean above)
 
 			SSM(p->sci, SCI_GETTEXTRANGE, 0, (sptr_t)&tr);
 			SSM(p->sci, SCI_INSERTTEXT, p->pos, (sptr_t)txt);
-			SET_POS(p->sci, NEXT(p->sci, p->pos), FALSE);
+			SET_POS(p->sci, NEXT(p->sci, p->pos), TRUE);
 		}
 	}
 }
