@@ -693,48 +693,8 @@ static void cmd_goto_screen_bottom(CmdContext *c, CmdParams *p)
 	goto_nonempty(p, line < top ? top : line, FALSE);
 }
 
-static void replace_char(CmdParams *p, gint pos, gint num, gint line)
-{
-	const gchar *repl = kp_to_str(p->last_kp);
-	gint i;
-
-	for (i = 0; i < num; i++)
-	{
-		gint next_pos = NEXT(p->sci, pos);
-		gint curr_line = SSM(p->sci, SCI_LINEFROMPOSITION, pos, 0);
-		gint line_end_pos = SSM(p->sci, SCI_GETLINEENDPOSITION, curr_line, 0);
-
-		if (line != -1 && pos == line_end_pos)
-			break;
-
-		if (pos != line_end_pos) //skip newline replacement
-		{
-			SSM(p->sci, SCI_SETTARGETSTART, pos, 0);
-			SSM(p->sci, SCI_SETTARGETEND, next_pos, 0);
-			SSM(p->sci, SCI_REPLACETARGET, -1, (sptr_t)repl);
-		}
-
-		// the next position has changed because of the replacement - call NEXT() again
-		pos = NEXT(p->sci, pos);
-	}
-	SET_POS(p->sci, PREV(p->sci, pos), FALSE);
-}
-
-static void cmd_replace_char(CmdContext *c, CmdParams *p)
-{
-	replace_char(p, p->pos, p->num, p->line);
-}
-
-static void cmd_replace_char_vis(CmdContext *c, CmdParams *p)
-{
-	gint num = SSM(p->sci, SCI_COUNTCHARACTERS, p->sel_start, p->sel_start + p->sel_len);
-	replace_char(p, p->sel_start, num, -1);
-	SET_POS(p->sci, p->sel_start, FALSE);
-	vi_set_mode(VI_MODE_COMMAND);
-}
-
-static void change_case(ScintillaObject *sci, gint pos, gint num, gint line,
-	gboolean force_upper, gboolean force_lower)
+static void replace_char(ScintillaObject *sci, gint pos, gint num, gint line,
+	gboolean force_upper, gboolean force_lower, gunichar repl_char)
 {
 	gint i;
 	gint max_num;
@@ -767,10 +727,21 @@ static void change_case(ScintillaObject *sci, gint pos, gint num, gint line,
 	for (i = 0; i < num; i++)
 	{
 		gunichar c = g_utf8_get_char(orig);
-		if ((force_upper || g_unichar_islower(c)) && !force_lower)
-			c = g_unichar_toupper(c);
-		else if (force_lower || g_unichar_isupper(c))
-			c = g_unichar_tolower(c);
+
+		if (repl_char == 0)
+		{
+			if ((force_upper || g_unichar_islower(c)) && !force_lower)
+				c = g_unichar_toupper(c);
+			else if (force_lower || g_unichar_isupper(c))
+				c = g_unichar_tolower(c);
+		}
+		else
+		{
+			GUnicodeBreakType t = g_unichar_break_type(c);
+			if (t != G_UNICODE_BREAK_CARRIAGE_RETURN  &&
+				t != G_UNICODE_BREAK_LINE_FEED)
+				c = repl_char;
+		}
 
 		repl += g_unichar_to_utf8(c, repl);
 		orig = g_utf8_find_next_char(orig, NULL);
@@ -789,17 +760,31 @@ static void change_case(ScintillaObject *sci, gint pos, gint num, gint line,
 	g_free(replacement);
 }
 
+static void cmd_replace_char(CmdContext *c, CmdParams *p)
+{
+	gunichar repl = gdk_keyval_to_unicode(p->last_kp->key);
+	replace_char(p->sci, p->pos, p->num, p->line, FALSE, FALSE, repl);
+}
+
+static void cmd_replace_char_vis(CmdContext *c, CmdParams *p)
+{
+	gint num = DIFF(p->sci, p->sel_start, p->sel_start + p->sel_len);
+	gunichar repl = gdk_keyval_to_unicode(p->last_kp->key);
+	replace_char(p->sci, p->sel_start, num, -1, FALSE, FALSE, repl);
+	vi_set_mode(VI_MODE_COMMAND);
+}
+
 static void switch_case(CmdContext *c, CmdParams *p,
 	gboolean force_upper, gboolean force_lower)
 {
 	if (VI_IS_VISUAL(vi_get_mode()) || p->sel_len > 0)
 	{
-		gint num = SSM(p->sci, SCI_COUNTCHARACTERS, p->sel_start, p->sel_start + p->sel_len);
-		change_case(p->sci, p->sel_start, num, -1, force_upper, force_lower);
+		gint num = DIFF(p->sci, p->sel_start, p->sel_start + p->sel_len);
+		replace_char(p->sci, p->sel_start, num, -1, force_upper, force_lower, 0);
 		vi_set_mode(VI_MODE_COMMAND);
 	}
 	else
-		change_case(p->sci, p->pos, p->num, p->line, force_upper, force_lower);
+		replace_char(p->sci, p->pos, p->num, p->line, force_upper, force_lower, 0);
 }
 
 static void cmd_switch_case(CmdContext *c, CmdParams *p)
