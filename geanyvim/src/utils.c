@@ -180,20 +180,22 @@ gchar *get_current_word(ScintillaObject *sci)
 	return get_contents_range(sci, start, end);
 }
 
-gint perform_search(CmdContext *c, gint num, gboolean invert)
+gint perform_search(ScintillaObject *sci, const gchar *search_text,
+	gint num, gboolean invert)
 {
 	struct Sci_TextToFind ttf;
-	gint pos = SSM(c->sci, SCI_GETCURRENTPOS, 0, 0);
-	gint len = SSM(c->sci, SCI_GETLENGTH, 0, 0);
+	gint flags = SCFIND_REGEXP | SCFIND_CXX11REGEX;
+	gint pos = SSM(sci, SCI_GETCURRENTPOS, 0, 0);
+	gint len = SSM(sci, SCI_GETLENGTH, 0, 0);
 	gboolean forward;
 	gint i;
 
-	if (!c->search_text)
+	if (!search_text)
 		return -1;
 
-	forward = c->search_text[0] == '/';
+	forward = search_text[0] == '/';
 	forward = !forward != !invert;
-	ttf.lpstrText = c->search_text + 1;
+	ttf.lpstrText = search_text + 1;
 
 	for (i = 0; i < num; i++)
 	{
@@ -210,7 +212,7 @@ gint perform_search(CmdContext *c, gint num, gboolean invert)
 			ttf.chrg.cpMax = 0;
 		}
 
-		new_pos = SSM(c->sci, SCI_FINDTEXT, 0, (sptr_t)&ttf);
+		new_pos = SSM(sci, SCI_FINDTEXT, flags, (sptr_t)&ttf);
 		if (new_pos < 0)
 		{
 			/* wrap */
@@ -225,7 +227,7 @@ gint perform_search(CmdContext *c, gint num, gboolean invert)
 				ttf.chrg.cpMax = pos;
 			}
 
-			new_pos = SSM(c->sci, SCI_FINDTEXT, 0, (sptr_t)&ttf);
+			new_pos = SSM(sci, SCI_FINDTEXT, flags, (sptr_t)&ttf);
 		}
 
 		if (new_pos < 0)

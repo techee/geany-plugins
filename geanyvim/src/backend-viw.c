@@ -179,6 +179,7 @@ static void open_file(const gchar *name)
 		SSM(sci, SCI_ADDTEXT, len, (sptr_t)buf);
 		SSM(sci, SCI_GOTOPOS, 0, 0);
 		SSM(sci, SCI_SETSAVEPOINT, 0, 0);
+		SSM(sci, SCI_EMPTYUNDOBUFFER, 0, 0);
 		g_free(buf);
 	}
 	else

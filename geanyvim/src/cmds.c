@@ -498,7 +498,7 @@ static void cmd_search_next(CmdContext *c, CmdParams *p)
 	if (p->last_kp->key == GDK_KEY_N)
 		invert = TRUE;
 
-	pos = perform_search(c, p->num, invert);
+	pos = perform_search(p->sci, c->search_text, p->num, invert);
 	if (pos >= 0)
 		SET_POS(c->sci, pos, TRUE);
 
@@ -519,7 +519,7 @@ static void search_current(CmdContext *c, CmdParams *p, gboolean next)
 	}
 	g_free(word);
 
-	pos = perform_search(c, p->num, FALSE);
+	pos = perform_search(p->sci, c->search_text, p->num, FALSE);
 	if (pos >= 0)
 		SET_POS(c->sci, pos, TRUE);
 

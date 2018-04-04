@@ -303,7 +303,7 @@ static gint parse_ex_range(const gchar **p, CmdContext *ctx, gint *one, gint *tw
 				}
 				case TK_PATTERN:
 				{
-					gint pos = perform_search(ctx, ctx->num, FALSE);
+					gint pos = perform_search(ctx->sci, tk->str, ctx->num, FALSE);
 					num = SSM(ctx->sci, SCI_LINEFROMPOSITION, pos, 0);
 					state = ST_AFTER_NUMBER;
 					break;
@@ -473,11 +473,11 @@ void perform_cmdline_cmd(CmdContext *ctx, const gchar *cmd)
 				g_free(ctx->search_text);
 				ctx->search_text = g_strdup(cmd);
 			}
-			pos = perform_search(ctx, ctx->num, FALSE);
+			pos = perform_search(ctx->sci, ctx->search_text, ctx->num, FALSE);
 			if (pos >= 0)
 				SET_POS(ctx->sci, pos, TRUE);
-
 			break;
 		}
 	}
+	vi_set_mode(VI_MODE_COMMAND);
 }
