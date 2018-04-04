@@ -66,8 +66,13 @@ ViMode vi_get_mode(void)
 void vi_enter_cmdline_mode()
 {
 	KeyPress *kp = g_slist_nth_data(state.kpl, 0);
-	const gchar *val = kp_to_str(kp);
+	gchar *val;
+	if (VI_IS_VISUAL(state.vi_mode))
+		val = g_strconcat(kp_to_str(kp), "'<,'>", NULL);
+	else
+		val = g_strdup(kp_to_str(kp));
 	ex_prompt_show(val);
+	g_free(val);
 }
 
 

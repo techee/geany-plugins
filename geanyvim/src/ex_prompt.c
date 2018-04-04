@@ -124,7 +124,7 @@ void ex_prompt_show(const gchar *val)
 	gtk_widget_show(prompt);
 	position_prompt();
 	gtk_entry_set_text(GTK_ENTRY(entry), val);
-	gtk_editable_set_position(GTK_EDITABLE(entry), 1);
+	gtk_editable_set_position(GTK_EDITABLE(entry), strlen(val));
 }
 
 

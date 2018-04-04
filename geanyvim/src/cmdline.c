@@ -384,6 +384,66 @@ finish:
 }
 
 
+static void perform_substitute(CmdContext *ctx, const gchar *cmd, gint from, gint to)
+{
+	gchar *copy = g_strdup(cmd);
+	gchar *p = copy;
+	gchar *pattern = NULL;
+	gchar *repl = NULL;
+	gchar *flags = NULL;
+
+	while (*p)
+	{
+		if (*p == '/' && *(p-1) != '\\')
+		{
+			if (!pattern)
+				pattern = p+1;
+			else if (!repl)
+				repl = p+1;
+			else if (!flags)
+				flags = p+1;
+			*p = '\0';
+		}
+		p++;
+	}
+
+
+	if (pattern && repl)
+	{
+		struct Sci_TextToFind ttf;
+		gint find_flags = SCFIND_REGEXP | SCFIND_MATCHCASE;
+		GString *s = g_string_new(pattern);
+		gboolean all = flags && strstr(flags, "g") != NULL;
+
+		while (TRUE)
+		{
+			p = strstr(s->str, "\\c");
+			if (!p)
+				break;
+			g_string_erase(s, p - s->str, 2);
+			find_flags &= ~SCFIND_MATCHCASE;
+		}
+
+		ttf.lpstrText = s->str;
+		ttf.chrg.cpMin = SSM(ctx->sci, SCI_POSITIONFROMLINE, from, 0);
+		ttf.chrg.cpMax = SSM(ctx->sci, SCI_GETLINEENDPOSITION, to, 0);
+		while (SSM(ctx->sci, SCI_FINDTEXT, find_flags, (sptr_t)&ttf) != -1)
+		{
+			SSM(ctx->sci, SCI_SETTARGETSTART, ttf.chrgText.cpMin, 0);
+			SSM(ctx->sci, SCI_SETTARGETEND, ttf.chrgText.cpMax, 0);
+			SSM(ctx->sci, SCI_REPLACETARGET, -1, (sptr_t)repl);
+
+			if (!all)
+				break;
+		}
+
+		g_string_free(s, TRUE);
+	}
+
+	g_free(copy);
+}
+
+
 static void perform_normal_cmdline_cmd(CmdContext *ctx, const gchar *cmd)
 {
 	CmdlineCmdParams params;
@@ -406,6 +466,12 @@ static void perform_normal_cmdline_cmd(CmdContext *ctx, const gchar *cmd)
 		one = two;
 	//printf("range(%d): %d, %d\n", n, one, two);
 	//printf("first: %s\n", first);
+
+	if (g_str_has_prefix(cmd, "s/") || g_str_has_prefix(cmd, "substitute/"))
+	{
+		perform_substitute(ctx, cmd, one, two);
+		return;
+	}
 
 	parts = g_strsplit(cmd, " ", 0);
 
