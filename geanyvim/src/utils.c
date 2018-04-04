@@ -94,7 +94,7 @@ void kpl_printf(GSList *kpl)
 	while (pos != NULL)
 	{
 		KeyPress *kp = pos->data;
-		printf("<%d>%s", kp_to_str(kp), kp->key);
+		printf("<%d>%s", kp->key, kp_to_str(kp));
 		pos = g_slist_next(pos);
 	}
 	printf("\n");
@@ -180,7 +180,7 @@ gchar *get_current_word(ScintillaObject *sci)
 	return get_contents_range(sci, start, end);
 }
 
-void perform_search(CmdContext *c, gint num, gboolean invert)
+gint perform_search(CmdContext *c, gint num, gboolean invert)
 {
 	struct Sci_TextToFind ttf;
 	gint pos = SSM(c->sci, SCI_GETCURRENTPOS, 0, 0);
@@ -189,7 +189,7 @@ void perform_search(CmdContext *c, gint num, gboolean invert)
 	gint i;
 
 	if (!c->search_text)
-		return;
+		return -1;
 
 	forward = c->search_text[0] == '/';
 	forward = !forward != !invert;
@@ -233,8 +233,7 @@ void perform_search(CmdContext *c, gint num, gboolean invert)
 		pos = new_pos;
 	}
 
-	if (pos >= 0)
-		SET_POS(c->sci, pos, TRUE);
+	return pos;
 }
 
 void set_current_position(ScintillaObject *sci, gint position, gboolean scroll_to_caret,
@@ -249,4 +248,14 @@ void set_current_position(ScintillaObject *sci, gint position, gboolean scroll_t
 	}
 	if (caretx)
 		SSM(sci, SCI_CHOOSECARETX, 0, 0);
+}
+
+void goto_nonempty(ScintillaObject *sci, gint line, gboolean scroll)
+{
+	gint line_end_pos = SSM(sci, SCI_GETLINEENDPOSITION, line, 0);
+	gint pos = SSM(sci, SCI_POSITIONFROMLINE, line, 0);
+
+	while (g_ascii_isspace(SSM(sci, SCI_GETCHARAT, pos, 0)) && pos < line_end_pos)
+		pos = NEXT(sci, pos);
+	SET_POS(sci, pos, scroll);
 }

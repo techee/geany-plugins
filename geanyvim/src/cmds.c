@@ -157,16 +157,6 @@ static void cmd_mode_insert_after(CmdContext *c, CmdParams *p)
 		SSM(p->sci, SCI_CHARRIGHT, 0, 0);
 }
 
-static void goto_nonempty(ScintillaObject *sci, gint line, gboolean scroll)
-{
-	gint line_end_pos = SSM(sci, SCI_GETLINEENDPOSITION, line, 0);
-	gint pos = SSM(sci, SCI_POSITIONFROMLINE, line, 0);
-
-	while (g_ascii_isspace(SSM(sci, SCI_GETCHARAT, pos, 0)) && pos < line_end_pos)
-		pos = NEXT(sci, pos);
-	SET_POS(sci, pos, scroll);
-}
-
 static void cmd_mode_insert_line_start_nonempty(CmdContext *c, CmdParams *p)
 {
 	goto_nonempty(p->sci, p->line, TRUE);
@@ -503,16 +493,22 @@ static void cmd_delete_line(CmdContext *c, CmdParams *p)
 static void cmd_search_next(CmdContext *c, CmdParams *p)
 {
 	gboolean invert = FALSE;
+	gint pos;
 
 	if (p->last_kp->key == GDK_KEY_N)
 		invert = TRUE;
 
-	perform_search(c, p->num, invert);
+	pos = perform_search(c, p->num, invert);
+	if (pos >= 0)
+		SET_POS(c->sci, pos, TRUE);
+
 }
 
 static void search_current(CmdContext *c, CmdParams *p, gboolean next)
 {
 	gchar *word = get_current_word(p->sci);
+	gint pos;
+
 	g_free(c->search_text);
 	if (!word)
 		c->search_text = NULL;
@@ -522,7 +518,11 @@ static void search_current(CmdContext *c, CmdParams *p, gboolean next)
 		c->search_text = g_strconcat(prefix, word, NULL);
 	}
 	g_free(word);
-	perform_search(c, p->num, FALSE);
+
+	pos = perform_search(c, p->num, FALSE);
+	if (pos >= 0)
+		SET_POS(c->sci, pos, TRUE);
+
 }
 
 static void cmd_search_current_next(CmdContext *c, CmdParams *p)

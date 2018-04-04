@@ -46,9 +46,11 @@ void kpl_printf(GSList *kpl);
 gchar *get_current_word(ScintillaObject *sci);
 
 void clamp_cursor_pos(ScintillaObject *sci);
-void perform_search(CmdContext *c, gint num, gboolean invert);
+gint perform_search(CmdContext *c, gint num, gboolean invert);
 
 void set_current_position(ScintillaObject *sci, gint position, gboolean scroll_to_caret,
 	gboolean caretx);
+
+void goto_nonempty(ScintillaObject *sci, gint line, gboolean scroll);
 
 #endif
