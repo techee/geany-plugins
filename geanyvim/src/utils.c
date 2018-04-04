@@ -21,6 +21,7 @@
 #endif
 
 #include <gdk/gdkkeysyms.h>
+#include <string.h>
 
 #include "utils.h"
 
@@ -184,18 +185,29 @@ gint perform_search(ScintillaObject *sci, const gchar *search_text,
 	gint num, gboolean invert)
 {
 	struct Sci_TextToFind ttf;
-	gint flags = SCFIND_REGEXP | SCFIND_CXX11REGEX;
+	gint flags = SCFIND_REGEXP | SCFIND_MATCHCASE;
 	gint pos = SSM(sci, SCI_GETCURRENTPOS, 0, 0);
 	gint len = SSM(sci, SCI_GETLENGTH, 0, 0);
 	gboolean forward;
+	GString *s;
 	gint i;
 
 	if (!search_text)
 		return -1;
 
-	forward = search_text[0] == '/';
+	s = g_string_new(search_text);
+	while (TRUE)
+	{
+		gchar *p = strstr(s->str, "\\c");
+		if (!p)
+			break;
+		g_string_erase(s, p - s->str, 2);
+		flags &= ~SCFIND_MATCHCASE;
+	}
+
+	forward = s->str[0] == '/';
 	forward = !forward != !invert;
-	ttf.lpstrText = search_text + 1;
+	ttf.lpstrText = s->str + 1;
 
 	for (i = 0; i < num; i++)
 	{
@@ -235,6 +247,7 @@ gint perform_search(ScintillaObject *sci, const gchar *search_text,
 		pos = new_pos;
 	}
 
+	g_string_free(s, TRUE);
 	return pos;
 }
 
