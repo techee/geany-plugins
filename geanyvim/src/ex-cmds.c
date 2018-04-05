@@ -16,7 +16,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include "cmdline.h"
+#include "ex-cmds.h"
 #include "utils.h"
 
 #include <string.h>
@@ -26,49 +26,109 @@
 typedef struct
 {
 	gboolean force;
-} CmdlineCmdParams;
+} ExCmdParams;
 
-typedef void (*CmdlineCmd)(CmdContext *c, CmdlineCmdParams *p);
+typedef void (*ExCmd)(CmdContext *c, ExCmdParams *p);
 
 typedef struct {
-	CmdlineCmd cmd;
-	const gchar *cmdline;
-} CmdlineCmdDef;
+	ExCmd cmd;
+	const gchar *name;
+} ExCmdDef;
 
 
-static void cmd_save(CmdContext *c, CmdlineCmdParams *p)
+static void cmd_save(CmdContext *c, ExCmdParams *p)
 {
 	c->cb->on_save(p->force);
 }
 
 
-static void cmd_save_all(CmdContext *c, CmdlineCmdParams *p)
+static void cmd_save_all(CmdContext *c, ExCmdParams *p)
 {
 	c->cb->on_save_all(p->force);
 }
 
 
-static void cmd_quit(CmdContext *c, CmdlineCmdParams *p)
+static void cmd_quit(CmdContext *c, ExCmdParams *p)
 {
 	c->cb->on_quit(p->force);
 }
 
 
-static void cmd_save_quit(CmdContext *c, CmdlineCmdParams *p)
+static void cmd_save_quit(CmdContext *c, ExCmdParams *p)
 {
 	if (c->cb->on_save(p->force))
 		c->cb->on_quit(p->force);
 }
 
 
-static void cmd_save_all_quit(CmdContext *c, CmdlineCmdParams *p)
+static void cmd_save_all_quit(CmdContext *c, ExCmdParams *p)
 {
 	if (c->cb->on_save_all(p->force))
 		c->cb->on_quit(p->force);
 }
 
+static void perform_substitute(CmdContext *ctx, const gchar *cmd, gint from, gint to)
+{
+	gchar *copy = g_strdup(cmd);
+	gchar *p = copy;
+	gchar *pattern = NULL;
+	gchar *repl = NULL;
+	gchar *flags = NULL;
 
-CmdlineCmdDef cmdline_cmds[] = {
+	while (*p)
+	{
+		if (*p == '/' && *(p-1) != '\\')
+		{
+			if (!pattern)
+				pattern = p+1;
+			else if (!repl)
+				repl = p+1;
+			else if (!flags)
+				flags = p+1;
+			*p = '\0';
+		}
+		p++;
+	}
+
+
+	if (pattern && repl)
+	{
+		struct Sci_TextToFind ttf;
+		gint find_flags = SCFIND_REGEXP | SCFIND_MATCHCASE;
+		GString *s = g_string_new(pattern);
+		gboolean all = flags && strstr(flags, "g") != NULL;
+
+		while (TRUE)
+		{
+			p = strstr(s->str, "\\c");
+			if (!p)
+				break;
+			g_string_erase(s, p - s->str, 2);
+			find_flags &= ~SCFIND_MATCHCASE;
+		}
+
+		ttf.lpstrText = s->str;
+		ttf.chrg.cpMin = SSM(ctx->sci, SCI_POSITIONFROMLINE, from, 0);
+		ttf.chrg.cpMax = SSM(ctx->sci, SCI_GETLINEENDPOSITION, to, 0);
+		while (SSM(ctx->sci, SCI_FINDTEXT, find_flags, (sptr_t)&ttf) != -1)
+		{
+			SSM(ctx->sci, SCI_SETTARGETSTART, ttf.chrgText.cpMin, 0);
+			SSM(ctx->sci, SCI_SETTARGETEND, ttf.chrgText.cpMax, 0);
+			SSM(ctx->sci, SCI_REPLACETARGET, -1, (sptr_t)repl);
+
+			if (!all)
+				break;
+		}
+
+		g_string_free(s, TRUE);
+	}
+
+	g_free(copy);
+}
+
+/******************************************************************************/
+
+ExCmdDef ex_cmds[] = {
 	{cmd_save, "w"},
 	{cmd_save, "write"},
 	{cmd_save, "up"},
@@ -101,6 +161,7 @@ CmdlineCmdDef cmdline_cmds[] = {
 	{NULL, NULL}
 };
 
+/******************************************************************************/
 
 typedef enum
 {
@@ -240,10 +301,11 @@ static void next_token(const gchar **p, Token *tk)
 			return;
 		}
 	}
-	
+
 	init_tk(tk, TK_END, 0, NULL);
 	return;
 }
+
 
 typedef enum
 {
@@ -252,13 +314,15 @@ typedef enum
 	ST_BEFORE_END
 } State;
 
-static gint parse_ex_range(const gchar **p, CmdContext *ctx, gint *one, gint *two)
+
+static gboolean parse_ex_range(const gchar **p, CmdContext *ctx, gint *from, gint *to)
 {
 	Token *tk = g_new0(Token, 1);
 	State state = ST_START;
 	gint num = 0;
 	gboolean neg = FALSE;
 	gint count = 0;
+	gboolean success = TRUE;
 
 	next_token(p, tk);
 
@@ -311,14 +375,14 @@ static gint parse_ex_range(const gchar **p, CmdContext *ctx, gint *one, gint *tw
 
 				case TK_PERCENT:
 					state = ST_BEFORE_END;
-					*two = 0;
+					*to = 0;
 					num = SSM(ctx->sci, SCI_GETLINECOUNT, 0, 0) - 1;
 					count++;
 					break;
 				case TK_STAR:
 				{
 					gint pos = MIN(ctx->sel_anchor, SSM(ctx->sci, SCI_GETCURRENTPOS, 0, 0));
-					*two = SSM(ctx->sci, SCI_LINEFROMPOSITION, pos, 0);
+					*to = SSM(ctx->sci, SCI_LINEFROMPOSITION, pos, 0);
 					pos = MAX(ctx->sel_anchor, SSM(ctx->sci, SCI_GETCURRENTPOS, 0, 0));
 					num = SSM(ctx->sci, SCI_LINEFROMPOSITION, pos, 0);
 					state = ST_BEFORE_END;
@@ -344,8 +408,8 @@ static gint parse_ex_range(const gchar **p, CmdContext *ctx, gint *one, gint *tw
 				if (tk->type == TK_SEMICOLON || tk->type == TK_EOL)
 					goto_nonempty(ctx->sci, num, TRUE);
 
-				*one = *two;
-				*two = num;
+				*from = *to;
+				*to = num;
 
 				neg = FALSE;
 				num = 0;
@@ -377,99 +441,35 @@ static gint parse_ex_range(const gchar **p, CmdContext *ctx, gint *one, gint *tw
 
 finish:
 	if (tk->type != TK_EOL && tk->type != TK_END)
-		count = -1;
+		success = FALSE;
 	g_free(tk->str);
 	g_free(tk);
-	return MIN(count, 2);
+	if (count == 0)
+		*from = *to = GET_CUR_LINE(ctx->sci);
+	else if (count == 1)
+		*from = *to;
+	return success;
 }
 
+/******************************************************************************/
 
-static void perform_substitute(CmdContext *ctx, const gchar *cmd, gint from, gint to)
+static void perform_simple_ex_cmd(CmdContext *ctx, const gchar *cmd)
 {
-	gchar *copy = g_strdup(cmd);
-	gchar *p = copy;
-	gchar *pattern = NULL;
-	gchar *repl = NULL;
-	gchar *flags = NULL;
-
-	while (*p)
-	{
-		if (*p == '/' && *(p-1) != '\\')
-		{
-			if (!pattern)
-				pattern = p+1;
-			else if (!repl)
-				repl = p+1;
-			else if (!flags)
-				flags = p+1;
-			*p = '\0';
-		}
-		p++;
-	}
-
-
-	if (pattern && repl)
-	{
-		struct Sci_TextToFind ttf;
-		gint find_flags = SCFIND_REGEXP | SCFIND_MATCHCASE;
-		GString *s = g_string_new(pattern);
-		gboolean all = flags && strstr(flags, "g") != NULL;
-
-		while (TRUE)
-		{
-			p = strstr(s->str, "\\c");
-			if (!p)
-				break;
-			g_string_erase(s, p - s->str, 2);
-			find_flags &= ~SCFIND_MATCHCASE;
-		}
-
-		ttf.lpstrText = s->str;
-		ttf.chrg.cpMin = SSM(ctx->sci, SCI_POSITIONFROMLINE, from, 0);
-		ttf.chrg.cpMax = SSM(ctx->sci, SCI_GETLINEENDPOSITION, to, 0);
-		while (SSM(ctx->sci, SCI_FINDTEXT, find_flags, (sptr_t)&ttf) != -1)
-		{
-			SSM(ctx->sci, SCI_SETTARGETSTART, ttf.chrgText.cpMin, 0);
-			SSM(ctx->sci, SCI_SETTARGETEND, ttf.chrgText.cpMax, 0);
-			SSM(ctx->sci, SCI_REPLACETARGET, -1, (sptr_t)repl);
-
-			if (!all)
-				break;
-		}
-
-		g_string_free(s, TRUE);
-	}
-
-	g_free(copy);
-}
-
-
-static void perform_normal_cmdline_cmd(CmdContext *ctx, const gchar *cmd)
-{
-	CmdlineCmdParams params;
 	gchar **parts, **part;
 	gchar *first = NULL;
 	gchar *second = NULL;
-	gint i;
+	gint from = 0;
+	gint to = 0;
 
 	if (strlen(cmd) < 1)
 		return;
 
-	gint one = 0;
-	gint two = 0;
-	gint n = parse_ex_range(&cmd, ctx, &one, &two);
-	if (n < 0)
+	if (!parse_ex_range(&cmd, ctx, &from, &to))
 		return;
-	else if (n == 0)
-		one = two = GET_CUR_LINE(ctx->sci);
-	else if (n == 1)
-		one = two;
-	//printf("range(%d): %d, %d\n", n, one, two);
-	//printf("first: %s\n", first);
 
 	if (g_str_has_prefix(cmd, "s/") || g_str_has_prefix(cmd, "substitute/"))
 	{
-		perform_substitute(ctx, cmd, one, two);
+		perform_substitute(ctx, cmd, from, to);
 		return;
 	}
 
@@ -486,27 +486,26 @@ static void perform_normal_cmdline_cmd(CmdContext *ctx, const gchar *cmd)
 		}
 	}
 
-	if (!first)
+	if (first)
 	{
-		g_strfreev(parts);
-		return;
-	}
+		ExCmdParams params;
+		gint i;
 
-	params.force = FALSE;
-
-	if (first[strlen(first)-1] == '!')
-	{
-		first[strlen(first)-1] = '\0';
-		params.force = TRUE;
-	}
-
-	for (i = 0; cmdline_cmds[i].cmd != NULL; i++)
-	{
-		CmdlineCmdDef *def = &cmdline_cmds[i];
-		if (strcmp(def->cmdline, first) == 0)
+		params.force = FALSE;
+		if (first[strlen(first)-1] == '!')
 		{
-			def->cmd(ctx, &params);
-			break;
+			first[strlen(first)-1] = '\0';
+			params.force = TRUE;
+		}
+
+		for (i = 0; ex_cmds[i].cmd != NULL; i++)
+		{
+			ExCmdDef *def = &ex_cmds[i];
+			if (strcmp(def->name, first) == 0)
+			{
+				def->cmd(ctx, &params);
+				break;
+			}
 		}
 	}
 
@@ -514,16 +513,17 @@ static void perform_normal_cmdline_cmd(CmdContext *ctx, const gchar *cmd)
 }
 
 
-void perform_cmdline_cmd(CmdContext *ctx, const gchar *cmd)
+void perform_ex_cmd(CmdContext *ctx, const gchar *cmd)
 {
 	guint len = strlen(cmd);
+
 	if (cmd == NULL || len < 2)
 		return;
 
 	switch (cmd[0])
 	{
 		case ':':
-			perform_normal_cmdline_cmd(ctx, cmd + 1);
+			perform_simple_ex_cmd(ctx, cmd + 1);
 			break;
 		case '/':
 		case '?':
@@ -545,5 +545,4 @@ void perform_cmdline_cmd(CmdContext *ctx, const gchar *cmd)
 			break;
 		}
 	}
-	vi_set_mode(VI_MODE_COMMAND);
 }

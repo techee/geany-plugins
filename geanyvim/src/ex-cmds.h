@@ -16,11 +16,11 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef __GEANYVIM_CMDLINE_H__
-#define __GEANYVIM_CMDLINE_H__
+#ifndef __GEANYVIM_EX_CMDS_H__
+#define __GEANYVIM_EX_CMDS_H__
 
 #include "cmds.h"
 
-void perform_cmdline_cmd(CmdContext *ctx, const gchar *cmd);
+void perform_ex_cmd(CmdContext *ctx, const gchar *cmd);
 
 #endif

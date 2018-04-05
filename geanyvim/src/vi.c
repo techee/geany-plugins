@@ -24,7 +24,7 @@
 
 #include "vi.h"
 #include "utils.h"
-#include "ex_prompt.h"
+#include "ex-prompt.h"
 
 struct
 {
@@ -66,9 +66,10 @@ ViMode vi_get_mode(void)
 void vi_enter_cmdline_mode()
 {
 	KeyPress *kp = g_slist_nth_data(state.kpl, 0);
+	const gchar *c = kp_to_str(kp);
 	gchar *val;
-	if (VI_IS_VISUAL(state.vi_mode))
-		val = g_strconcat(kp_to_str(kp), "'<,'>", NULL);
+	if (VI_IS_VISUAL(state.vi_mode) && c[0] == ':')
+		val = g_strconcat(c, "'<,'>", NULL);
 	else
 		val = g_strdup(kp_to_str(kp));
 	ex_prompt_show(val);

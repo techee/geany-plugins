@@ -10,10 +10,10 @@ vi_srcs = \
 	vi.c \
 	cmds.h \
 	cmds.c \
-	cmdline.h \
-	cmdline.c \
-	ex_prompt.h \
-	ex_prompt.c \
+	ex-cmds.h \
+	ex-cmds.c \
+	ex-prompt.h \
+	ex-prompt.c \
 	utils.h \
 	utils.c
 
