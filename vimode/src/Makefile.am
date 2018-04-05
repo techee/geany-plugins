@@ -8,12 +8,13 @@ noinst_PROGRAMS = viw
 vi_srcs = \
 	vi.h \
 	vi.c \
+	cmd-context.h \
 	cmds.h \
 	cmds.c \
-	ex-cmds.h \
-	ex-cmds.c \
-	ex-prompt.h \
-	ex-prompt.c \
+	cmds-ex.h \
+	cmds-ex.c \
+	prompt-ex.h \
+	prompt-ex.c \
 	utils.h \
 	utils.c
 

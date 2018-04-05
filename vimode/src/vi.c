@@ -23,8 +23,9 @@
 #include <gdk/gdkkeysyms.h>
 
 #include "vi.h"
+#include "cmds.h"
 #include "utils.h"
-#include "ex-prompt.h"
+#include "prompt-ex.h"
 
 struct
 {

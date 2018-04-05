@@ -16,14 +16,11 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef __VIMODE_EX_PROMPT_H__
-#define __VIMODE_EX_PROMPT_H__
+#ifndef __VIMODE_EX_CMDS_H__
+#define __VIMODE_EX_CMDS_H__
 
-#include <gtk/gtk.h>
-#include "cmds.h"
+#include "cmd-context.h"
 
-void ex_prompt_init(GtkWidget *parent_window, CmdContext *ctx);
-void ex_prompt_cleanup(void);
-void ex_prompt_show(const gchar *val);
+void perform_ex_cmd(CmdContext *ctx, const gchar *cmd);
 
 #endif

@@ -19,9 +19,9 @@
 #ifndef __VIMODE_UTILS_H__
 #define __VIMODE_UTILS_H__
 
-#include <glib.h>
-
-#include "cmds.h"
+#include <gtk/gtk.h>
+#include "Scintilla.h"
+#include "ScintillaWidget.h"
 
 #define SSM(s, m, w, l) scintilla_send_message((s), (m), (w), (l))
 
@@ -36,6 +36,12 @@
 	SSM((s), SCI_GETCURRENTPOS, 0, 0), 0)
 
 #define MAX_CHAR_SIZE 16
+
+typedef struct
+{
+	guint key;
+	guint modif;
+} KeyPress;
 
 const gchar *kp_to_str(KeyPress *kp);
 gboolean kp_isdigit(KeyPress *kp);

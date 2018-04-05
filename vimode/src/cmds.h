@@ -19,46 +19,7 @@
 #ifndef __VIMODE_CMDS_H__
 #define __VIMODE_CMDS_H__
 
-#include <gtk/gtk.h>
-#include "Scintilla.h"
-#include "ScintillaWidget.h"
-
-#include "vi.h"
-
-#define INSERT_BUF_LEN 4096
-
-typedef struct
-{
-	guint key;
-	guint modif;
-} KeyPress;
-
-
-typedef struct
-{
-	/* the last full search command, including '/' or '?' */
-	gchar *search_text;
-	/* the last full character search command, such as 'fc' or 'Tc' */
-	gchar *search_char;
-	/* whether the last copy was in line-copy-mode (like yy) or selection mode */
-	gboolean line_copy;
-	/* selection anchor - selection is between anchor and caret */
-	gint sel_anchor;
-	/* number entered before performing mode-switching command */
-	gint num;
-	/* buffer used in insert/replace mode to record entered text so it can be
-	 * copied N times when e.g. 'i' is preceded by a number */
-	gchar insert_buf[INSERT_BUF_LEN];
-	gint insert_buf_len;
-	/* whether insert mode was entered using 'o' or 'O' - we need to add newlines
-	 * when copying it N times */
-	gboolean newline_insert;
-	/* callbacks for the backend */
-	ViCallback *cb;
-	/* current scintilla object */
-	ScintillaObject *sci;
-} CmdContext;
-
+#include "cmd-context.h"
 
 gboolean process_event_cmd_mode(CmdContext *ctx, GSList *kpl,
 	GSList *prev_kpl, gboolean *is_repeat, gboolean *consumed);

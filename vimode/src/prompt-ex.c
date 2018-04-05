@@ -16,8 +16,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include "ex-prompt.h"
-#include "ex-cmds.h"
+#include "prompt-ex.h"
+#include "cmds-ex.h"
 
 #include <gdk/gdkkeysyms.h>
 #include <string.h>
