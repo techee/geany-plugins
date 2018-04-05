@@ -16,8 +16,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef __GEANYVIM_UTILS_H__
-#define __GEANYVIM_UTILS_H__
+#ifndef __VIMODE_UTILS_H__
+#define __VIMODE_UTILS_H__
 
 #include <glib.h>
 

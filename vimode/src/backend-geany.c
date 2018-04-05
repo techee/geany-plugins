@@ -282,7 +282,7 @@ void plugin_init(GeanyData *data)
 	load_config();
 
 	/* menu items and keybindings */
-	group = plugin_set_key_group(geany_plugin, "geanyvim", KB_COUNT, NULL);
+	group = plugin_set_key_group(geany_plugin, "vimode", KB_COUNT, NULL);
 
 	menu_items.parent_item = gtk_menu_item_new_with_mnemonic(_("_Vim Mode"));
 	gtk_container_add(GTK_CONTAINER(geany->main_widgets->tools_menu), menu_items.parent_item);
@@ -331,5 +331,5 @@ void plugin_cleanup(void)
 
 void plugin_help(void)
 {
-	utils_open_browser("http://plugins.geany.org/geanyvim.html");
+	utils_open_browser("http://plugins.geany.org/vimode.html");
 }

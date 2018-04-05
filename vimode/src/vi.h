@@ -16,8 +16,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef __GEANYVIM_VI_H__
-#define __GEANYVIM_VI_H__
+#ifndef __VIMODE_VI_H__
+#define __VIMODE_VI_H__
 
 #include <gtk/gtk.h>
 #include "Scintilla.h"

@@ -96,10 +96,6 @@ if ENABLE_GEANYVC
 SUBDIRS += geanyvc
 endif
 
-if ENABLE_GEANYVIM
-SUBDIRS += geanyvim
-endif
-
 if ENABLE_GENIUSPASTE
 SUBDIRS += geniuspaste
 endif
@@ -174,6 +170,10 @@ endif
 
 if ENABLE_UPDATECHECKER
 SUBDIRS += updatechecker
+endif
+
+if ENABLE_VIMODE
+SUBDIRS += vimode
 endif
 
 if ENABLE_WEBHELPER

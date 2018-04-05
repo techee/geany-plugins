@@ -174,13 +174,6 @@ M: Yura Siamashka <yurand2@gmail.com>
 W: http://plugins.geany.org/geanyvc.html
 S: Odd Fixes
 
-geanyvim
-P: Jiří Techet <techet@gmail.com>
-g: @techee
-M: Jiří Techet <techet@gmail.com>
-W: http://plugins.geany.org/geanyvim.html
-S: Maintained
-
 geniuspaste
 P: Enrico Trotta <enrico.trt@gmail.com>
 g:
@@ -304,6 +297,13 @@ P: Frank Lanitz <frank@frank.uvena.de>
 g: @frlan
 M: Frank Lanitz <frank@frank.uvena.de>
 W: http://plugins.geany.org/updatechecker.html
+S: Maintained
+
+vimode
+P: Jiří Techet <techet@gmail.com>
+g: @techee
+M: Jiří Techet <techet@gmail.com>
+W: http://plugins.geany.org/geanyvim.html
 S: Maintained
 
 webhelper

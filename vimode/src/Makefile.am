@@ -1,7 +1,7 @@
 include $(top_srcdir)/build/vars.build.mk
-plugin = geanyvim
+plugin = vimode
 
-geanyplugins_LTLIBRARIES = geanyvim.la
+geanyplugins_LTLIBRARIES = vimode.la
 
 noinst_PROGRAMS = viw
 
@@ -17,7 +17,7 @@ vi_srcs = \
 	utils.h \
 	utils.c
 
-geanyvim_la_SOURCES = \
+vimode_la_SOURCES = \
 	backend-geany.c \
 	$(vi_srcs)
 
@@ -25,13 +25,13 @@ viw_SOURCES = \
 	backend-viw.c \
 	$(vi_srcs)
     
-geanyvim_la_CPPFLAGS = $(AM_CPPFLAGS) \
-	-DG_LOG_DOMAIN=\"GeanyVim\"
-geanyvim_la_CFLAGS = $(AM_CFLAGS)
-geanyvim_la_LIBADD = $(COMMONLIBS)
+vimode_la_CPPFLAGS = $(AM_CPPFLAGS) \
+	-DG_LOG_DOMAIN=\"Vimode\"
+vimode_la_CFLAGS = $(AM_CFLAGS)
+vimode_la_LIBADD = $(COMMONLIBS)
 
 viw_CPPFLAGS = $(AM_CPPFLAGS) \
-	-DG_LOG_DOMAIN=\"GeanyVim\"
+	-DG_LOG_DOMAIN=\"Vimode\"
 viw_CFLAGS = $(AM_CFLAGS)
 viw_LDADD = $(COMMONLIBS)
 
