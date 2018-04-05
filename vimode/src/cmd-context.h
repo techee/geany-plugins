@@ -19,11 +19,11 @@
 #ifndef __VIMODE_CMD_CONTEXT_H__
 #define __VIMODE_CMD_CONTEXT_H__
 
+#include "vi.h"
+
 #include <gtk/gtk.h>
 #include "Scintilla.h"
 #include "ScintillaWidget.h"
-
-#include "vi.h"
 
 #define INSERT_BUF_LEN 4096
 

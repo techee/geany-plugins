@@ -16,9 +16,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include <gtk/gtk.h>
-
 #include "vi.h"
+
+#include <gtk/gtk.h>
 
 #define SSM(s, m, w, l) scintilla_send_message((s), (m), (w), (l))
 

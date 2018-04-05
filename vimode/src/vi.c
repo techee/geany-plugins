@@ -16,16 +16,12 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifdef HAVE_CONFIG_H
-# include "config.h"
-#endif
-
-#include <gdk/gdkkeysyms.h>
-
 #include "vi.h"
 #include "cmds.h"
 #include "utils.h"
 #include "prompt-ex.h"
+
+#include <gdk/gdkkeysyms.h>
 
 struct
 {

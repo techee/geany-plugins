@@ -20,11 +20,10 @@
 # include "config.h"
 #endif
 
-#include <gtk/gtk.h>
-
-#include <geanyplugin.h>
-
 #include "vi.h"
+
+#include <gtk/gtk.h>
+#include <geanyplugin.h>
 
 #define CONF_GROUP "Settings"
 #define CONF_ENABLE_VIM "enable_vim"
@@ -39,7 +38,7 @@ PLUGIN_VERSION_CHECK(235)
 PLUGIN_SET_TRANSLATABLE_INFO(
 	LOCALEDIR,
 	GETTEXT_PACKAGE,
-	_("Geany Vim"),
+	_("Vimode"),
 	_("Vim mode for Geany"),
 	VERSION,
 	"Jiří Techet <techet@gmail.com>"

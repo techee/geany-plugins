@@ -19,8 +19,9 @@
 #ifndef __VIMODE_PROMPT_EX_H__
 #define __VIMODE_PROMPT_EX_H__
 
-#include <gtk/gtk.h>
 #include "cmd-context.h"
+
+#include <gtk/gtk.h>
 
 void ex_prompt_init(GtkWidget *parent_window, CmdContext *ctx);
 void ex_prompt_cleanup(void);

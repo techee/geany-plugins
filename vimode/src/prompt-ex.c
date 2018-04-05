@@ -22,6 +22,7 @@
 #include <gdk/gdkkeysyms.h>
 #include <string.h>
 
+
 #define PROMPT_WIDTH 500
 
 static GtkWidget *prompt;

@@ -16,14 +16,10 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifdef HAVE_CONFIG_H
-# include "config.h"
-#endif
+#include "utils.h"
 
 #include <gdk/gdkkeysyms.h>
 #include <string.h>
-
-#include "utils.h"
 
 
 const gchar *kp_to_str(KeyPress *kp)
