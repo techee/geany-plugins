@@ -293,7 +293,7 @@ gboolean vi_notify_key_press(GdkEventKey *event)
 		return FALSE;
 
 	state.kpl = g_slist_prepend(state.kpl, kp);
-	printf("key: %x, state: %d\n", event->keyval, event->state);
+	//printf("key: %x, state: %d\n", event->keyval, event->state);
 	//kpl_printf(state.kpl);
 	//kpl_printf(state.prev_kpl);
 	if (VI_IS_COMMAND(state.vi_mode) || VI_IS_VISUAL(state.vi_mode))

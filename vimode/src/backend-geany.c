@@ -275,6 +275,7 @@ static void on_quit(gboolean force)
 
 void plugin_init(GeanyData *data)
 {
+	GeanyDocument *doc = document_get_current();
 	GeanyKeyGroup *group;
 	GtkWidget *menu;
 
@@ -318,6 +319,9 @@ void plugin_init(GeanyData *data)
 	cb.on_quit = on_quit;
 	vi_init(geany_data->main_widgets->window, &cb);
 	vi_set_mode(start_in_insert ? VI_MODE_INSERT : VI_MODE_COMMAND);
+
+	if (doc)
+		vi_set_active_sci(doc->editor->sci);
 }
 
 
