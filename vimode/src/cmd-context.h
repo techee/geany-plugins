@@ -31,6 +31,8 @@ typedef struct
 {
 	/* the last full search command, including '/' or '?' */
 	gchar *search_text;
+	/* the last full substitute (replace) command of the form 's/pattern/str/flags'  */
+	gchar *substitute_text;
 	/* the last full character search command, such as 'fc' or 'Tc' */
 	gchar *search_char;
 	/* whether the last copy was in line-copy-mode (like yy) or selection mode */

@@ -247,6 +247,71 @@ gint perform_search(ScintillaObject *sci, const gchar *search_text,
 	return pos;
 }
 
+void perform_substitute(ScintillaObject *sci, const gchar *cmd, gint from, gint to,
+	const gchar *flag_override)
+{
+	gchar *copy = g_strdup(cmd);
+	gchar *p = copy;
+	gchar *pattern = NULL;
+	gchar *repl = NULL;
+	gchar *flags = NULL;
+
+	if (!cmd)
+		return;
+
+	while (*p)
+	{
+		if (*p == '/' && *(p-1) != '\\')
+		{
+			if (!pattern)
+				pattern = p+1;
+			else if (!repl)
+				repl = p+1;
+			else if (!flags)
+				flags = p+1;
+			*p = '\0';
+		}
+		p++;
+	}
+
+	if (flag_override)
+		flags = (gchar *)flag_override;
+
+	if (pattern && repl)
+	{
+		struct Sci_TextToFind ttf;
+		gint find_flags = SCFIND_REGEXP | SCFIND_MATCHCASE;
+		GString *s = g_string_new(pattern);
+		gboolean all = flags && strstr(flags, "g") != NULL;
+
+		while (TRUE)
+		{
+			p = strstr(s->str, "\\c");
+			if (!p)
+				break;
+			g_string_erase(s, p - s->str, 2);
+			find_flags &= ~SCFIND_MATCHCASE;
+		}
+
+		ttf.lpstrText = s->str;
+		ttf.chrg.cpMin = SSM(sci, SCI_POSITIONFROMLINE, from, 0);
+		ttf.chrg.cpMax = SSM(sci, SCI_GETLINEENDPOSITION, to, 0);
+		while (SSM(sci, SCI_FINDTEXT, find_flags, (sptr_t)&ttf) != -1)
+		{
+			SSM(sci, SCI_SETTARGETSTART, ttf.chrgText.cpMin, 0);
+			SSM(sci, SCI_SETTARGETEND, ttf.chrgText.cpMax, 0);
+			SSM(sci, SCI_REPLACETARGET, -1, (sptr_t)repl);
+
+			if (!all)
+				break;
+		}
+
+		g_string_free(s, TRUE);
+	}
+
+	g_free(copy);
+}
+
 void set_current_position(ScintillaObject *sci, gint position, gboolean scroll_to_caret,
 	gboolean caretx)
 {

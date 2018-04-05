@@ -54,6 +54,8 @@ gchar *get_current_word(ScintillaObject *sci);
 void clamp_cursor_pos(ScintillaObject *sci);
 gint perform_search(ScintillaObject *sci, const gchar *search_text,
 	gint num, gboolean invert);
+void perform_substitute(ScintillaObject *sci, const gchar *cmd, gint from, gint to,
+	const gchar *flag_override);
 
 void set_current_position(ScintillaObject *sci, gint position, gboolean scroll_to_caret,
 	gboolean caretx);

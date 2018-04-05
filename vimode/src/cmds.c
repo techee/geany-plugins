@@ -935,6 +935,11 @@ static void cmd_range_unindent(CmdContext *c, CmdParams *p)
 	range_indent(c, p, TRUE);
 }
 
+static void cmd_repeat_subst(CmdContext *c, CmdParams *p)
+{
+	perform_substitute(p->sci, c->substitute_text, p->line, p->line, "");
+}
+
 static void cmd_range_delete(CmdContext *c, CmdParams *p)
 {
 	gint sel_end_pos = p->sel_start + p->sel_len;
@@ -1537,6 +1542,7 @@ CmdDef cmd_mode_cmds[] = {
 	{cmd_switch_case, GDK_KEY_asciitilde, 0, 0, 0, FALSE, FALSE},
 	{cmd_unindent, GDK_KEY_less, GDK_KEY_less, 0, 0, FALSE, FALSE},
 	{cmd_indent, GDK_KEY_greater, GDK_KEY_greater, 0, 0, FALSE, FALSE},
+	{cmd_repeat_subst, GDK_KEY_ampersand, 0, 0, 0, FALSE, FALSE},
 
 	/* undo/redo */
 	{cmd_undo, GDK_KEY_U, 0, 0, 0, FALSE, FALSE},

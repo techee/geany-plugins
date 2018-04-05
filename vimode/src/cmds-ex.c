@@ -25,7 +25,13 @@
 
 typedef struct
 {
+	/* was the command forced with ! mark ? */
 	gboolean force;
+	/* the first parameter of the command */
+	const gchar *param1;
+	/* ex range start and end */
+	gint range_from;
+	gint range_to;
 } ExCmdParams;
 
 typedef void (*ExCmd)(CmdContext *c, ExCmdParams *p);
@@ -67,63 +73,19 @@ static void cmd_save_all_quit(CmdContext *c, ExCmdParams *p)
 		c->cb->on_quit(p->force);
 }
 
-static void perform_substitute(CmdContext *ctx, const gchar *cmd, gint from, gint to)
+
+static void cmd_repeat_subst(CmdContext *c, ExCmdParams *p)
 {
-	gchar *copy = g_strdup(cmd);
-	gchar *p = copy;
-	gchar *pattern = NULL;
-	gchar *repl = NULL;
-	gchar *flags = NULL;
-
-	while (*p)
-	{
-		if (*p == '/' && *(p-1) != '\\')
-		{
-			if (!pattern)
-				pattern = p+1;
-			else if (!repl)
-				repl = p+1;
-			else if (!flags)
-				flags = p+1;
-			*p = '\0';
-		}
-		p++;
-	}
+	const gchar *flags = p->param1;
+	if (!flags)
+		flags = "g";
+	perform_substitute(c->sci, c->substitute_text, p->range_from, p->range_to, flags);
+}
 
 
-	if (pattern && repl)
-	{
-		struct Sci_TextToFind ttf;
-		gint find_flags = SCFIND_REGEXP | SCFIND_MATCHCASE;
-		GString *s = g_string_new(pattern);
-		gboolean all = flags && strstr(flags, "g") != NULL;
-
-		while (TRUE)
-		{
-			p = strstr(s->str, "\\c");
-			if (!p)
-				break;
-			g_string_erase(s, p - s->str, 2);
-			find_flags &= ~SCFIND_MATCHCASE;
-		}
-
-		ttf.lpstrText = s->str;
-		ttf.chrg.cpMin = SSM(ctx->sci, SCI_POSITIONFROMLINE, from, 0);
-		ttf.chrg.cpMax = SSM(ctx->sci, SCI_GETLINEENDPOSITION, to, 0);
-		while (SSM(ctx->sci, SCI_FINDTEXT, find_flags, (sptr_t)&ttf) != -1)
-		{
-			SSM(ctx->sci, SCI_SETTARGETSTART, ttf.chrgText.cpMin, 0);
-			SSM(ctx->sci, SCI_SETTARGETEND, ttf.chrgText.cpMax, 0);
-			SSM(ctx->sci, SCI_REPLACETARGET, -1, (sptr_t)repl);
-
-			if (!all)
-				break;
-		}
-
-		g_string_free(s, TRUE);
-	}
-
-	g_free(copy);
+static void cmd_repeat_subst_orig_flags(CmdContext *c, ExCmdParams *p)
+{
+	perform_substitute(c->sci, c->substitute_text, p->range_from, p->range_to, NULL);
 }
 
 /******************************************************************************/
@@ -157,6 +119,11 @@ ExCmdDef ex_cmds[] = {
 	{cmd_save_all_quit, "wqall"},
 	{cmd_save_all_quit, "x"},
 	{cmd_save_all_quit, "xit"},
+
+	{cmd_repeat_subst, "s"},
+	{cmd_repeat_subst, "substitute"},
+	{cmd_repeat_subst, "&"},
+	{cmd_repeat_subst_orig_flags, "&&"},
 
 	{NULL, NULL}
 };
@@ -455,21 +422,25 @@ finish:
 
 static void perform_simple_ex_cmd(CmdContext *ctx, const gchar *cmd)
 {
+	ExCmdParams params;
 	gchar **parts, **part;
-	gchar *first = NULL;
-	gchar *second = NULL;
-	gint from = 0;
-	gint to = 0;
+	gchar *cmd_name = NULL;
+	gchar *param1 = NULL;
+
+	params.range_from = 0;
+	params.range_to = 0;
 
 	if (strlen(cmd) < 1)
 		return;
 
-	if (!parse_ex_range(&cmd, ctx, &from, &to))
+	if (!parse_ex_range(&cmd, ctx, &params.range_from, &params.range_to))
 		return;
 
 	if (g_str_has_prefix(cmd, "s/") || g_str_has_prefix(cmd, "substitute/"))
 	{
-		perform_substitute(ctx, cmd, from, to);
+		g_free(ctx->substitute_text);
+		ctx->substitute_text = g_strdup(cmd);
+		perform_substitute(ctx->sci, cmd, params.range_from, params.range_to, NULL);
 		return;
 	}
 
@@ -479,29 +450,29 @@ static void perform_simple_ex_cmd(CmdContext *ctx, const gchar *cmd)
 	{
 		if (strlen(*part) != 0)
 		{
-			if (!first)
-				first = *part;
-			else if (!second)
-				second = *part;
+			if (!cmd_name)
+				cmd_name = *part;
+			else if (!param1)
+				param1 = *part;
 		}
 	}
 
-	if (first)
+	if (cmd_name)
 	{
-		ExCmdParams params;
 		gint i;
 
+		params.param1 = param1;
 		params.force = FALSE;
-		if (first[strlen(first)-1] == '!')
+		if (cmd_name[strlen(cmd_name)-1] == '!')
 		{
-			first[strlen(first)-1] = '\0';
+			cmd_name[strlen(cmd_name)-1] = '\0';
 			params.force = TRUE;
 		}
 
 		for (i = 0; ex_cmds[i].cmd != NULL; i++)
 		{
 			ExCmdDef *def = &ex_cmds[i];
-			if (strcmp(def->name, first) == 0)
+			if (strcmp(def->name, cmd_name) == 0)
 			{
 				def->cmd(ctx, &params);
 				break;

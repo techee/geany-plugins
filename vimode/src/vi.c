@@ -50,7 +50,7 @@ struct
 
 CmdContext ctx =
 {
-	NULL, NULL, FALSE, 0, 1, "", 0, FALSE, NULL, NULL
+	NULL, NULL, NULL, FALSE, 0, 1, "", 0, FALSE, NULL, NULL
 };
 
 
@@ -446,5 +446,6 @@ void vi_cleanup(void)
 	vi_set_active_sci(NULL);
 	ex_prompt_cleanup();
 	g_free(ctx.search_text);
+	g_free(ctx.substitute_text);
 	g_free(ctx.search_char);
 }

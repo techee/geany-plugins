@@ -7,7 +7,6 @@ problems:
   ready in the plugin though
 - goto next, previous word desn't work the same way as in vim
 - J (join lines) should remove whitespace between lines
-- TODO: & repeat last :s once replace is implemented
 
 
 
@@ -102,6 +101,7 @@ $             $               1  cursor to the end of Nth next line
                                    matching comment bracket, or go to matching
                                    preprocessor directive.
 N%            {count}%        1  go to N percentage in the file
+&             &               2  repeat last :s
 star          *               1  search forward for the Nth occurrence of
                                    the ident under the cursor
 +             +               1  same as <CR>
