@@ -19,6 +19,7 @@
 #include "cmds.h"
 #include "vi.h"
 #include "utils.h"
+#include "keypress.h"
 
 #include <geanyplugin.h>
 #include <gdk/gdkkeysyms.h>

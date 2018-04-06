@@ -15,6 +15,8 @@ vi_srcs = \
 	cmds-ex.c \
 	prompt-ex.h \
 	prompt-ex.c \
+	keypress.h \
+	keypress.c \
 	utils.h \
 	utils.c
 

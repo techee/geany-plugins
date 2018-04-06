@@ -37,18 +37,6 @@
 
 #define MAX_CHAR_SIZE 16
 
-typedef struct
-{
-	guint key;
-	guint modif;
-} KeyPress;
-
-const gchar *kp_to_str(KeyPress *kp);
-gboolean kp_isdigit(KeyPress *kp);
-
-gint kpl_get_int(GSList *kpl, GSList **ret);
-void kpl_printf(GSList *kpl);
-
 gchar *get_current_word(ScintillaObject *sci);
 
 void clamp_cursor_pos(ScintillaObject *sci);
