@@ -627,16 +627,6 @@ static void goto_word_start(CmdContext *c, CmdParams *p, gboolean forward)
 	}
 }
 
-static void cmd_goto_next_word(CmdContext *c, CmdParams *p)
-{
-	goto_word_start(c, p, TRUE);
-}
-
-static void cmd_goto_previous_word(CmdContext *c, CmdParams *p)
-{
-	goto_word_start(c, p, FALSE);
-}
-
 static void goto_word_end(CmdContext *c, CmdParams *p, gboolean forward)
 {
 	gint i;
@@ -665,6 +655,16 @@ static void goto_word_end(CmdContext *c, CmdParams *p, gboolean forward)
 		SSM(p->sci, SCI_CHARLEFT, 0, 0);
 }
 
+static void cmd_goto_next_word(CmdContext *c, CmdParams *p)
+{
+	goto_word_start(c, p, TRUE);
+}
+
+static void cmd_goto_previous_word(CmdContext *c, CmdParams *p)
+{
+	goto_word_start(c, p, FALSE);
+}
+
 static void cmd_goto_next_word_end(CmdContext *c, CmdParams *p)
 {
 	goto_word_end(c, p, TRUE);
@@ -673,6 +673,64 @@ static void cmd_goto_next_word_end(CmdContext *c, CmdParams *p)
 static void cmd_goto_previous_word_end(CmdContext *c, CmdParams *p)
 {
 	goto_word_end(c, p, FALSE);
+}
+
+static void use_all_wordchars(ScintillaObject *sci)
+{
+	guchar wc[512];
+	gint i;
+	gint j = 0;
+	for (i = 0; i < 256; i++)
+	{
+		if (g_ascii_isprint(i) && !g_ascii_isspace(i))
+			wc[j++] = i;
+	}
+	wc[j] = '\0';
+	SSM(sci, SCI_SETWORDCHARS, 0, (sptr_t)wc);
+}
+
+static void cmd_goto_next_word_space(CmdContext *c, CmdParams *p)
+{
+	guchar wc[512];
+	SSM(p->sci, SCI_GETWORDCHARS, 0, (sptr_t)wc);
+	use_all_wordchars(p->sci);
+
+	goto_word_start(c, p, TRUE);
+
+	SSM(p->sci, SCI_SETWORDCHARS, 0, (sptr_t)wc);
+}
+
+static void cmd_goto_previous_word_space(CmdContext *c, CmdParams *p)
+{
+	guchar wc[512];
+	SSM(p->sci, SCI_GETWORDCHARS, 0, (sptr_t)wc);
+	use_all_wordchars(p->sci);
+
+	goto_word_start(c, p, FALSE);
+
+	SSM(p->sci, SCI_SETWORDCHARS, 0, (sptr_t)wc);
+}
+
+static void cmd_goto_next_word_end_space(CmdContext *c, CmdParams *p)
+{
+	guchar wc[512];
+	SSM(p->sci, SCI_GETWORDCHARS, 0, (sptr_t)wc);
+	use_all_wordchars(p->sci);
+
+	goto_word_end(c, p, TRUE);
+
+	SSM(p->sci, SCI_SETWORDCHARS, 0, (sptr_t)wc);
+}
+
+static void cmd_goto_previous_word_end_space(CmdContext *c, CmdParams *p)
+{
+	guchar wc[512];
+	SSM(p->sci, SCI_GETWORDCHARS, 0, (sptr_t)wc);
+	use_all_wordchars(p->sci);
+
+	goto_word_end(c, p, FALSE);
+
+	SSM(p->sci, SCI_SETWORDCHARS, 0, (sptr_t)wc);
 }
 
 static void cmd_goto_line_start(CmdContext *c, CmdParams *p)
@@ -1420,13 +1478,13 @@ typedef struct {
 	{cmd_goto_doc_percentage, GDK_KEY_percent, 0, 0, 0, FALSE, FALSE}, \
 	/* goto next/prev word */ \
 	{cmd_goto_next_word, GDK_KEY_w, 0, 0, 0, FALSE, FALSE}, \
-	{cmd_goto_next_word, GDK_KEY_W, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_goto_next_word_space, GDK_KEY_W, 0, 0, 0, FALSE, FALSE}, \
 	{cmd_goto_next_word_end, GDK_KEY_e, 0, 0, 0, FALSE, FALSE}, \
-	{cmd_goto_next_word_end, GDK_KEY_E, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_goto_next_word_end_space, GDK_KEY_E, 0, 0, 0, FALSE, FALSE}, \
 	{cmd_goto_previous_word, GDK_KEY_b, 0, 0, 0, FALSE, FALSE}, \
-	{cmd_goto_previous_word, GDK_KEY_B, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_goto_previous_word_space, GDK_KEY_B, 0, 0, 0, FALSE, FALSE}, \
 	{cmd_goto_previous_word_end, GDK_KEY_g, GDK_KEY_e, 0, 0, FALSE, FALSE}, \
-	{cmd_goto_previous_word_end, GDK_KEY_g, GDK_KEY_E, 0, 0, FALSE, FALSE}, \
+	{cmd_goto_previous_word_end_space, GDK_KEY_g, GDK_KEY_E, 0, 0, FALSE, FALSE}, \
 	/* various motions */ \
 	{cmd_goto_matching_brace, GDK_KEY_percent, 0, 0, 0, FALSE, FALSE}, \
 	{cmd_goto_screen_top, GDK_KEY_H, 0, 0, 0, FALSE, FALSE}, \
