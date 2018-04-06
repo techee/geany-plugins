@@ -589,21 +589,43 @@ static void cmd_goto_line_last(CmdContext *c, CmdParams *p)
 	goto_nonempty(p->sci, num - 1, TRUE);
 }
 
+static void join_lines(CmdContext *c, CmdParams *p, gint line, gint num)
+{
+	for (int i = 0; i < num; i++)
+	{
+		gint line_start_pos = SSM(p->sci, SCI_POSITIONFROMLINE, line, 0);
+		gint line_end_pos = SSM(p->sci, SCI_GETLINEENDPOSITION, line, 0);
+		gint next_line_end_pos = SSM(p->sci, SCI_GETLINEENDPOSITION, line+1, 0);
+		gint pos = line_end_pos;
+		gint pos_start;
+
+		while (g_ascii_isspace(SSM(p->sci, SCI_GETCHARAT, pos, 0)) && pos > line_start_pos)
+			pos = PREV(p->sci, pos);
+		if (!g_ascii_isspace(SSM(p->sci, SCI_GETCHARAT, pos, 0)))
+			pos = NEXT(p->sci, pos);
+		pos_start = pos;
+
+		pos = line_end_pos;
+		while (g_ascii_isspace(SSM(p->sci, SCI_GETCHARAT, pos, 0))  && pos < next_line_end_pos)
+			pos = NEXT(p->sci, pos);
+
+		SSM(p->sci, SCI_DELETERANGE, pos_start, pos - pos_start);
+		SSM(p->sci, SCI_INSERTTEXT, pos_start, (sptr_t)" ");
+	}
+}
+
 static void cmd_join_lines(CmdContext *c, CmdParams *p)
 {
-	//TODO: remove whitespace between lines
-	gint next_line = get_line_number_rel(p, p->num);
-	gint next_line_pos = SSM(p->sci, SCI_POSITIONFROMLINE, next_line, 0);
-
-	SSM(p->sci, SCI_SETTARGETRANGE, p->pos, next_line_pos);
-	SSM(p->sci, SCI_LINESJOIN, 0, 0);
+	gint num = p->num;
+	if (p->num_present && num > 1)
+		num--;
+	join_lines(c, p, p->line, num);
 }
 
 static void cmd_join_lines_vis(CmdContext *c, CmdParams *p)
 {
-	//TODO: remove whitespace between lines
-	SSM(p->sci, SCI_SETTARGETRANGE, p->sel_start, p->sel_start + p->sel_len);
-	SSM(p->sci, SCI_LINESJOIN, 0, 0);
+	join_lines(c, p, p->sel_first_line, p->sel_last_line - p->sel_first_line);
+	vi_set_mode(VI_MODE_COMMAND);
 }
 
 static void goto_word_start(CmdContext *c, CmdParams *p, gboolean forward)
