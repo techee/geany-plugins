@@ -243,16 +243,16 @@ gboolean vi_notify_key_press(GdkEventKey *event)
 	if (VI_IS_COMMAND(state.vi_mode) || VI_IS_VISUAL(state.vi_mode))
 	{
 		if (VI_IS_COMMAND(state.vi_mode))
-			command_performed = process_event_cmd_mode(&ctx, state.kpl, state.prev_kpl,
+			command_performed = cmd_perform_kpl_cmd(&ctx, state.kpl, state.prev_kpl,
 				&is_repeat_command, &consumed);
 		else
-			command_performed = process_event_vis_mode(&ctx, state.kpl, &consumed);
+			command_performed = cmd_perform_kpl_vis(&ctx, state.kpl, &consumed);
 		consumed = consumed || is_printable(event);
 	}
 	else //insert, replace mode
 	{
 		if (!state.insert_for_dummies || kp->key == GDK_KEY_Escape)
-			command_performed = process_event_ins_mode(&ctx, state.kpl, &consumed);
+			command_performed = cmd_perform_kpl_ins(&ctx, state.kpl, &consumed);
 	}
 
 	if (command_performed)

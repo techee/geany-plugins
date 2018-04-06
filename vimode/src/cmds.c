@@ -1891,18 +1891,18 @@ static gboolean process_event_mode(CmdDef *cmds, CmdContext *ctx,
 	return TRUE;
 }
 
-gboolean process_event_cmd_mode(CmdContext *ctx, GSList *kpl,
+gboolean cmd_perform_kpl_cmd(CmdContext *ctx, GSList *kpl,
 	GSList *prev_kpl, gboolean *is_repeat, gboolean *consumed)
 {
 	return process_event_mode(cmd_mode_cmds, ctx, kpl, prev_kpl, is_repeat, consumed);
 }
 
-gboolean process_event_vis_mode(CmdContext *ctx, GSList *kpl, gboolean *consumed)
+gboolean cmd_perform_kpl_vis(CmdContext *ctx, GSList *kpl, gboolean *consumed)
 {
 	return process_event_mode(vis_mode_cmds, ctx, kpl, NULL, NULL, consumed);
 }
 
-gboolean process_event_ins_mode(CmdContext *ctx, GSList *kpl, gboolean *consumed)
+gboolean cmd_perform_kpl_ins(CmdContext *ctx, GSList *kpl, gboolean *consumed)
 {
 	return process_event_mode(ins_mode_cmds, ctx, kpl, NULL, NULL, consumed);
 }

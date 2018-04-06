@@ -30,8 +30,8 @@
 #define NTH(s, pos, rel) scintilla_send_message((s), SCI_POSITIONRELATIVE, (pos), (rel))
 #define DIFF(s, start, end) scintilla_send_message((s), SCI_COUNTCHARACTERS, (start), (end))
 
-#define SET_POS(s, pos, scr) set_current_position((s), (pos), (scr), TRUE)
-#define SET_POS_NOX(s, pos, scr) set_current_position((s), (pos), (scr), FALSE)
+#define SET_POS(s, pos, scr) _set_current_position((s), (pos), (scr), TRUE)
+#define SET_POS_NOX(s, pos, scr) _set_current_position((s), (pos), (scr), FALSE)
 #define GET_CUR_LINE(s) scintilla_send_message((s), SCI_LINEFROMPOSITION, \
 	SSM((s), SCI_GETCURRENTPOS, 0, 0), 0)
 
@@ -40,14 +40,13 @@
 gchar *get_current_word(ScintillaObject *sci);
 
 void clamp_cursor_pos(ScintillaObject *sci);
+void goto_nonempty(ScintillaObject *sci, gint line, gboolean scroll);
+void _set_current_position(ScintillaObject *sci, gint position, gboolean scroll_to_caret,
+	gboolean caretx);
+
 gint perform_search(ScintillaObject *sci, const gchar *search_text,
 	gint num, gboolean invert);
 void perform_substitute(ScintillaObject *sci, const gchar *cmd, gint from, gint to,
 	const gchar *flag_override);
-
-void set_current_position(ScintillaObject *sci, gint position, gboolean scroll_to_caret,
-	gboolean caretx);
-
-void goto_nonempty(ScintillaObject *sci, gint line, gboolean scroll);
 
 #endif

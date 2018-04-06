@@ -51,7 +51,7 @@ static gboolean on_prompt_key_press_event(GtkWidget *widget, GdkEventKey *event,
 		case GDK_KEY_Return:
 		case GDK_KEY_KP_Enter:
 		case GDK_KEY_ISO_Enter:
-			perform_ex_cmd(ctx, gtk_entry_get_text(GTK_ENTRY(entry)));
+			cmd_ex_perform(ctx, gtk_entry_get_text(GTK_ENTRY(entry)));
 			close_prompt();
 			return TRUE;
 	}

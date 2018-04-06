@@ -21,6 +21,6 @@
 
 #include "cmd-context.h"
 
-void perform_ex_cmd(CmdContext *ctx, const gchar *cmd);
+void cmd_ex_perform(CmdContext *ctx, const gchar *cmd);
 
 #endif

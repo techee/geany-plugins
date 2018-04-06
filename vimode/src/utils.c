@@ -196,7 +196,7 @@ void perform_substitute(ScintillaObject *sci, const gchar *cmd, gint from, gint 
 	g_free(copy);
 }
 
-void set_current_position(ScintillaObject *sci, gint position, gboolean scroll_to_caret,
+void _set_current_position(ScintillaObject *sci, gint position, gboolean scroll_to_caret,
 	gboolean caretx)
 {
 	if (scroll_to_caret)

@@ -21,9 +21,9 @@
 
 #include "cmd-context.h"
 
-gboolean process_event_cmd_mode(CmdContext *ctx, GSList *kpl,
+gboolean cmd_perform_kpl_cmd(CmdContext *ctx, GSList *kpl,
 	GSList *prev_kpl, gboolean *is_repeat, gboolean *consumed);
-gboolean process_event_vis_mode(CmdContext *ctx, GSList *kpl, gboolean *consumed);
-gboolean process_event_ins_mode(CmdContext *ctx, GSList *kpl, gboolean *consumed);
+gboolean cmd_perform_kpl_vis(CmdContext *ctx, GSList *kpl, gboolean *consumed);
+gboolean cmd_perform_kpl_ins(CmdContext *ctx, GSList *kpl, gboolean *consumed);
 
 #endif

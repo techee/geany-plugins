@@ -484,7 +484,7 @@ static void perform_simple_ex_cmd(CmdContext *ctx, const gchar *cmd)
 }
 
 
-void perform_ex_cmd(CmdContext *ctx, const gchar *cmd)
+void cmd_ex_perform(CmdContext *ctx, const gchar *cmd)
 {
 	guint len = strlen(cmd);
 
