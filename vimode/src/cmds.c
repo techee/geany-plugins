@@ -24,7 +24,6 @@
 #include <geanyplugin.h>
 #include <gdk/gdkkeysyms.h>
 
-
 typedef struct
 {
 	/* current Scintilla object - the same one as in CmdContext, added here
@@ -607,37 +606,73 @@ static void cmd_join_lines_vis(CmdContext *c, CmdParams *p)
 	SSM(p->sci, SCI_LINESJOIN, 0, 0);
 }
 
-static void cmd_goto_next_word(CmdContext *c, CmdParams *p)
+static void goto_word_start(CmdContext *c, CmdParams *p, gboolean forward)
 {
-	//TODO: words in scintilla are different from words in vim
 	gint i;
 	for (i = 0; i < p->num; i++)
-		SSM(p->sci, SCI_WORDRIGHT, 0, 0);
+	{
+		gint orig_pos = SSM(p->sci, SCI_GETCURRENTPOS, 0, 0);
+		gint pos;
+		gint line_end_pos;
+
+		SSM(p->sci, forward ? SCI_WORDRIGHT : SCI_WORDLEFT, 0, 0);
+		line_end_pos = SSM(p->sci, SCI_GETLINEENDPOSITION, GET_CUR_LINE(p->sci), 0);
+		pos = SSM(p->sci, SCI_GETCURRENTPOS, 0, 0);
+		if (pos == orig_pos)
+			break;
+		/* For some reason, Scintilla treats newlines as word parts and cursor
+		 * is left before/after newline. Repeat again in this case. */
+		if (pos == line_end_pos)
+			SSM(p->sci, forward ? SCI_WORDRIGHT : SCI_WORDLEFT, 0, 0);
+	}
 }
 
-static void cmd_goto_next_word_end(CmdContext *c, CmdParams *p)
+static void cmd_goto_next_word(CmdContext *c, CmdParams *p)
 {
-	//TODO: words in scintilla are different from words in vim
-	gint i;
-	for (i = 0; i < p->num; i++)
-		SSM(p->sci, SCI_WORDRIGHTEND, 0, 0);
+	goto_word_start(c, p, TRUE);
 }
 
 static void cmd_goto_previous_word(CmdContext *c, CmdParams *p)
 {
-	//TODO: words in scintilla are different from words in vim
+	goto_word_start(c, p, FALSE);
+}
+
+static void goto_word_end(CmdContext *c, CmdParams *p, gboolean forward)
+{
 	gint i;
+
+	if (VI_IS_COMMAND(vi_get_mode()))
+		SSM(p->sci, SCI_CHARRIGHT, 0, 0);
+
 	for (i = 0; i < p->num; i++)
-		SSM(p->sci, SCI_WORDLEFT, 0, 0);
+	{
+		gint orig_pos = SSM(p->sci, SCI_GETCURRENTPOS, 0, 0);
+		gint pos;
+		gint line_start_pos;
+
+		SSM(p->sci, forward ? SCI_WORDRIGHTEND : SCI_WORDLEFTEND, 0, 0);
+		line_start_pos = SSM(p->sci, SCI_POSITIONFROMLINE, GET_CUR_LINE(p->sci), 0);
+		pos = SSM(p->sci, SCI_GETCURRENTPOS, 0, 0);
+		if (pos == orig_pos)
+			break;
+		/* For some reason, Scintilla treats newlines as word parts and cursor
+		 * is left before/after newline. Repeat again in this case. */
+		if (pos == line_start_pos)
+			SSM(p->sci, forward ? SCI_WORDRIGHTEND : SCI_WORDLEFTEND, 0, 0);
+	}
+
+	if (VI_IS_COMMAND(vi_get_mode()))
+		SSM(p->sci, SCI_CHARLEFT, 0, 0);
+}
+
+static void cmd_goto_next_word_end(CmdContext *c, CmdParams *p)
+{
+	goto_word_end(c, p, TRUE);
 }
 
 static void cmd_goto_previous_word_end(CmdContext *c, CmdParams *p)
 {
-	//TODO: words in scintilla are different from words in vim
-	gint i;
-	for (i = 0; i < p->num; i++)
-		SSM(p->sci, SCI_WORDLEFTEND, 0, 0);
-	SSM(p->sci, SCI_CHARLEFT, 0, 0);
+	goto_word_end(c, p, FALSE);
 }
 
 static void cmd_goto_line_start(CmdContext *c, CmdParams *p)
