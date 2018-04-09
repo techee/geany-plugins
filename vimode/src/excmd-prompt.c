@@ -16,12 +16,11 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include "prompt-ex.h"
-#include "cmds-ex.h"
+#include "excmd-prompt.h"
+#include "excmd-runner.h"
 
 #include <gdk/gdkkeysyms.h>
 #include <string.h>
-
 
 #define PROMPT_WIDTH 500
 
@@ -51,7 +50,7 @@ static gboolean on_prompt_key_press_event(GtkWidget *widget, GdkEventKey *event,
 		case GDK_KEY_Return:
 		case GDK_KEY_KP_Enter:
 		case GDK_KEY_ISO_Enter:
-			cmd_ex_perform(ctx, gtk_entry_get_text(GTK_ENTRY(entry)));
+			excmd_perform(ctx, gtk_entry_get_text(GTK_ENTRY(entry)));
 			close_prompt();
 			return TRUE;
 	}

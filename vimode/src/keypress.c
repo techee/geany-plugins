@@ -77,6 +77,7 @@ KeyPress *kp_from_event_key(GdkEventKey *ev)
 	return kp;
 }
 
+
 const gchar *kp_to_str(KeyPress *kp)
 {
 	static gchar *utf8 = NULL;
@@ -132,6 +133,7 @@ static gint kp_todigit(KeyPress *kp)
 	return -1;
 }
 
+
 gboolean kp_isdigit(KeyPress *kp)
 {
 	return kp_todigit(kp) != -1;
@@ -152,6 +154,7 @@ void kpl_printf(GSList *kpl)
 	printf("\n");
 	kpl = g_slist_reverse(kpl);
 }
+
 
 gint kpl_get_int(GSList *kpl, GSList **new_kpl)
 {

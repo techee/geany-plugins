@@ -16,21 +16,18 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef __VIMODE_UTILS_H__
-#define __VIMODE_UTILS_H__
+#ifndef __VIMODE_EXCMDS_EXCMDS_H__
+#define __VIMODE_EXCMDS_EXCMDS_H__
 
-#include "sci.h"
+#include "excmd-params.h"
+#include "context.h"
 
-gchar *get_current_word(ScintillaObject *sci);
-
-void clamp_cursor_pos(ScintillaObject *sci);
-void goto_nonempty(ScintillaObject *sci, gint line, gboolean scroll);
-
-gint perform_search(ScintillaObject *sci, const gchar *search_text,
-	gint num, gboolean invert);
-void perform_substitute(ScintillaObject *sci, const gchar *cmd, gint from, gint to,
-	const gchar *flag_override);
-
-gint get_line_number_rel(ScintillaObject *sci, gint shift);
+void excmd_save(CmdContext *c, ExCmdParams *p);
+void excmd_save_all(CmdContext *c, ExCmdParams *p);
+void excmd_quit(CmdContext *c, ExCmdParams *p);
+void excmd_save_quit(CmdContext *c, ExCmdParams *p);
+void excmd_save_all_quit(CmdContext *c, ExCmdParams *p);
+void excmd_repeat_subst(CmdContext *c, ExCmdParams *p);
+void excmd_repeat_subst_orig_flags(CmdContext *c, ExCmdParams *p);
 
 #endif

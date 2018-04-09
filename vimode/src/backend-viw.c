@@ -27,6 +27,7 @@ static ScintillaObject *sci;
 static GtkWidget *window;
 static GtkWidget *statusbar;
 
+
 static const gchar *get_mode_name(ViMode vi_mode)
 {
 	switch (vi_mode)
@@ -56,6 +57,7 @@ static const gchar *get_mode_name(ViMode vi_mode)
 	return "";
 }
 
+
 static void set_statusbar_text(const gchar *text)
 {
 	static guint id = 0;
@@ -66,12 +68,14 @@ static void set_statusbar_text(const gchar *text)
 	gtk_statusbar_push(GTK_STATUSBAR(statusbar), id, text);
 }
 
+
 static void on_mode_change(ViMode mode)
 {
 	gchar *msg = g_strconcat("-- ", get_mode_name(mode), " --", NULL);
 	set_statusbar_text(msg);
 	g_free(msg);
 }
+
 
 static gboolean on_save(gboolean force)
 {
@@ -111,10 +115,12 @@ static gboolean on_save(gboolean force)
 	return success;
 }
 
+
 static gboolean on_save_all(gboolean force)
 {
 	return on_save(force);
 }
+
 
 static void on_quit(gboolean force)
 {
@@ -123,6 +129,7 @@ static void on_quit(gboolean force)
 	else
 		set_statusbar_text("Save the file before exiting or force (!) the command");
 }
+
 
 static gboolean on_wrong_quit(GtkWidget *widget, GdkEvent *event, gpointer parent_window)
 {
@@ -137,16 +144,19 @@ static gboolean on_wrong_quit(GtkWidget *widget, GdkEvent *event, gpointer paren
 	return TRUE;
 }
 
+
 static gboolean on_key_press_cb(GtkWidget *widget, GdkEventKey *ev, gpointer user_data)
 {
 	return vi_notify_key_press(ev);
 }
+
 
 static void on_sci_notify_cb(G_GNUC_UNUSED GtkWidget *widget, G_GNUC_UNUSED gint scn,
 	gpointer scnt, gpointer data)
 {
 	vi_notify_sci(scnt);
 }
+
 
 // stolen from Geany
 static void use_monospaced_font(void)
@@ -169,6 +179,7 @@ static void use_monospaced_font(void)
 	g_free(font_name);
 }
 
+
 static void open_file(const gchar *name)
 {
 	gchar *buf;
@@ -185,6 +196,7 @@ static void open_file(const gchar *name)
 	else
 		set_statusbar_text("File could not be opened");
 }
+
 
 int main(int argc, char **argv)
 {

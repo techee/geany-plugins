@@ -31,6 +31,7 @@ void clamp_cursor_pos(ScintillaObject *sci)
 		SET_POS_NOX(sci, pos-1, FALSE);
 }
 
+
 static gchar *get_contents_range(ScintillaObject *sci, gint start, gint end)
 {
 	struct Sci_TextRange tr;
@@ -43,6 +44,7 @@ static gchar *get_contents_range(ScintillaObject *sci, gint start, gint end)
 	SSM(sci, SCI_GETTEXTRANGE, 0, (sptr_t)&tr);
 	return text;
 }
+
 
 gchar *get_current_word(ScintillaObject *sci)
 {
@@ -60,6 +62,7 @@ gchar *get_current_word(ScintillaObject *sci)
 
 	return get_contents_range(sci, start, end);
 }
+
 
 gint perform_search(ScintillaObject *sci, const gchar *search_text,
 	gint num, gboolean invert)
@@ -131,6 +134,7 @@ gint perform_search(ScintillaObject *sci, const gchar *search_text,
 	return pos;
 }
 
+
 void perform_substitute(ScintillaObject *sci, const gchar *cmd, gint from, gint to,
 	const gchar *flag_override)
 {
@@ -196,18 +200,14 @@ void perform_substitute(ScintillaObject *sci, const gchar *cmd, gint from, gint 
 	g_free(copy);
 }
 
-void _set_current_position(ScintillaObject *sci, gint position, gboolean scroll_to_caret,
-	gboolean caretx)
+
+gint get_line_number_rel(ScintillaObject *sci, gint shift)
 {
-	if (scroll_to_caret)
-		SSM(sci, SCI_GOTOPOS, (uptr_t) position, 0);
-	else
-	{
-		SSM(sci, SCI_SETCURRENTPOS, (uptr_t) position, 0);
-		SSM(sci, SCI_SETANCHOR, (uptr_t) position, 0); /* to avoid creation of a selection */
-	}
-	if (caretx)
-		SSM(sci, SCI_CHOOSECARETX, 0, 0);
+	gint new_line = GET_CUR_LINE(sci) + shift;
+	gint lines = SSM(sci, SCI_GETLINECOUNT, 0, 0);
+	new_line = new_line < 0 ? 0 : new_line;
+	new_line = new_line > lines ? lines : new_line;
+	return new_line;
 }
 
 void goto_nonempty(ScintillaObject *sci, gint line, gboolean scroll)

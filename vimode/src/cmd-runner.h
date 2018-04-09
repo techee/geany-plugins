@@ -16,21 +16,14 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef __VIMODE_UTILS_H__
-#define __VIMODE_UTILS_H__
+#ifndef __VIMODE_CMD_RUNNER_H__
+#define __VIMODE_CMD_RUNNER_H__
 
-#include "sci.h"
+#include "context.h"
 
-gchar *get_current_word(ScintillaObject *sci);
-
-void clamp_cursor_pos(ScintillaObject *sci);
-void goto_nonempty(ScintillaObject *sci, gint line, gboolean scroll);
-
-gint perform_search(ScintillaObject *sci, const gchar *search_text,
-	gint num, gboolean invert);
-void perform_substitute(ScintillaObject *sci, const gchar *cmd, gint from, gint to,
-	const gchar *flag_override);
-
-gint get_line_number_rel(ScintillaObject *sci, gint shift);
+gboolean cmd_perform_kpl_cmd(CmdContext *ctx, GSList *kpl,
+	GSList *prev_kpl, gboolean *is_repeat, gboolean *consumed);
+gboolean cmd_perform_kpl_vis(CmdContext *ctx, GSList *kpl, gboolean *consumed);
+gboolean cmd_perform_kpl_ins(CmdContext *ctx, GSList *kpl, gboolean *consumed);
 
 #endif

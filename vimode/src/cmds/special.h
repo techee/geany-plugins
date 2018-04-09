@@ -16,21 +16,23 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef __VIMODE_UTILS_H__
-#define __VIMODE_UTILS_H__
+#ifndef __VIMODE_CMDS_SPECIAL_H__
+#define __VIMODE_CMDS_SPECIAL_H__
 
-#include "sci.h"
+#include "context.h"
+#include "cmd-params.h"
 
-gchar *get_current_word(ScintillaObject *sci);
+void cmd_swap_anchor(CmdContext *c, CmdParams *p);
+void cmd_nop(CmdContext *c, CmdParams *p);
+void cmd_repeat_last_command(CmdContext *c, CmdParams *p);
+void cmd_paste_inserted_text(CmdContext *c, CmdParams *p);
+void cmd_paste_inserted_text_leave_ins(CmdContext *c, CmdParams *p);
 
-void clamp_cursor_pos(ScintillaObject *sci);
-void goto_nonempty(ScintillaObject *sci, gint line, gboolean scroll);
+void cmd_write_exit(CmdContext *c, CmdParams *p);
+void cmd_force_exit(CmdContext *c, CmdParams *p);
 
-gint perform_search(ScintillaObject *sci, const gchar *search_text,
-	gint num, gboolean invert);
-void perform_substitute(ScintillaObject *sci, const gchar *cmd, gint from, gint to,
-	const gchar *flag_override);
-
-gint get_line_number_rel(ScintillaObject *sci, gint shift);
+void cmd_search_next(CmdContext *c, CmdParams *p);
+void cmd_search_current_next(CmdContext *c, CmdParams *p);
+void cmd_search_current_prev(CmdContext *c, CmdParams *p);
 
 #endif

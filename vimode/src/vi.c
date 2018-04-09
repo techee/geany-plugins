@@ -17,10 +17,10 @@
  */
 
 #include "vi.h"
-#include "cmds.h"
+#include "cmd-runner.h"
 #include "utils.h"
 #include "keypress.h"
-#include "prompt-ex.h"
+#include "excmd-prompt.h"
 
 #include <gdk/gdkkeysyms.h>
 
@@ -195,6 +195,7 @@ void vi_set_mode(ViMode mode)
 	}
 }
 
+
 void vi_set_active_sci(ScintillaObject *sci)
 {
 	if (ctx.sci && state.default_caret_style != -1)
@@ -278,6 +279,7 @@ gboolean vi_notify_key_press(GdkEventKey *event)
 	return consumed;
 }
 
+
 gboolean vi_notify_sci(SCNotification *nt)
 {
 	ScintillaObject *sci = ctx.sci;
@@ -357,20 +359,24 @@ void vi_set_enabled(gboolean enabled)
 	vi_set_mode(mode);
 }
 
+
 void vi_set_insert_for_dummies(gboolean enabled)
 {
 	state.insert_for_dummies = enabled;
 }
+
 
 gboolean vi_get_enabled(void)
 {
 	return state.vim_enabled;
 }
 
+
 gboolean vi_get_insert_for_dummies(void)
 {
 	return state.insert_for_dummies;
 }
+
 
 static void init_cb(ViCallback *cb)
 {
@@ -379,16 +385,22 @@ static void init_cb(ViCallback *cb)
 	ctx.cb = cb;
 }
 
+
 void vi_init(GtkWidget *parent_window, ViCallback *cb)
 {
 	init_cb(cb);
 	ex_prompt_init(parent_window, &ctx);
 }
 
+
 void vi_cleanup(void)
 {
 	vi_set_active_sci(NULL);
 	ex_prompt_cleanup();
+
+	g_slist_free_full(state.kpl, g_free);
+	g_slist_free_full(state.prev_kpl, g_free);
+
 	g_free(ctx.search_text);
 	g_free(ctx.substitute_text);
 	g_free(ctx.search_char);

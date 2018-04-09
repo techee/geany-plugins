@@ -16,15 +16,22 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef __VIMODE_PROMPT_EX_H__
-#define __VIMODE_PROMPT_EX_H__
+#ifndef __EXCMD_PARAMS_H__
+#define __EXCMD_PARAMS_H__
 
-#include "cmd-context.h"
+#include "context.h"
 
-#include <gtk/gtk.h>
+typedef struct
+{
+	/* was the command forced with ! mark ? */
+	gboolean force;
+	/* the first parameter of the command */
+	const gchar *param1;
+	/* ex range start and end */
+	gint range_from;
+	gint range_to;
+} ExCmdParams;
 
-void ex_prompt_init(GtkWidget *parent_window, CmdContext *ctx);
-void ex_prompt_cleanup(void);
-void ex_prompt_show(const gchar *val);
+typedef void (*ExCmd)(CmdContext *c, ExCmdParams *p);
 
 #endif

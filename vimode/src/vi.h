@@ -19,9 +19,7 @@
 #ifndef __VIMODE_VI_H__
 #define __VIMODE_VI_H__
 
-#include <gtk/gtk.h>
-#include "Scintilla.h"
-#include "ScintillaWidget.h"
+#include "sci.h"
 
 #define VI_IS_VISUAL(m) ((m) == VI_MODE_VISUAL || (m) == VI_MODE_VISUAL_LINE || (m) == VI_MODE_VISUAL_BLOCK)
 #define VI_IS_COMMAND(m) ((m) == VI_MODE_COMMAND || (m) == VI_MODE_COMMAND_SINGLE)
@@ -49,7 +47,6 @@ typedef struct
 void vi_enter_cmdline_mode(void);
 void vi_set_mode(ViMode mode);
 ViMode vi_get_mode(void);
-
 
 gboolean vi_notify_sci(SCNotification *nt);
 gboolean vi_notify_key_press(GdkEventKey *event);

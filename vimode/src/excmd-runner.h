@@ -16,21 +16,11 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef __VIMODE_UTILS_H__
-#define __VIMODE_UTILS_H__
+#ifndef __VIMODE_EXCMDS_H__
+#define __VIMODE_EXCMDS_H__
 
-#include "sci.h"
+#include "context.h"
 
-gchar *get_current_word(ScintillaObject *sci);
-
-void clamp_cursor_pos(ScintillaObject *sci);
-void goto_nonempty(ScintillaObject *sci, gint line, gboolean scroll);
-
-gint perform_search(ScintillaObject *sci, const gchar *search_text,
-	gint num, gboolean invert);
-void perform_substitute(ScintillaObject *sci, const gchar *cmd, gint from, gint to,
-	const gchar *flag_override);
-
-gint get_line_number_rel(ScintillaObject *sci, gint shift);
+void excmd_perform(CmdContext *ctx, const gchar *cmd);
 
 #endif

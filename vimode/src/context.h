@@ -16,14 +16,11 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef __VIMODE_CMD_CONTEXT_H__
-#define __VIMODE_CMD_CONTEXT_H__
+#ifndef __VIMODE_CONTEXT_H__
+#define __VIMODE_CONTEXT_H__
 
 #include "vi.h"
-
-#include <gtk/gtk.h>
-#include "Scintilla.h"
-#include "ScintillaWidget.h"
+#include "sci.h"
 
 #define INSERT_BUF_LEN 4096
 

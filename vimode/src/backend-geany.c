@@ -63,8 +63,8 @@ struct
 };
 
 static gboolean start_in_insert;
-
 static ViCallback cb;
+
 
 static gchar *get_config_filename(void)
 {
@@ -185,6 +185,7 @@ static void on_doc_close(G_GNUC_UNUSED GObject * obj, GeanyDocument * doc,
 	vi_set_active_sci(NULL);
 }
 
+
 static gboolean on_editor_notify(GObject *object, GeanyEditor *editor,
 		SCNotification *nt, gpointer data)
 {
@@ -268,10 +269,12 @@ static gboolean on_save_all(gboolean force)
 	return success;
 }
 
+
 static void on_quit(gboolean force)
 {
 	//TODO: we need to extend Geany API for this
 }
+
 
 void plugin_init(GeanyData *data)
 {

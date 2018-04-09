@@ -16,25 +16,14 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include "cmds-ex.h"
+#include "excmd-runner.h"
+#include "excmd-params.h"
+#include "excmds/excmds.h"
 #include "utils.h"
 
 #include <string.h>
 #include <ctype.h>
 
-
-typedef struct
-{
-	/* was the command forced with ! mark ? */
-	gboolean force;
-	/* the first parameter of the command */
-	const gchar *param1;
-	/* ex range start and end */
-	gint range_from;
-	gint range_to;
-} ExCmdParams;
-
-typedef void (*ExCmd)(CmdContext *c, ExCmdParams *p);
 
 typedef struct {
 	ExCmd cmd;
@@ -42,93 +31,44 @@ typedef struct {
 } ExCmdDef;
 
 
-static void cmd_save(CmdContext *c, ExCmdParams *p)
-{
-	c->cb->on_save(p->force);
-}
-
-
-static void cmd_save_all(CmdContext *c, ExCmdParams *p)
-{
-	c->cb->on_save_all(p->force);
-}
-
-
-static void cmd_quit(CmdContext *c, ExCmdParams *p)
-{
-	c->cb->on_quit(p->force);
-}
-
-
-static void cmd_save_quit(CmdContext *c, ExCmdParams *p)
-{
-	if (c->cb->on_save(p->force))
-		c->cb->on_quit(p->force);
-}
-
-
-static void cmd_save_all_quit(CmdContext *c, ExCmdParams *p)
-{
-	if (c->cb->on_save_all(p->force))
-		c->cb->on_quit(p->force);
-}
-
-
-static void cmd_repeat_subst(CmdContext *c, ExCmdParams *p)
-{
-	const gchar *flags = p->param1;
-	if (!flags)
-		flags = "g";
-	perform_substitute(c->sci, c->substitute_text, p->range_from, p->range_to, flags);
-}
-
-
-static void cmd_repeat_subst_orig_flags(CmdContext *c, ExCmdParams *p)
-{
-	perform_substitute(c->sci, c->substitute_text, p->range_from, p->range_to, NULL);
-}
-
-/******************************************************************************/
-
 ExCmdDef ex_cmds[] = {
-	{cmd_save, "w"},
-	{cmd_save, "write"},
-	{cmd_save, "up"},
-	{cmd_save, "update"},
+	{excmd_save, "w"},
+	{excmd_save, "write"},
+	{excmd_save, "up"},
+	{excmd_save, "update"},
 
-	{cmd_save_all, "wall"},
+	{excmd_save_all, "wall"},
 
-	{cmd_quit, "q"},
-	{cmd_quit, "quit"},
-	{cmd_quit, "quita"},
-	{cmd_quit, "quitall"},
-	{cmd_quit, "qa"},
-	{cmd_quit, "qall"},
-	{cmd_quit, "cq"},
-	{cmd_quit, "cquit"},
+	{excmd_quit, "q"},
+	{excmd_quit, "quit"},
+	{excmd_quit, "quita"},
+	{excmd_quit, "quitall"},
+	{excmd_quit, "qa"},
+	{excmd_quit, "qall"},
+	{excmd_quit, "cq"},
+	{excmd_quit, "cquit"},
 	
-	{cmd_save_quit, "wq"},
-	{cmd_save_quit, "x"},
-	{cmd_save_quit, "xit"},
-	{cmd_save_quit, "exi"},
-	{cmd_save_quit, "exit"},
+	{excmd_save_quit, "wq"},
+	{excmd_save_quit, "x"},
+	{excmd_save_quit, "xit"},
+	{excmd_save_quit, "exi"},
+	{excmd_save_quit, "exit"},
 
-	{cmd_save_all_quit, "xa"},
-	{cmd_save_all_quit, "xall"},
-	{cmd_save_all_quit, "wqa"},
-	{cmd_save_all_quit, "wqall"},
-	{cmd_save_all_quit, "x"},
-	{cmd_save_all_quit, "xit"},
+	{excmd_save_all_quit, "xa"},
+	{excmd_save_all_quit, "xall"},
+	{excmd_save_all_quit, "wqa"},
+	{excmd_save_all_quit, "wqall"},
+	{excmd_save_all_quit, "x"},
+	{excmd_save_all_quit, "xit"},
 
-	{cmd_repeat_subst, "s"},
-	{cmd_repeat_subst, "substitute"},
-	{cmd_repeat_subst, "&"},
-	{cmd_repeat_subst_orig_flags, "&&"},
+	{excmd_repeat_subst, "s"},
+	{excmd_repeat_subst, "substitute"},
+	{excmd_repeat_subst, "&"},
+	{excmd_repeat_subst_orig_flags, "&&"},
 
 	{NULL, NULL}
 };
 
-/******************************************************************************/
 
 typedef enum
 {
@@ -150,6 +90,14 @@ typedef enum
 	TK_STAR,
 	TK_PERCENT,
 } TokenType;
+
+
+typedef enum
+{
+	ST_START,
+	ST_AFTER_NUMBER,
+	ST_BEFORE_END
+} State;
 
 
 typedef struct
@@ -272,14 +220,6 @@ static void next_token(const gchar **p, Token *tk)
 	init_tk(tk, TK_END, 0, NULL);
 	return;
 }
-
-
-typedef enum
-{
-	ST_START,
-	ST_AFTER_NUMBER,
-	ST_BEFORE_END
-} State;
 
 
 static gboolean parse_ex_range(const gchar **p, CmdContext *ctx, gint *from, gint *to)
@@ -418,7 +358,6 @@ finish:
 	return success;
 }
 
-/******************************************************************************/
 
 static void perform_simple_ex_cmd(CmdContext *ctx, const gchar *cmd)
 {
@@ -484,7 +423,7 @@ static void perform_simple_ex_cmd(CmdContext *ctx, const gchar *cmd)
 }
 
 
-void cmd_ex_perform(CmdContext *ctx, const gchar *cmd)
+void excmd_perform(CmdContext *ctx, const gchar *cmd)
 {
 	guint len = strlen(cmd);
 
