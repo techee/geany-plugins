@@ -38,11 +38,11 @@ vi_srcs = \
 	excmds/excmds.c
 
 vimode_la_SOURCES = \
-	backend-geany.c \
+	backends/backend-geany.c \
 	$(vi_srcs)
 
 viw_SOURCES = \
-	backend-viw.c \
+	backends/backend-viw.c \
 	$(vi_srcs)
     
 vimode_la_CPPFLAGS = $(AM_CPPFLAGS) \
