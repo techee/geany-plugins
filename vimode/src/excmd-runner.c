@@ -427,7 +427,7 @@ void excmd_perform(CmdContext *ctx, const gchar *cmd)
 {
 	guint len = strlen(cmd);
 
-	if (cmd == NULL || len < 2)
+	if (cmd == NULL || len < 1)
 		return;
 
 	switch (cmd[0])
