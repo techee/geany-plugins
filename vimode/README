@@ -36,60 +36,60 @@ it adds a new menu called Vim Mode under the Tools menu with the following items
 Enable Vim Mode
 ---------------
 Enables/disables the Vim mode. A keybinding can be assigned to this action so
-you can for instance use Geany normally and enable/disable the Vim mode when
+you can for instance use Geany normally and enable/disable the Vim mode as
 needed.
 
 Insert Mode for Dummies
 -----------------------
 This makes the insert mode behave like normal Geany, only the escape key allows
-you to switch to the normal mode. This is basically "Vim for the rest of us"
+you to switch to the Vim command mode. This is basically "Vim for the rest of us"
 who want to use the editor in a standard (understand non-vim) way but who like
 the idea of having access to Vim commands from time to time. Highly unintrusive
-so you basically don't know about the Vim mode normally.
+so you basically do not know about the Vim mode normally.
 
 Start in Insert Mode
 --------------------
 By default, the plugin starts in the normal mode. If you enable the "dummies"
-mode above, you might also want to enable this option so you don't have to
+mode above, you might also want to enable this option so you do not have to
 switch to the insert mode manually when the application starts.
 
 Behavior
 ========
 Upon changing mode, the plugin writes the current mode in the status bar. The
-caret shape used also indicates the current mode:
+caret shape also indicates the current mode:
 
 * block, not blinking - normal mode
-* vertical line, not blinking - select mode
+* vertical line, not blinking - visual mode
 * blinking vertical line - insert mode
 * blinking underscore - replace mode
 
 When evaluating key presses, the plugin checks if the keypress is a Vim command
-or a part of a command in which case the plugin swallows the key press event
+or a part of a command in which case the plugin consumes the key press event
 and does not propagate it to Geany. When the keypress is not a Vim command,
 the plugin sends it to Geany which processes it normally based in its internal
 logic. This means that it is still possible to use normal Geany keybindings
 with this plugin unless they conflict with a Vim command.
 
-If autocompletion popups and tooltips are present in insert mode, escape closes
-them first without entering the normal mode so you don't enter normal mode
+If autocompletion popups or tooltips are present in insert mode, escape closes
+them first without entering the normal mode so you do not enter normal mode
 by accident.
 
 Limitations and Problems
 ------------------------
 I tried to implement a reasonable subset of Vim commands but please note that
-the judgement what's a reasonable set of commands was made by a guy who doesn't
+the judgement what is a reasonable set of commands was made by a guy who does not
 use Vim. So it is very probable I missed some totally fundamental behavior
 of Vim every Vim user would expect to be present. Please report such problems.
 
 This is an incomplete list of known limitations of the plugin:
 
-* selection in visual mode doesn't behave the same way as in Vim - the reason is
+* selection in visual mode does not behave the same way as in Vim - the reason is
   that the editor component Geany uses (Scintilla) uses cursor which is always
   between characters and not on characters (block cursor which appears to be
   on top of a character behaves as if it were before the character). This may lead
-  to situations when the position of the cursor is off by one. I might fix this
-  issue later but it will be tricky.
-* undo doesn't preserve cursor position the same way Vim does - probably fixable
+  to situations when the position of the cursor is off by one. This issue might
+  be fixed later but it will be tricky.
+* undo does not preserve cursor position the same way Vim does - probably fixable
 * block visual mode is not implemented - probably possible using Scintilla's
   multiple selection feature
 * select submode of insert mode is not implemented
@@ -101,8 +101,13 @@ This is an incomplete list of known limitations of the plugin:
 * most ex mode commands are not implemented (excluding basic stuff like search,
   replace, saving, etc.)
 * despite being mentioned below, none of the commands for quitting (:q, ZZ, etc.)
-  work because the corresponding function isn't in Geany API yet - everything is
+  work because the corresponding function is not in Geany API yet - everything is
   ready in the plugin though
+* only the 'g' flag is supported in the substitute command
+* in search and substitute the regular expressions are based on Scintilla regular
+  expressions which differ from Vim. Check the Scintilla documentation at
+  http://www.scintilla.org/ScintillaDoc.html#Searching for more details.
+  In addition, \c is also supported to allow case-insensitive search.
 
 FAQ
 ===
@@ -153,7 +158,7 @@ I could write a simple editor which just uses Scintilla and GTK (well,
 not exactly - the way it builds now it still uses Scintilla from libgeany
 but the build could be easily modified to link against statically built
 Scintilla without any Geany dependency). So yeah, I'm a real man now, have my own
-editor (it only sucks it's a Vim clone). And in fact it turned out to be useful
+editor - it only sucks it's a Vim clone. And in fact it turned out to be useful
 for the development of the plugin because one can use the viw (Vi Worsened)
 editor for testing instead of having to restart Geany all the time.
 
@@ -177,7 +182,7 @@ Jiří Techet, <techet(at)gmail(dot)com>.
 
 Bug Reports
 -----------
-Please use the Geany-Plugins GitHub page to report bugs at
+To report bugs, please use the Geany-Plugins GitHub page at
 https://github.com/geany/geany-plugins/issues
 
 License
@@ -207,7 +212,7 @@ Implemented Commands
 The rest of the file contains a list of Vim commands which have been at least
 partially implemented in the plugin. This is taken from the index.txt Vim help
 file which is also present in the root directory of the plugin. If you add
-a new command, please don't forget to update the table below.::
+a new command, please do not forget to update the table below.::
 
     ==============================================================================
     1. Insert mode                                          insert-index
