@@ -229,11 +229,11 @@ CmdDef text_object_cmds[] = {
 };
 
 
-#define ENTER_CMDLINE_CMDS \
-	{cmd_enter_cmdline, GDK_KEY_colon, 0, 0, 0, FALSE, FALSE}, \
-	{cmd_enter_cmdline, GDK_KEY_slash, 0, 0, 0, FALSE, FALSE}, \
-	{cmd_enter_cmdline, GDK_KEY_KP_Divide, 0, 0, 0, FALSE, FALSE}, \
-	{cmd_enter_cmdline, GDK_KEY_question, 0, 0, 0, FALSE, FALSE}, \
+#define ENTER_EX_CMDS \
+	{cmd_enter_ex, GDK_KEY_colon, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_enter_ex, GDK_KEY_slash, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_enter_ex, GDK_KEY_KP_Divide, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_enter_ex, GDK_KEY_question, 0, 0, 0, FALSE, FALSE}, \
 	/* END */
 
 
@@ -307,7 +307,7 @@ CmdDef cmd_mode_cmds[] = {
 	MOVEMENT_CMDS
 	TEXT_OBJECT_CMDS
 	OPERATOR_CMDS
-	ENTER_CMDLINE_CMDS
+	ENTER_EX_CMDS
 
 	{NULL, 0, 0, 0, 0, FALSE, FALSE}
 };
@@ -344,7 +344,7 @@ CmdDef vis_mode_cmds[] = {
 	MOVEMENT_CMDS
 	TEXT_OBJECT_CMDS
 	OPERATOR_CMDS
-	ENTER_CMDLINE_CMDS
+	ENTER_EX_CMDS
 
 	{NULL, 0, 0, 0, 0, FALSE, FALSE}
 };
@@ -513,7 +513,7 @@ static CmdDef *get_cmd_to_run(GSList *kpl, CmdDef *cmds, gboolean have_selection
 }
 
 
-static void perform_cmd(CmdDef *def, CmdContext *ctx, GSList *kpl)
+static void perform_cmd(CmdDef *def, CmdContext *ctx)
 {
 	GSList *top;
 	gint num;
@@ -529,14 +529,14 @@ static void perform_cmd(CmdDef *def, CmdContext *ctx, GSList *kpl)
 		cmd_len++;
 	if (def->param)
 		cmd_len++;
-	top = g_slist_nth(kpl, cmd_len);
+	top = g_slist_nth(ctx->kpl, cmd_len);
 	num = kpl_get_int(top, &top);
 	num_present = num != -1;
 
 	sel_start = SSM(ctx->sci, SCI_GETSELECTIONSTART, 0, 0);
 	sel_len = SSM(ctx->sci, SCI_GETSELECTIONEND, 0, 0) - sel_start;
 	cmd_params_init(&param, ctx->sci,
-		num_present ? num : 1, num_present, kpl, FALSE,
+		num_present ? num : 1, num_present, ctx->kpl, FALSE,
 		sel_start, sel_len);
 
 	SSM(ctx->sci, SCI_BEGINUNDOACTION, 0, 0);
@@ -585,72 +585,89 @@ static void perform_cmd(CmdDef *def, CmdContext *ctx, GSList *kpl)
 }
 
 
-static gboolean perform_repeat_cmd(CmdContext *ctx, GSList *kpl,
-	GSList *prev_kpl)
+static gboolean perform_repeat_cmd(CmdContext *ctx)
 {
-	GSList *top = g_slist_next(kpl);  // get behind "."
+	GSList *top = g_slist_next(ctx->kpl);  // get behind "."
 	gint num = kpl_get_int(top, NULL);
 	CmdDef *def;
 	gint i;
 
-	def = get_cmd_to_run(prev_kpl, cmd_mode_cmds, FALSE);
+	def = get_cmd_to_run(ctx->prev_kpl, cmd_mode_cmds, FALSE);
 	if (!def)
 		return FALSE;
 
 	num = num == -1 ? 1 : num;
 	for (i = 0; i < num; i++)
-		perform_cmd(def, ctx, prev_kpl);
+		perform_cmd(def, ctx);
 
 	return TRUE;
 }
 
 
-static gboolean process_event_mode(CmdDef *cmds, CmdContext *ctx,
-	GSList *kpl, GSList *prev_kpl, gboolean *is_repeat, gboolean *consumed)
+static gboolean process_cmd(CmdDef *cmds, CmdContext *ctx)
 {
+	gboolean consumed;
+	gboolean performed = FALSE;
+	ViMode orig_mode = vi_get_mode();
 	gboolean have_selection =
 		SSM(ctx->sci, SCI_GETSELECTIONEND, 0, 0) - SSM(ctx->sci, SCI_GETSELECTIONSTART, 0, 0) > 0;
-	CmdDef *def = get_cmd_to_run(kpl, cmds, have_selection);
+	CmdDef *def = get_cmd_to_run(ctx->kpl, cmds, have_selection);
 
-	*consumed = is_cmdpart(kpl, cmds);
+	consumed = is_cmdpart(ctx->kpl, cmds);
 
-	if (!def)
-		return FALSE;
-
-	if (is_repeat != NULL)
+	if (def)
 	{
-		*is_repeat = def->cmd == cmd_repeat_last_command;
-		if (*is_repeat)
+		if (def->cmd == cmd_repeat_last_command)
 		{
-			if (!perform_repeat_cmd(ctx, kpl, prev_kpl))
-				return FALSE;
+			if (perform_repeat_cmd(ctx))
+			{
+				performed = TRUE;
 
-			*consumed = TRUE;
-			return TRUE;
+				g_slist_free_full(ctx->kpl, g_free);
+				ctx->kpl = NULL;
+			}
+		}
+		else
+		{
+			perform_cmd(def, ctx);
+			performed = TRUE;
+
+			g_slist_free_full(ctx->prev_kpl, g_free);
+			ctx->prev_kpl = ctx->kpl;
+			ctx->kpl = NULL;
 		}
 	}
 
-	perform_cmd(def, ctx, kpl);
+	consumed = consumed || performed;
 
-	*consumed = TRUE;
-	return TRUE;
+	if (performed)
+	{
+		if (orig_mode == VI_MODE_COMMAND_SINGLE)
+			vi_set_mode(VI_MODE_INSERT);
+	}
+	else if (!consumed && ctx->kpl)
+	{
+		g_free(ctx->kpl->data);
+		ctx->kpl = g_slist_delete_link(ctx->kpl, ctx->kpl);
+	}
+
+	return consumed;
 }
 
 
-gboolean cmd_perform_kpl_cmd(CmdContext *ctx, GSList *kpl,
-	GSList *prev_kpl, gboolean *is_repeat, gboolean *consumed)
+gboolean cmd_perform_cmd(CmdContext *ctx)
 {
-	return process_event_mode(cmd_mode_cmds, ctx, kpl, prev_kpl, is_repeat, consumed);
+	return process_cmd(cmd_mode_cmds, ctx);
 }
 
 
-gboolean cmd_perform_kpl_vis(CmdContext *ctx, GSList *kpl, gboolean *consumed)
+gboolean cmd_perform_vis(CmdContext *ctx)
 {
-	return process_event_mode(vis_mode_cmds, ctx, kpl, NULL, NULL, consumed);
+	return process_cmd(vis_mode_cmds, ctx);
 }
 
 
-gboolean cmd_perform_kpl_ins(CmdContext *ctx, GSList *kpl, gboolean *consumed)
+gboolean cmd_perform_ins(CmdContext *ctx)
 {
-	return process_event_mode(ins_mode_cmds, ctx, kpl, NULL, NULL, consumed);
+	return process_cmd(ins_mode_cmds, ctx);
 }

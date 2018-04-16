@@ -38,20 +38,20 @@ struct
 
 	/* vi mode */
 	ViMode vi_mode;
-	/* key presses accumulated over time (e.g. for commands like 100dd) */
-	GSList *kpl;
-	/* kpl of the previous command (used for repeating last command) */
-	GSList *prev_kpl;
 } state =
 {
 	-1, -1,
-	TRUE, FALSE, FALSE,
-	VI_MODE_COMMAND, NULL, NULL
+	TRUE, FALSE,
+	VI_MODE_COMMAND
 };
 
 CmdContext ctx =
 {
-	NULL, NULL, NULL, FALSE, 0, 1, "", 0, FALSE, NULL, NULL
+	NULL, NULL, NULL, NULL,
+	NULL, NULL, NULL,
+	FALSE, FALSE,
+	0, 1,
+	"", 0 
 };
 
 
@@ -61,9 +61,9 @@ ViMode vi_get_mode(void)
 }
 
 
-void vi_enter_cmdline_mode()
+void vi_enter_ex_mode()
 {
-	KeyPress *kp = g_slist_nth_data(state.kpl, 0);
+	KeyPress *kp = g_slist_nth_data(ctx.kpl, 0);
 	const gchar *c = kp_to_str(kp);
 	gchar *val;
 	if (VI_IS_VISUAL(state.vi_mode) && c[0] == ':')
@@ -224,8 +224,6 @@ static gboolean is_printable(GdkEventKey *ev)
 gboolean vi_notify_key_press(GdkEventKey *event)
 {
 	ScintillaObject *sci = ctx.sci;
-	gboolean command_performed = FALSE;
-	gboolean is_repeat_command = FALSE;
 	gboolean consumed = FALSE;
 	ViMode orig_mode = state.vi_mode;
 	KeyPress *kp;
@@ -237,43 +235,22 @@ gboolean vi_notify_key_press(GdkEventKey *event)
 	if (!kp)
 		return FALSE;
 
-	state.kpl = g_slist_prepend(state.kpl, kp);
+	ctx.kpl = g_slist_prepend(ctx.kpl, kp);
 	//printf("key: %x, state: %d\n", event->keyval, event->state);
-	//kpl_printf(state.kpl);
-	//kpl_printf(state.prev_kpl);
+	//kpl_printf(ctx.kpl);
+	//kpl_printf(ctx.prev_kpl);
 	if (VI_IS_COMMAND(state.vi_mode) || VI_IS_VISUAL(state.vi_mode))
 	{
 		if (VI_IS_COMMAND(state.vi_mode))
-			command_performed = cmd_perform_kpl_cmd(&ctx, state.kpl, state.prev_kpl,
-				&is_repeat_command, &consumed);
+			consumed = cmd_perform_cmd(&ctx);
 		else
-			command_performed = cmd_perform_kpl_vis(&ctx, state.kpl, &consumed);
+			consumed = cmd_perform_vis(&ctx);
 		consumed = consumed || is_printable(event);
 	}
 	else //insert, replace mode
 	{
 		if (!state.insert_for_dummies || kp->key == GDK_KEY_Escape)
-			command_performed = cmd_perform_kpl_ins(&ctx, state.kpl, &consumed);
-	}
-
-	if (command_performed)
-	{
-		if (is_repeat_command)
-			g_slist_free_full(state.kpl, g_free);
-		else
-		{
-			g_slist_free_full(state.prev_kpl, g_free);
-			state.prev_kpl = state.kpl;
-		}
-		state.kpl = NULL;
-
-		if (orig_mode == VI_MODE_COMMAND_SINGLE)
-			vi_set_mode(VI_MODE_INSERT);
-	}
-	else if (!consumed)
-	{
-		g_free(kp);
-		state.kpl = g_slist_delete_link(state.kpl, state.kpl);
+			consumed = cmd_perform_ins(&ctx);
 	}
 
 	return consumed;
@@ -398,8 +375,8 @@ void vi_cleanup(void)
 	vi_set_active_sci(NULL);
 	ex_prompt_cleanup();
 
-	g_slist_free_full(state.kpl, g_free);
-	g_slist_free_full(state.prev_kpl, g_free);
+	g_slist_free_full(ctx.kpl, g_free);
+	g_slist_free_full(ctx.prev_kpl, g_free);
 
 	g_free(ctx.search_text);
 	g_free(ctx.substitute_text);

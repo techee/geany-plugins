@@ -22,7 +22,7 @@
 #include "context.h"
 #include "cmd-params.h"
 
-void cmd_enter_cmdline(CmdContext *c, CmdParams *p);
+void cmd_enter_ex(CmdContext *c, CmdParams *p);
 void cmd_enter_command(CmdContext *c, CmdParams *p);
 void cmd_enter_command_single(CmdContext *c, CmdParams *p);
 void cmd_enter_visual(CmdContext *c, CmdParams *p);

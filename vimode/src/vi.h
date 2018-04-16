@@ -44,7 +44,7 @@ typedef struct
 } ViCallback;
 
 
-void vi_enter_cmdline_mode(void);
+void vi_enter_ex_mode(void);
 void vi_set_mode(ViMode mode);
 ViMode vi_get_mode(void);
 

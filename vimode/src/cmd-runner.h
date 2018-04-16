@@ -21,9 +21,8 @@
 
 #include "context.h"
 
-gboolean cmd_perform_kpl_cmd(CmdContext *ctx, GSList *kpl,
-	GSList *prev_kpl, gboolean *is_repeat, gboolean *consumed);
-gboolean cmd_perform_kpl_vis(CmdContext *ctx, GSList *kpl, gboolean *consumed);
-gboolean cmd_perform_kpl_ins(CmdContext *ctx, GSList *kpl, gboolean *consumed);
+gboolean cmd_perform_cmd(CmdContext *ctx);
+gboolean cmd_perform_vis(CmdContext *ctx);
+gboolean cmd_perform_ins(CmdContext *ctx);
 
 #endif

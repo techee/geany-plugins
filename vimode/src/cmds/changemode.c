@@ -20,10 +20,10 @@
 #include "utils.h"
 
 
-void cmd_enter_cmdline(CmdContext *c, CmdParams *p)
+void cmd_enter_ex(CmdContext *c, CmdParams *p)
 {
 	c->num = p->num;
-	vi_enter_cmdline_mode();
+	vi_enter_ex_mode();
 }
 
 

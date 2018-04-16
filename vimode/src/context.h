@@ -26,29 +26,37 @@
 
 typedef struct
 {
+	/* key presses accumulated over time (e.g. for commands like 100dd) */
+	GSList *kpl;
+	/* kpl of the previous command (used for repeating last command) */
+	GSList *prev_kpl;
+	/* current scintilla object */
+	ScintillaObject *sci;
+	/* callbacks for the backend */
+	ViCallback *cb;
+
 	/* the last full search command, including '/' or '?' */
 	gchar *search_text;
 	/* the last full substitute (replace) command of the form 's/pattern/str/flags'  */
 	gchar *substitute_text;
 	/* the last full character search command, such as 'fc' or 'Tc' */
 	gchar *search_char;
+
 	/* whether the last copy was in line-copy-mode (like yy) or selection mode */
 	gboolean line_copy;
+	/* whether insert mode was entered using 'o' or 'O' - we need to add newlines
+	 * when copying it N times */
+	gboolean newline_insert;
+
 	/* selection anchor - selection is between anchor and caret */
 	gint sel_anchor;
 	/* number entered before performing mode-switching command */
 	gint num;
+
 	/* buffer used in insert/replace mode to record entered text so it can be
 	 * copied N times when e.g. 'i' is preceded by a number */
 	gchar insert_buf[INSERT_BUF_LEN];
 	gint insert_buf_len;
-	/* whether insert mode was entered using 'o' or 'O' - we need to add newlines
-	 * when copying it N times */
-	gboolean newline_insert;
-	/* callbacks for the backend */
-	ViCallback *cb;
-	/* current scintilla object */
-	ScintillaObject *sci;
 } CmdContext;
 
 #endif
