@@ -229,6 +229,42 @@ CmdDef text_object_cmds[] = {
 };
 
 
+#define EDIT_CMDS \
+	/* deletion */ \
+	{cmd_delete_char_copy, GDK_KEY_x, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_delete_char_copy, GDK_KEY_Delete, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_delete_char_copy, GDK_KEY_KP_Delete, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_delete_char_back_copy, GDK_KEY_X, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_delete_line, GDK_KEY_d, GDK_KEY_d, 0, 0, FALSE, FALSE}, \
+	{cmd_clear_right, GDK_KEY_D, 0, 0, 0, FALSE, FALSE}, \
+	/* copy/paste */ \
+	{cmd_copy_line, GDK_KEY_y, GDK_KEY_y, 0, 0, FALSE, FALSE}, \
+	{cmd_copy_line, GDK_KEY_Y, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_paste_after, GDK_KEY_p, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_paste_before, GDK_KEY_P, 0, 0, 0, FALSE, FALSE}, \
+	/* changing text */ \
+	{cmd_enter_insert_cut_line, GDK_KEY_c, GDK_KEY_c, 0, 0, FALSE, FALSE}, \
+	{cmd_enter_insert_cut_line, GDK_KEY_S, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_enter_insert_clear_right, GDK_KEY_C, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_enter_insert_delete_char, GDK_KEY_s, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_replace_char, GDK_KEY_r, 0, 0, 0, TRUE, FALSE}, \
+	{cmd_switch_case, GDK_KEY_asciitilde, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_indent, GDK_KEY_greater, GDK_KEY_greater, 0, 0, FALSE, FALSE}, \
+	{cmd_unindent, GDK_KEY_less, GDK_KEY_less, 0, 0, FALSE, FALSE}, \
+	{cmd_repeat_subst, GDK_KEY_ampersand, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_join_lines, GDK_KEY_J, 0, 0, 0, FALSE, FALSE}, \
+	/* undo/redo */ \
+	{cmd_undo, GDK_KEY_U, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_undo, GDK_KEY_u, 0, 0, 0, FALSE, FALSE}, \
+	{cmd_redo, GDK_KEY_r, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
+
+CmdDef edit_cmds[] = {
+	EDIT_CMDS
+	OPERATOR_CMDS
+	{NULL, 0, 0, 0, 0, FALSE, FALSE}
+};
+
+
 #define ENTER_EX_CMDS \
 	{cmd_enter_ex, GDK_KEY_colon, 0, 0, 0, FALSE, FALSE}, \
 	{cmd_enter_ex, GDK_KEY_slash, 0, 0, 0, FALSE, FALSE}, \
@@ -244,7 +280,6 @@ CmdDef text_object_cmds[] = {
 	{cmd_search_current_next, GDK_KEY_KP_Multiply, 0, 0, 0, FALSE, FALSE}, \
 	{cmd_search_current_prev, GDK_KEY_numbersign, 0, 0, 0, FALSE, FALSE}, \
 	/* END */
-
 
 CmdDef cmd_mode_cmds[] = {
 	/* enter insert mode */
@@ -263,37 +298,6 @@ CmdDef cmd_mode_cmds[] = {
 	{cmd_enter_visual, GDK_KEY_v, 0, 0, 0, FALSE, FALSE},
 	{cmd_enter_visual_line, GDK_KEY_V, 0, 0, 0, FALSE, FALSE},
 
-	/* deletion */
-	{cmd_delete_char_copy, GDK_KEY_x, 0, 0, 0, FALSE, FALSE},
-	{cmd_delete_char_copy, GDK_KEY_Delete, 0, 0, 0, FALSE, FALSE},
-	{cmd_delete_char_copy, GDK_KEY_KP_Delete, 0, 0, 0, FALSE, FALSE},
-	{cmd_delete_char_back_copy, GDK_KEY_X, 0, 0, 0, FALSE, FALSE},
-	{cmd_delete_line, GDK_KEY_d, GDK_KEY_d, 0, 0, FALSE, FALSE},
-	{cmd_clear_right, GDK_KEY_D, 0, 0, 0, FALSE, FALSE},
-
-	/* copy/paste */
-	{cmd_copy_line, GDK_KEY_y, GDK_KEY_y, 0, 0, FALSE, FALSE},
-	{cmd_copy_line, GDK_KEY_Y, 0, 0, 0, FALSE, FALSE},
-	{cmd_paste_after, GDK_KEY_p, 0, 0, 0, FALSE, FALSE},
-	{cmd_paste_before, GDK_KEY_P, 0, 0, 0, FALSE, FALSE},
-
-	/* changing text */
-	{cmd_enter_insert_cut_line, GDK_KEY_c, GDK_KEY_c, 0, 0, FALSE, FALSE},
-	{cmd_enter_insert_cut_line, GDK_KEY_S, 0, 0, 0, FALSE, FALSE},
-	{cmd_enter_insert_clear_right, GDK_KEY_C, 0, 0, 0, FALSE, FALSE},
-	{cmd_enter_insert_delete_char, GDK_KEY_s, 0, 0, 0, FALSE, FALSE},
-	{cmd_replace_char, GDK_KEY_r, 0, 0, 0, TRUE, FALSE},
-	{cmd_switch_case, GDK_KEY_asciitilde, 0, 0, 0, FALSE, FALSE},
-	{cmd_indent, GDK_KEY_greater, GDK_KEY_greater, 0, 0, FALSE, FALSE},
-	{cmd_unindent, GDK_KEY_less, GDK_KEY_less, 0, 0, FALSE, FALSE},
-	{cmd_repeat_subst, GDK_KEY_ampersand, 0, 0, 0, FALSE, FALSE},
-	{cmd_join_lines, GDK_KEY_J, 0, 0, 0, FALSE, FALSE},
-
-	/* undo/redo */
-	{cmd_undo, GDK_KEY_U, 0, 0, 0, FALSE, FALSE},
-	{cmd_undo, GDK_KEY_u, 0, 0, 0, FALSE, FALSE},
-	{cmd_redo, GDK_KEY_r, 0, GDK_CONTROL_MASK, 0, FALSE, FALSE},
-
 	/* special */
 	{cmd_repeat_last_command, GDK_KEY_period, 0, 0, 0, FALSE, FALSE},
 	{cmd_repeat_last_command, GDK_KEY_KP_Decimal, 0, 0, 0, FALSE, FALSE},
@@ -303,10 +307,11 @@ CmdDef cmd_mode_cmds[] = {
 	{cmd_write_exit, GDK_KEY_Z, GDK_KEY_Z, 0, 0, FALSE, FALSE},
 	{cmd_force_exit, GDK_KEY_Z, GDK_KEY_Q, 0, 0, FALSE, FALSE},
 
+	EDIT_CMDS
+	OPERATOR_CMDS
 	SEARCH_CMDS
 	MOVEMENT_CMDS
 	TEXT_OBJECT_CMDS
-	OPERATOR_CMDS
 	ENTER_EX_CMDS
 
 	{NULL, 0, 0, 0, 0, FALSE, FALSE}
@@ -592,7 +597,7 @@ static gboolean perform_repeat_cmd(CmdContext *ctx)
 	CmdDef *def;
 	gint i;
 
-	def = get_cmd_to_run(ctx->prev_kpl, cmd_mode_cmds, FALSE);
+	def = get_cmd_to_run(ctx->repeat_kpl, edit_cmds, FALSE);
 	if (!def)
 		return FALSE;
 
@@ -632,8 +637,13 @@ static gboolean process_cmd(CmdDef *cmds, CmdContext *ctx)
 			perform_cmd(def, ctx);
 			performed = TRUE;
 
-			g_slist_free_full(ctx->prev_kpl, g_free);
-			ctx->prev_kpl = ctx->kpl;
+			if (is_in_cmd_group(edit_cmds, def))
+			{
+				g_slist_free_full(ctx->repeat_kpl, g_free);
+				ctx->repeat_kpl = ctx->kpl;
+			}
+			else
+				g_slist_free_full(ctx->kpl, g_free);
 			ctx->kpl = NULL;
 		}
 	}

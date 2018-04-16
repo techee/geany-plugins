@@ -28,8 +28,8 @@ typedef struct
 {
 	/* key presses accumulated over time (e.g. for commands like 100dd) */
 	GSList *kpl;
-	/* kpl of the previous command (used for repeating last command) */
-	GSList *prev_kpl;
+	/* kpl of the last edit command used for repeating last command */
+	GSList *repeat_kpl;
 	/* current scintilla object */
 	ScintillaObject *sci;
 	/* callbacks for the backend */

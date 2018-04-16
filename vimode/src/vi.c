@@ -225,7 +225,6 @@ gboolean vi_notify_key_press(GdkEventKey *event)
 {
 	ScintillaObject *sci = ctx.sci;
 	gboolean consumed = FALSE;
-	ViMode orig_mode = state.vi_mode;
 	KeyPress *kp;
 
 	if (!sci || !state.vim_enabled)
@@ -376,7 +375,7 @@ void vi_cleanup(void)
 	ex_prompt_cleanup();
 
 	g_slist_free_full(ctx.kpl, g_free);
-	g_slist_free_full(ctx.prev_kpl, g_free);
+	g_slist_free_full(ctx.repeat_kpl, g_free);
 
 	g_free(ctx.search_text);
 	g_free(ctx.substitute_text);
