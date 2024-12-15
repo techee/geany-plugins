@@ -71,7 +71,7 @@ static void collect_source_files(gchar *filename, TMSourceFile *sf, gpointer use
 
 
 /* path - absolute path in locale, returned list in utf8 */
-static GSList *get_file_list(const gchar *utf8_path, GSList *patterns,
+static GSList *get_file_list(const gchar *locale_root_path, const gchar *locale_path, GSList *patterns,
 		GSList *ignored_dirs_patterns, GSList *ignored_file_patterns, GHashTable *visited_paths)
 {
 	GSList *list = NULL;
@@ -79,13 +79,11 @@ static GSList *get_file_list(const gchar *utf8_path, GSList *patterns,
 	const gchar *child_name;
 	GSList *child = NULL;
 	GSList *children = NULL;
-	gchar *locale_path = utils_get_locale_from_utf8(utf8_path);
 	gchar *real_path = utils_get_real_path(locale_path);
 
 	dir = g_dir_open(locale_path, 0, NULL);
 	if (!dir || !real_path || g_hash_table_lookup(visited_paths, real_path))
 	{
-		g_free(locale_path);
 		g_free(real_path);
 		if (dir)
 			g_dir_close(dir);
@@ -116,7 +114,7 @@ static GSList *get_file_list(const gchar *utf8_path, GSList *patterns,
 
 			if (!patterns_match(ignored_dirs_patterns, utf8_name))
 			{
-				lst = get_file_list(utf8_filename, patterns, ignored_dirs_patterns,
+				lst = get_file_list(locale_root_path, locale_filename, patterns, ignored_dirs_patterns,
 						ignored_file_patterns, visited_paths);
 				if (lst)
 					list = g_slist_concat(list, lst);
@@ -136,7 +134,6 @@ static GSList *get_file_list(const gchar *utf8_path, GSList *patterns,
 	}
 
 	g_slist_free_full(children, g_free);
-	g_free(locale_path);
 
 	return list;
 }
@@ -149,6 +146,7 @@ static gint prjorg_project_rescan_root(PrjOrgRoot *root)
 	GSList *ignored_dirs_list = NULL;
 	GSList *ignored_file_list = NULL;
 	GHashTable *visited_paths;
+	gchar *locale_root_path;
 	GSList *lst;
 	GSList *elem = NULL;
 	gint filenum = 0;
@@ -172,7 +170,8 @@ static gint prjorg_project_rescan_root(PrjOrgRoot *root)
 	ignored_file_list = get_precompiled_patterns(prj_org->ignored_file_patterns);
 
 	visited_paths = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
-	lst = get_file_list(root->base_dir, pattern_list, ignored_dirs_list, ignored_file_list, visited_paths);
+	locale_root_path = utils_get_locale_from_utf8(root->base_dir);
+	lst = get_file_list(locale_root_path, locale_root_path, pattern_list, ignored_dirs_list, ignored_file_list, visited_paths);
 	g_hash_table_destroy(visited_paths);
 
 	foreach_slist(elem, lst)
@@ -197,6 +196,8 @@ static gint prjorg_project_rescan_root(PrjOrgRoot *root)
 
 	g_slist_foreach(ignored_file_list, (GFunc) g_pattern_spec_free, NULL);
 	g_slist_free(ignored_file_list);
+
+	g_free(locale_root_path);
 
 	return filenum;
 }
