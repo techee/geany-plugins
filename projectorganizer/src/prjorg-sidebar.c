@@ -1454,30 +1454,40 @@ static gboolean find_in_tree(GtkTreeIter *parent, gchar **path_split, gint level
 }
 
 
-static gboolean expand_path(gchar *utf8_expanded_path, gboolean select)
+static gchar *find_root(GtkTreeModel *model, gchar *utf8_searched_path, GtkTreeIter *root_iter)
 {
-	GtkTreeIter root_iter, found_iter;
 	gchar *utf8_path = NULL;
-	gchar **path_split;
 	GSList *elem = NULL;
-	GtkTreeModel *model;
 
-	model = GTK_TREE_MODEL(s_file_store);
-	gtk_tree_model_iter_children(model, &root_iter, NULL);
 	foreach_slist (elem, prj_org->roots)
 	{
 		PrjOrgRoot *root = elem->data;
 
-		utf8_path = get_relative_path(root->base_dir, utf8_expanded_path);
+		utf8_path = get_relative_path(root->base_dir, utf8_searched_path);
 		if (utf8_path)
 			break;
 
 		g_free(utf8_path);
 		utf8_path = NULL;
-		if (!gtk_tree_model_iter_next(model, &root_iter))
+		if (!gtk_tree_model_iter_next(model, root_iter))
 			break;
 	}
 
+	return utf8_path;
+}
+
+
+static gboolean expand_path(gchar *utf8_expanded_path, gboolean select)
+{
+	GtkTreeIter root_iter, found_iter;
+	gchar *utf8_path = NULL;
+	gchar **path_split;
+	GtkTreeModel *model;
+
+	model = GTK_TREE_MODEL(s_file_store);
+	gtk_tree_model_iter_children(model, &root_iter, NULL);
+
+	utf8_path = find_root(model, utf8_expanded_path, &root_iter);
 	if (!utf8_path)
 		return FALSE;
 
