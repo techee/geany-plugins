@@ -170,7 +170,7 @@ static void on_open_selected_file(GtkMenuItem *menuitem, gpointer user_data)
 		gint i;
 
 		utf8_path = g_strdup("");
-		pathv = g_strsplit_set(utf8_sel, "/\\", -1);
+		pathv = g_strsplit(utf8_sel, G_DIR_SEPARATOR_S, -1);
 		for (i = g_strv_length(pathv) - 1; i >= 0; i--)
 		{
 			if (g_strcmp0(pathv[i], "..") == 0)

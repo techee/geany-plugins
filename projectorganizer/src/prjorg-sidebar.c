@@ -1340,7 +1340,7 @@ static void load_project_root(PrjOrgRoot *root, GtkTreeIter *parent, GSList *hea
 	{
 		gchar **path_split;
 
-		path_split = g_strsplit_set(elem->data, "/\\", 0);
+		path_split = g_strsplit(elem->data, G_DIR_SEPARATOR_S, -1);
 		path_list = g_slist_prepend(path_list, path_split);
 	}
 
@@ -1491,7 +1491,7 @@ static gboolean expand_path(gchar *utf8_expanded_path, gboolean select)
 	if (!utf8_path)
 		return FALSE;
 
-	path_split = g_strsplit_set(utf8_path, "/\\", 0);
+	path_split = g_strsplit(utf8_path, G_DIR_SEPARATOR_S, -1);
 
 	if (find_in_tree(&root_iter, path_split, 0, &found_iter))
 	{
