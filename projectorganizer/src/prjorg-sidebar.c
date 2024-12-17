@@ -1477,45 +1477,54 @@ static gchar *find_root(GtkTreeModel *model, gchar *utf8_searched_path, GtkTreeI
 }
 
 
-static gboolean expand_path(gchar *utf8_expanded_path, gboolean select)
+static gboolean find_iter(gchar *utf8_searched_path, GtkTreeIter *found_iter)
 {
-	GtkTreeIter root_iter, found_iter;
-	gchar *utf8_path = NULL;
+	GtkTreeIter root_iter;
+	gchar *utf8_path;
 	gchar **path_split;
 	GtkTreeModel *model;
+	gboolean found;
 
 	model = GTK_TREE_MODEL(s_file_store);
 	gtk_tree_model_iter_children(model, &root_iter, NULL);
 
-	utf8_path = find_root(model, utf8_expanded_path, &root_iter);
+	utf8_path = find_root(model, utf8_searched_path, &root_iter);
 	if (!utf8_path)
 		return FALSE;
 
 	path_split = g_strsplit(utf8_path, G_DIR_SEPARATOR_S, -1);
-
-	if (find_in_tree(&root_iter, path_split, 0, &found_iter))
-	{
-		GtkTreePath *tree_path;
-		GtkTreeSelection *treesel;
-
-		tree_path = gtk_tree_model_get_path (model, &found_iter);
-		gtk_tree_view_expand_to_path(GTK_TREE_VIEW(s_file_view), tree_path);
-
-		if (select)
-		{
-			gtk_tree_view_scroll_to_cell(GTK_TREE_VIEW(s_file_view), tree_path,
-				NULL, FALSE, 0.0, 0.0);
-
-			treesel = gtk_tree_view_get_selection(GTK_TREE_VIEW(s_file_view));
-			gtk_tree_selection_select_iter(treesel, &found_iter);
-			gtk_tree_path_free(tree_path);
-		}
-	}
+	found = find_in_tree(&root_iter, path_split, 0, found_iter);
 
 	g_free(utf8_path);
 	g_strfreev(path_split);
 
-	return FALSE;
+	return found;
+}
+
+
+static void expand_path(gchar *utf8_expanded_path, gboolean select)
+{
+	GtkTreeModel *model = GTK_TREE_MODEL(s_file_store);
+	GtkTreeIter found_iter;
+	GtkTreePath *tree_path;
+
+	if (!find_iter(utf8_expanded_path, &found_iter))
+		return;
+
+	tree_path = gtk_tree_model_get_path (model, &found_iter);
+	gtk_tree_view_expand_to_path(GTK_TREE_VIEW(s_file_view), tree_path);
+
+	if (select)
+	{
+		GtkTreeSelection *treesel;
+
+		gtk_tree_view_scroll_to_cell(GTK_TREE_VIEW(s_file_view), tree_path,
+			NULL, FALSE, 0.0, 0.0);
+
+		treesel = gtk_tree_view_get_selection(GTK_TREE_VIEW(s_file_view));
+		gtk_tree_selection_select_iter(treesel, &found_iter);
+		gtk_tree_path_free(tree_path);
+	}
 }
 
 
