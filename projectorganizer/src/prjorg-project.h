@@ -42,9 +42,13 @@ typedef enum
 typedef struct
 {
 	gchar **source_patterns;
+	GPtrArray *source_patterns_prec;
 	gchar **header_patterns;
+	GPtrArray *header_patterns_prec;
 	gchar **ignored_dirs_patterns;
+	GPtrArray *ignored_dirs_patterns_prec;
 	gchar **ignored_file_patterns;
+	GPtrArray *ignored_file_patterns_prec;
 	gboolean show_empty_dirs;
 	PrjOrgTagPrefs generate_tag_prefs;
 

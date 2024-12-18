@@ -72,7 +72,6 @@ static void collect_source_files(gchar *filename, TMSourceFile *sf, gpointer use
 
 /* path - absolute path in locale, returned list in utf8 */
 static GSList *get_file_list(const gchar *locale_root_path, const gchar *locale_path,
-	GPtrArray *patterns, GPtrArray *ignored_dirs_patterns, GPtrArray *ignored_file_patterns,
 	GHashTable *visited_paths)
 {
 	GSList *list = NULL;
@@ -113,10 +112,9 @@ static GSList *get_file_list(const gchar *locale_root_path, const gchar *locale_
 		{
 			GSList *lst;
 
-			if (!patterns_match(ignored_dirs_patterns, utf8_name))
+			if (!patterns_match(prj_org->ignored_dirs_patterns_prec, utf8_name))
 			{
-				lst = get_file_list(locale_root_path, locale_filename, patterns, ignored_dirs_patterns,
-						ignored_file_patterns, visited_paths);
+				lst = get_file_list(locale_root_path, locale_filename, visited_paths);
 				if (lst)
 					list = g_slist_concat(list, lst);
 				else if (prj_org->show_empty_dirs)
@@ -125,8 +123,11 @@ static GSList *get_file_list(const gchar *locale_root_path, const gchar *locale_
 		}
 		else if (g_file_test(locale_filename, G_FILE_TEST_IS_REGULAR))
 		{
-			if (patterns_match(patterns, utf8_name) && !patterns_match(ignored_file_patterns, utf8_name))
+			if (patterns_match(prj_org->source_patterns_prec, utf8_name) &&
+				!patterns_match(prj_org->ignored_file_patterns_prec, utf8_name))
+			{
 				list = g_slist_prepend(list, g_strdup(utf8_filename));
+			}
 		}
 
 		g_free(utf8_filename);
@@ -140,27 +141,9 @@ static GSList *get_file_list(const gchar *locale_root_path, const gchar *locale_
 }
 
 
-static GPtrArray *get_matched_patterns(void)
-{
-	GPtrArray *pattern_list = g_ptr_array_new_full(1, (GDestroyNotify)g_pattern_spec_free);
-
-	if (!geany_data->app->project->file_patterns || !geany_data->app->project->file_patterns[0])
-	{
-		gchar **all_pattern = g_strsplit ("*", " ", -1);
-		pattern_list = get_precompiled_patterns(all_pattern);
-		g_strfreev(all_pattern);
-	}
-	else
-		pattern_list = get_precompiled_patterns(geany_data->app->project->file_patterns);
-
-	return pattern_list;
-}
-
-
 static gint prjorg_project_rescan_root(PrjOrgRoot *root)
 {
 	GPtrArray *source_files;
-	GPtrArray *pattern_list, *ignored_dirs_list, *ignored_file_list;
 	GHashTable *visited_paths;
 	gchar *locale_root_path;
 	GSList *lst;
@@ -173,14 +156,9 @@ static gint prjorg_project_rescan_root(PrjOrgRoot *root)
 	g_ptr_array_free(source_files, TRUE);
 	g_hash_table_remove_all(root->file_table);
 
-	pattern_list = get_matched_patterns();
-
-	ignored_dirs_list = get_precompiled_patterns(prj_org->ignored_dirs_patterns);
-	ignored_file_list = get_precompiled_patterns(prj_org->ignored_file_patterns);
-
 	visited_paths = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
 	locale_root_path = utils_get_locale_from_utf8(root->base_dir);
-	lst = get_file_list(locale_root_path, locale_root_path, pattern_list, ignored_dirs_list, ignored_file_list, visited_paths);
+	lst = get_file_list(locale_root_path, locale_root_path, visited_paths);
 	g_hash_table_destroy(visited_paths);
 
 	foreach_slist(elem, lst)
@@ -196,10 +174,6 @@ static gint prjorg_project_rescan_root(PrjOrgRoot *root)
 
 	g_slist_foreach(lst, (GFunc) g_free, NULL);
 	g_slist_free(lst);
-
-	g_ptr_array_free(pattern_list, TRUE);
-	g_ptr_array_free(ignored_dirs_list, TRUE);
-	g_ptr_array_free(ignored_file_list, TRUE);
 
 	g_free(locale_root_path);
 
@@ -351,6 +325,23 @@ static PrjOrgRoot *create_root(const gchar *utf8_base_dir)
 }
 
 
+static GPtrArray *get_source_patterns(void)
+{
+	GPtrArray *pattern_list = g_ptr_array_new_full(1, (GDestroyNotify)g_pattern_spec_free);
+
+	if (!geany_data->app->project->file_patterns || !geany_data->app->project->file_patterns[0])
+	{
+		gchar **all_pattern = g_strsplit ("*", " ", -1);
+		pattern_list = get_precompiled_patterns(all_pattern);
+		g_strfreev(all_pattern);
+	}
+	else
+		pattern_list = get_precompiled_patterns(geany_data->app->project->file_patterns);
+
+	return pattern_list;
+}
+
+
 static void update_project(
 	gchar **source_patterns,
 	gchar **header_patterns,
@@ -365,18 +356,30 @@ static void update_project(
 	if (prj_org->source_patterns)
 		g_strfreev(prj_org->source_patterns);
 	prj_org->source_patterns = g_strdupv(source_patterns);
+	if (prj_org->source_patterns_prec)
+		g_ptr_array_free(prj_org->source_patterns_prec, TRUE);
+	prj_org->source_patterns_prec = get_source_patterns();
 
 	if (prj_org->header_patterns)
 		g_strfreev(prj_org->header_patterns);
 	prj_org->header_patterns = g_strdupv(header_patterns);
+	if (prj_org->header_patterns_prec)
+		g_ptr_array_free(prj_org->header_patterns_prec, TRUE);
+	prj_org->header_patterns_prec = get_precompiled_patterns(prj_org->header_patterns);
 
 	if (prj_org->ignored_dirs_patterns)
 		g_strfreev(prj_org->ignored_dirs_patterns);
 	prj_org->ignored_dirs_patterns = g_strdupv(ignored_dirs_patterns);
+	if (prj_org->ignored_dirs_patterns_prec)
+		g_ptr_array_free(prj_org->ignored_dirs_patterns_prec, TRUE);
+	prj_org->ignored_dirs_patterns_prec = get_precompiled_patterns(prj_org->ignored_dirs_patterns);
 
 	if (prj_org->ignored_file_patterns)
 		g_strfreev(prj_org->ignored_file_patterns);
 	prj_org->ignored_file_patterns = g_strdupv(ignored_file_patterns);
+	if (prj_org->ignored_file_patterns_prec)
+		g_ptr_array_free(prj_org->ignored_file_patterns_prec, TRUE);
+	prj_org->ignored_file_patterns_prec = get_precompiled_patterns(prj_org->ignored_file_patterns);
 
 	prj_org->generate_tag_prefs = generate_tag_prefs;
 	prj_org->show_empty_dirs = show_empty_dirs;
@@ -560,10 +563,6 @@ void prjorg_project_open(GKeyFile * key_file)
 
 	prj_org = (PrjOrg *) g_new0(PrjOrg, 1);
 
-	prj_org->source_patterns = NULL;
-	prj_org->header_patterns = NULL;
-	prj_org->ignored_dirs_patterns = NULL;
-	prj_org->ignored_file_patterns = NULL;
 	prj_org->generate_tag_prefs = PrjOrgTagAuto;
 	prj_org->show_empty_dirs = TRUE;
 
@@ -813,9 +812,13 @@ void prjorg_project_close(void)
 	g_slist_free(prj_org->roots);
 
 	g_strfreev(prj_org->source_patterns);
+	g_ptr_array_free(prj_org->source_patterns_prec, TRUE);
 	g_strfreev(prj_org->header_patterns);
+	g_ptr_array_free(prj_org->header_patterns_prec, TRUE);
 	g_strfreev(prj_org->ignored_dirs_patterns);
+	g_ptr_array_free(prj_org->ignored_dirs_patterns_prec, TRUE);
 	g_strfreev(prj_org->ignored_file_patterns);
+	g_ptr_array_free(prj_org->ignored_file_patterns_prec, TRUE);
 
 	g_free(prj_org);
 	prj_org = NULL;
