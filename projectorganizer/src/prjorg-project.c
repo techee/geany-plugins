@@ -338,8 +338,9 @@ void rescan_project(gchar **session_files)
 
 
 void prjorg_project_rescan() {
-    rescan_project(NULL);
+	rescan_project(NULL);
 }
+
 
 static PrjOrgRoot *create_root(const gchar *utf8_base_dir)
 {
