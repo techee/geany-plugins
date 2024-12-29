@@ -28,6 +28,7 @@
 #include "prjorg-utils.h"
 #include "prjorg-project.h"
 #include "prjorg-sidebar.h"
+#include "prjorg-file-monitor.h"
 
 extern GeanyPlugin *geany_plugin;
 extern GeanyData *geany_data;
@@ -91,6 +92,8 @@ static GSList *get_file_list(const gchar *locale_root_path, const gchar *locale_
 	}
 
 	g_hash_table_insert(visited_paths, real_path, GINT_TO_POINTER(1));
+
+	prjorg_file_monitor_add_directory(locale_root_path, real_path);
 
 	while ((child_name = g_dir_read_name(dir)))
 		children = g_slist_prepend(children, g_strdup(child_name));
@@ -277,10 +280,13 @@ static void regenerate_tags(PrjOrgRoot *root, gpointer user_data)
 
 		if (g_strcmp0(PROJORG_DIR_ENTRY, basename) != 0)
 			sf = tm_source_file_new(locale_path, filetypes_detect(utf8_path)->name);
-		if (sf && !will_open && !document_find_by_filename(utf8_path))
-			g_ptr_array_add(source_files, sf);
+		if (sf)
+		{
+			if (!will_open && !document_find_by_filename(utf8_path))
+				g_ptr_array_add(source_files, sf);
+			g_hash_table_insert(file_table, g_strdup(utf8_path), sf);
+		}
 
-		g_hash_table_insert(file_table, g_strdup(utf8_path), sf);
 		g_free(locale_path);
 		g_free(basename);
 	}
@@ -843,7 +849,78 @@ gboolean prjorg_project_is_in_project(const gchar *utf8_filename)
 }
 
 
-static gboolean add_tm_idle(gpointer foo)
+static PrjOrgRoot *find_root(const gchar *utf8_searched_path)
+{
+	GSList *elem = NULL;
+
+	foreach_slist (elem, prj_org->roots)
+	{
+		PrjOrgRoot *root = elem->data;
+		gchar *utf8_path = get_relative_path(root->base_dir, utf8_searched_path);
+
+		if (utf8_path)
+		{
+			gboolean within_root = !g_str_has_prefix(utf8_path, "..");
+
+			g_free(utf8_path);
+
+			if (within_root)
+				return root;
+		}
+	}
+
+	return NULL;
+}
+
+
+void prjorg_project_add_file(const gchar *utf8_filename)
+{
+	TMSourceFile *sf;
+	PrjOrgRoot *root;
+	gchar *locale_path;
+
+	if (prjorg_project_is_in_project(utf8_filename) || !matches_project_patterns(utf8_filename))
+		return;
+
+	root = find_root(utf8_filename);
+	if (!root)
+		return;
+
+	locale_path = utils_get_locale_from_utf8(utf8_filename);
+	sf = tm_source_file_new(locale_path, filetypes_detect(utf8_filename)->name);
+	if (sf)
+	{
+		g_hash_table_insert(root->file_table, g_strdup(utf8_filename), sf);
+		if (!document_find_by_filename(utf8_filename))
+			tm_workspace_add_source_file(sf);
+	}
+
+	g_free(locale_path);
+}
+
+
+void prjorg_project_remove_file(const gchar *utf8_filename)
+{
+	TMSourceFile *sf;
+	PrjOrgRoot *root;
+
+	if (!prjorg_project_is_in_project(utf8_filename))
+		return;
+
+	root = find_root(utf8_filename);
+	if (!root)
+		return;
+
+	sf = g_hash_table_lookup(root->file_table, utf8_filename);
+	if (sf)
+	{
+		tm_workspace_remove_source_file(sf);
+		g_hash_table_remove(root->file_table, utf8_filename);
+	}
+}
+
+
+static gboolean add_tm_idle(gpointer unused)
 {
 	GSList *elem2 = NULL;
 

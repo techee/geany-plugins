@@ -49,6 +49,7 @@ typedef struct
 	GPtrArray *ignored_dirs_patterns_prec;
 	gchar **ignored_file_patterns;
 	GPtrArray *ignored_file_patterns_prec;
+
 	gboolean show_empty_dirs;
 	PrjOrgTagPrefs generate_tag_prefs;
 
@@ -70,6 +71,9 @@ void prjorg_project_rescan(void);
 
 void prjorg_project_add_external_dir(const gchar *utf8_dirname);
 void prjorg_project_remove_external_dir(const gchar *utf8_dirname);
+
+void prjorg_project_add_file(const gchar *utf8_filename);
+void prjorg_project_remove_file(const gchar *utf8_filename);
 
 void prjorg_project_add_single_tm_file(gchar *utf8_filename);
 void prjorg_project_remove_single_tm_file(gchar *utf8_filename);

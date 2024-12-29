@@ -33,6 +33,9 @@ void prjorg_sidebar_update_full(gboolean reload, gchar **expanded_paths);
 
 void prjorg_sidebar_focus_project_tab(void);
 
+void prjorg_sidebar_add_file(const gchar *utf8_filename);
+void prjorg_sidebar_remove_file(const gchar *utf8_filename);
+
 gchar **prjorg_sidebar_get_expanded_paths(void);
 
 void on_open_file_manager(G_GNUC_UNUSED GtkMenuItem * menuitem, G_GNUC_UNUSED gpointer user_data);

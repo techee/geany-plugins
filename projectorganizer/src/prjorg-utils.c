@@ -88,6 +88,23 @@ gboolean patterns_match(GPtrArray *patterns, const gchar *str)
 }
 
 
+gboolean matches_project_patterns(const gchar *utf8_filename)
+{
+	gchar *basename = g_path_get_basename(utf8_filename);
+	gchar *dirname = g_path_get_dirname(utf8_filename);
+	gboolean matches;
+
+	matches = patterns_match(prj_org->source_patterns_prec, basename) &&
+		!patterns_match(prj_org->ignored_file_patterns_prec, basename) &&
+		!patterns_match(prj_org->ignored_dirs_patterns_prec, dirname);
+
+	g_free(dirname);
+	g_free(basename);
+
+	return matches;
+}
+
+
 void open_file(gchar *utf8_name)
 {
 	gchar *name;

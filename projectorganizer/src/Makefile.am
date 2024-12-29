@@ -16,7 +16,9 @@ projectorganizer_la_SOURCES = \
 	prjorg-goto-panel.h \
 	prjorg-goto-panel.c \
 	prjorg-goto-anywhere.h \
-	prjorg-goto-anywhere.c
+	prjorg-goto-anywhere.c \
+	prjorg-file-monitor.c \
+	prjorg-file-monitor.h
 
 projectorganizer_la_CPPFLAGS = $(AM_CPPFLAGS) \
 	-DG_LOG_DOMAIN=\"ProjectOrganizer\"

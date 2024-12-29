@@ -29,6 +29,7 @@
 gchar *get_relative_path(const gchar *utf8_parent, const gchar *utf8_descendant);
 
 gboolean patterns_match(GPtrArray *patterns, const gchar *str);
+gboolean matches_project_patterns(const gchar *utf8_filename);
 GPtrArray *get_precompiled_patterns(gchar **patterns);
 
 void open_file(gchar *utf8_name);

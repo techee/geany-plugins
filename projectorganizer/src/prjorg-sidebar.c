@@ -38,6 +38,7 @@ enum
 	FILEVIEW_COLUMN_ICON,
 	FILEVIEW_COLUMN_NAME,
 	FILEVIEW_COLUMN_COLOR,
+	FILEVIEW_COLUMN_IS_FILE,
 	FILEVIEW_N_COLUMNS,
 };
 
@@ -523,8 +524,8 @@ static void on_create_file(G_GNUC_UNUSED GtkMenuItem *menuitem, G_GNUC_UNUSED gp
 		{
 			open_file(path);
 			//TODO: don't rescan the whole project, only change the affected file
-			prjorg_project_rescan();
-			prjorg_sidebar_update(TRUE);
+//			prjorg_project_rescan();
+//			prjorg_sidebar_update(TRUE);
 		}
 		else
 			dialogs_show_msgbox(GTK_MESSAGE_ERROR, _("Cannot create file '%s'."), path);
@@ -594,8 +595,8 @@ static void on_rename(G_GNUC_UNUSED GtkMenuItem *menuitem, G_GNUC_UNUSED gpointe
 			if (rename_file_or_dir(oldpath, newpath))
 			{
 				//TODO: don't rescan the whole project, only change the affected file
-				prjorg_project_rescan();
-				prjorg_sidebar_update(TRUE);
+//				prjorg_project_rescan();
+//				prjorg_sidebar_update(TRUE);
 			}
 			else
 				dialogs_show_msgbox(GTK_MESSAGE_ERROR, _("Cannot rename '%s' to '%s'."),
@@ -635,8 +636,8 @@ static void on_delete(G_GNUC_UNUSED GtkMenuItem *menuitem, G_GNUC_UNUSED gpointe
 		g_free(path);
 
 		//TODO: don't rescan the whole project, only change the affected file
-		prjorg_project_rescan();
-		prjorg_sidebar_update(TRUE);
+//		prjorg_project_rescan();
+//		prjorg_sidebar_update(TRUE);
 	}
 
 	g_free(name);
@@ -1189,8 +1190,67 @@ static void on_find_in_files(G_GNUC_UNUSED GtkMenuItem *menuitem, G_GNUC_UNUSED 
 }
 
 
-static void create_branch(gint level, GSList *leaf_list, GtkTreeIter *parent,
-	GSList *header_patterns, GSList *source_patterns, gboolean project)
+static void create_file_item(const gchar *name, GtkTreeIter *parent, gboolean is_external,
+	guint pos, GtkTreeIter *iter)
+{
+	GIcon *icon = NULL;
+	GtkTreeIter tmp_iter;
+
+	if (!iter)
+		iter = &tmp_iter;
+
+	gchar *content_type = g_content_type_guess(name, NULL, 0, NULL);
+
+	if (content_type)
+	{
+		icon = g_content_type_get_icon(content_type);
+		if (icon)
+		{
+			GtkIconInfo *icon_info;
+
+			icon_info = gtk_icon_theme_lookup_by_gicon(gtk_icon_theme_get_default(), icon, 16, 0);
+			if (!icon_info)
+			{
+				g_object_unref(icon);
+				icon = NULL;
+			}
+			else
+				g_object_unref(icon_info);
+		}
+		g_free(content_type);
+	}
+
+	if (!icon)
+		icon = g_themed_icon_new("text-x-generic");
+
+	gtk_tree_store_insert_with_values(s_file_store, iter, parent, pos,
+		FILEVIEW_COLUMN_ICON, icon,
+		FILEVIEW_COLUMN_NAME, name,
+		FILEVIEW_COLUMN_COLOR, is_external ? &s_external_color : NULL,
+		FILEVIEW_COLUMN_IS_FILE, TRUE, -1);
+
+	if (icon)
+		g_object_unref(icon);
+}
+
+
+static void create_directory_item(const gchar *name, GtkTreeIter *parent,
+	gboolean is_external, guint pos, GtkTreeIter *iter)
+{
+	GIcon *icon_dir = g_themed_icon_new("folder");
+
+	gtk_tree_store_insert_with_values(s_file_store, iter, parent, pos,
+		FILEVIEW_COLUMN_ICON, icon_dir,
+		FILEVIEW_COLUMN_NAME, name,
+		FILEVIEW_COLUMN_COLOR, is_external ? &s_external_color : NULL,
+		FILEVIEW_COLUMN_IS_FILE, FALSE, -1);
+
+	if (icon_dir)
+		g_object_unref(icon_dir);
+}
+
+
+static void create_branch(gint level, GSList *leaf_list, GtkTreeIter *parent, gboolean is_external)
 {
 	GSList *dir_list = NULL;
 	GSList *file_list = NULL;
@@ -1208,44 +1268,12 @@ static void create_branch(gint level, GSList *leaf_list, GtkTreeIter *parent,
 
 	foreach_slist (elem, file_list)
 	{
-		GtkTreeIter iter;
 		gchar **path_arr = elem->data;
-		GIcon *icon = NULL;
 
 		if (g_strcmp0(PROJORG_DIR_ENTRY, path_arr[level]) == 0)
 			continue;
 
-		gchar *content_type = g_content_type_guess(path_arr[level], NULL, 0, NULL);
-
-		if (content_type)
-		{
-			icon = g_content_type_get_icon(content_type);
-			if (icon)
-			{
-				GtkIconInfo *icon_info;
-
-				icon_info = gtk_icon_theme_lookup_by_gicon(gtk_icon_theme_get_default(), icon, 16, 0);
-				if (!icon_info)
-				{
-					g_object_unref(icon);
-					icon = NULL;
-				}
-				else
-					g_object_unref(icon_info);
-			}
-			g_free(content_type);
-		}
-
-		if (! icon)
-			icon = g_themed_icon_new("text-x-generic");
-
-		gtk_tree_store_insert_with_values(s_file_store, &iter, parent, 0,
-			FILEVIEW_COLUMN_ICON, icon,
-			FILEVIEW_COLUMN_NAME, path_arr[level],
-			FILEVIEW_COLUMN_COLOR, project ? NULL : &s_external_color, -1);
-
-		if (icon)
-			g_object_unref(icon);
+		create_file_item(path_arr[level], parent, is_external, 0, NULL);
 	}
 
 	if (dir_list)
@@ -1254,7 +1282,6 @@ static void create_branch(gint level, GSList *leaf_list, GtkTreeIter *parent,
 		GtkTreeIter iter;
 		gchar **path_arr = dir_list->data;
 		gchar *last_dir_name;
-		GIcon *icon_dir = g_themed_icon_new("folder");
 
 		last_dir_name = path_arr[level];
 
@@ -1267,12 +1294,9 @@ static void create_branch(gint level, GSList *leaf_list, GtkTreeIter *parent,
 
 			if (dir_changed)
 			{
-				gtk_tree_store_insert_with_values(s_file_store, &iter, parent, 0,
-					FILEVIEW_COLUMN_ICON, icon_dir,
-					FILEVIEW_COLUMN_NAME, last_dir_name,
-					FILEVIEW_COLUMN_COLOR, project ? NULL : &s_external_color, -1);
+				create_directory_item(last_dir_name, parent, is_external, 0, &iter);
 
-				create_branch(level+1, tmp_list, &iter, header_patterns, source_patterns, project);
+				create_branch(level+1, tmp_list, &iter, is_external);
 
 				g_slist_free(tmp_list);
 				tmp_list = NULL;
@@ -1282,16 +1306,12 @@ static void create_branch(gint level, GSList *leaf_list, GtkTreeIter *parent,
 			tmp_list = g_slist_prepend(tmp_list, path_arr);
 		}
 
-		gtk_tree_store_insert_with_values(s_file_store, &iter, parent, 0,
-			FILEVIEW_COLUMN_ICON, icon_dir,
-			FILEVIEW_COLUMN_NAME, last_dir_name,
-			FILEVIEW_COLUMN_COLOR, project ? NULL : &s_external_color, -1);
+		create_directory_item(last_dir_name, parent, is_external, 0, &iter);
 
-		create_branch(level+1, tmp_list, &iter, header_patterns, source_patterns, project);
+		create_branch(level+1, tmp_list, &iter, is_external);
 
 		g_slist_free(tmp_list);
 		g_slist_free(dir_list);
-		g_object_unref(icon_dir);
 	}
 
 	g_slist_free(file_list);
@@ -1318,7 +1338,7 @@ static int rev_strcmp(const char *str1, const char *str2)
 }
 
 
-static void load_project_root(PrjOrgRoot *root, GtkTreeIter *parent, GSList *header_patterns, GSList *source_patterns, gboolean project)
+static void load_project_root(PrjOrgRoot *root, GtkTreeIter *parent, gboolean is_external)
 {
 	GSList *lst = NULL;
 	GSList *path_list = NULL;
@@ -1345,9 +1365,9 @@ static void load_project_root(PrjOrgRoot *root, GtkTreeIter *parent, GSList *hea
 	}
 
 	if (path_list != NULL)
-		create_branch(0, path_list, parent, header_patterns, source_patterns, project);
+		create_branch(0, path_list, parent, is_external);
 
-	if (project)
+	if (!is_external)
 	{
 		if (path_list != NULL)
 		{
@@ -1369,20 +1389,14 @@ static void load_project_root(PrjOrgRoot *root, GtkTreeIter *parent, GSList *hea
 
 static void load_project(void)
 {
-	GSList *elem = NULL, *header_patterns, *source_patterns;
+	GSList *elem;
 	GtkTreeIter iter;
-	gboolean first = TRUE;
-	GIcon *icon_dir;
+	gboolean is_external = FALSE;
 
 	gtk_tree_store_clear(s_file_store);
 
 	if (!prj_org || !geany_data->app->project)
 		return;
-
-	icon_dir = g_themed_icon_new("folder");
-
-	header_patterns = get_precompiled_patterns(prj_org->header_patterns);
-	source_patterns = get_precompiled_patterns(prj_org->source_patterns);
 
 	/* reload on every refresh to update the color e.g. when the theme changes */
 	s_external_color = gtk_widget_get_style(s_toolbar)->bg[GTK_STATE_NORMAL];
@@ -1392,34 +1406,28 @@ static void load_project(void)
 		PrjOrgRoot *root = elem->data;
 		gchar *name;
 
-		if (first)
-			name = g_strconcat("<b>", geany_data->app->project->name, "</b>", NULL);
-		else
+		if (is_external)
 			name = g_strdup(root->base_dir);
+		else
+			name = g_strconcat("<b>", geany_data->app->project->name, "</b>", NULL);
 
-		gtk_tree_store_insert_with_values(s_file_store, &iter, NULL, -1,
-			FILEVIEW_COLUMN_ICON, icon_dir,
-			FILEVIEW_COLUMN_NAME, name,
-			FILEVIEW_COLUMN_COLOR, first ? NULL : &s_external_color, -1);
+		create_directory_item(name, NULL, is_external, -1, &iter);
 
-		load_project_root(root, &iter, header_patterns, source_patterns, first);
+		load_project_root(root, &iter, is_external);
 
-		first = FALSE;
+		is_external = TRUE;
 		g_free(name);
 	}
 
 	collapse();
-
-	g_slist_foreach(header_patterns, (GFunc) g_pattern_spec_free, NULL);
-	g_slist_free(header_patterns);
-	g_slist_foreach(source_patterns, (GFunc) g_pattern_spec_free, NULL);
-	g_slist_free(source_patterns);
-	g_object_unref(icon_dir);
 }
 
 
-static gboolean find_in_tree(GtkTreeIter *parent, gchar **path_split, gint level, GtkTreeIter *ret)
+static gboolean find_in_tree(GtkTreeIter *parent, gchar **path_split, gint level,
+	gboolean create_nodes, gboolean is_external, GtkTreeIter *ret)
 {
+	gboolean is_leaf = path_split[level+1] == NULL;
+	guint pos = 0;
 	GtkTreeModel *model;
 	GtkTreeIter iter;
 	gboolean iterate;
@@ -1431,33 +1439,70 @@ static gboolean find_in_tree(GtkTreeIter *parent, gchar **path_split, gint level
 	{
 		gchar *name;
 		gint cmpres;
+		gboolean is_file_node;
 
-		gtk_tree_model_get(model, &iter, FILEVIEW_COLUMN_NAME, &name, -1);
+		gtk_tree_model_get(model, &iter, FILEVIEW_COLUMN_NAME, &name,
+			FILEVIEW_COLUMN_IS_FILE, &is_file_node, -1);
 
 		cmpres = g_strcmp0(name, path_split[level]);
 		g_free(name);
-		if (cmpres == 0)
+
+		if (is_leaf)
 		{
-			if (path_split[level+1] == NULL)
+			if (cmpres == 0 && is_file_node)
 			{
 				*ret = iter;
 				return TRUE;
 			}
-			else
-				return find_in_tree(&iter, path_split, level + 1, ret);
+			else if (create_nodes && cmpres > 0 && is_file_node)
+			{
+				create_file_item(path_split[level], parent, is_external, pos, &iter);
+				*ret = iter;
+				return TRUE;
+			}
+		}
+		else
+		{
+			if (cmpres == 0 && !is_file_node)
+				return find_in_tree(&iter, path_split, level + 1, create_nodes, is_external, ret);
+			else if (create_nodes && cmpres > 0 && !is_file_node)
+			{
+				create_directory_item(path_split[level], parent, is_external, pos, &iter);
+				return find_in_tree(&iter, path_split, level + 1, create_nodes, is_external, ret);
+			}
 		}
 
 		iterate = gtk_tree_model_iter_next(model, &iter);
+		pos++;
+	}
+
+	if (create_nodes)
+	{
+		if (is_leaf)
+		{
+			create_file_item(path_split[level], parent, is_external, pos, &iter);
+			*ret = iter;
+			return TRUE;
+		}
+		else
+		{
+			create_directory_item(path_split[level], parent, is_external, pos, &iter);
+			return find_in_tree(&iter, path_split, level + 1, create_nodes, is_external, ret);
+		}
 	}
 
 	return FALSE;
 }
 
 
-static gchar *find_root(GtkTreeModel *model, gchar *utf8_searched_path, GtkTreeIter *root_iter)
+static gchar *find_root(GtkTreeModel *model, const gchar *utf8_searched_path,
+	GtkTreeIter *root_iter, gboolean *is_external)
 {
 	gchar *utf8_path = NULL;
 	GSList *elem = NULL;
+
+	if (is_external)
+		*is_external = FALSE;
 
 	foreach_slist (elem, prj_org->roots)
 	{
@@ -1465,19 +1510,29 @@ static gchar *find_root(GtkTreeModel *model, gchar *utf8_searched_path, GtkTreeI
 
 		utf8_path = get_relative_path(root->base_dir, utf8_searched_path);
 		if (utf8_path)
-			break;
+		{
+			gboolean within_root = !g_str_has_prefix(utf8_path, "..");
 
-		g_free(utf8_path);
-		utf8_path = NULL;
+			if (within_root)
+				break;
+
+			g_free(utf8_path);
+			utf8_path = NULL;
+		}
+
 		if (!gtk_tree_model_iter_next(model, root_iter))
 			break;
+
+		if (is_external)
+			*is_external = TRUE;
 	}
 
 	return utf8_path;
 }
 
 
-static gboolean find_iter(gchar *utf8_searched_path, GtkTreeIter *found_iter)
+static gboolean find_iter(const gchar *utf8_searched_path, GtkTreeIter *found_iter,
+	gboolean create_nodes, gboolean *is_external)
 {
 	GtkTreeIter root_iter;
 	gchar *utf8_path;
@@ -1488,17 +1543,43 @@ static gboolean find_iter(gchar *utf8_searched_path, GtkTreeIter *found_iter)
 	model = GTK_TREE_MODEL(s_file_store);
 	gtk_tree_model_iter_children(model, &root_iter, NULL);
 
-	utf8_path = find_root(model, utf8_searched_path, &root_iter);
+	utf8_path = find_root(model, utf8_searched_path, &root_iter, is_external);
 	if (!utf8_path)
 		return FALSE;
 
 	path_split = g_strsplit(utf8_path, G_DIR_SEPARATOR_S, -1);
-	found = find_in_tree(&root_iter, path_split, 0, found_iter);
+	found = find_in_tree(&root_iter, path_split, 0, create_nodes,
+		is_external ? *is_external : FALSE, found_iter);
 
 	g_free(utf8_path);
 	g_strfreev(path_split);
 
 	return found;
+}
+
+
+void prjorg_sidebar_add_file(const gchar *utf8_filename)
+{
+	GtkTreeIter iter;
+
+	if (!matches_project_patterns(utf8_filename))
+		return;
+
+	// creates node, including directories, if it doesn't exist
+	find_iter(utf8_filename, &iter, TRUE, NULL);
+}
+
+
+void prjorg_sidebar_remove_file(const gchar *utf8_filename)
+{
+	GtkTreeIter iter;
+	gboolean found = find_iter(utf8_filename, &iter, FALSE, NULL);
+
+	if (found)
+	{
+		// TODO: remove also empty directories when configured not to be shown
+		gtk_tree_store_remove(s_file_store, &iter);
+	}
 }
 
 
@@ -1508,7 +1589,7 @@ static void expand_path(gchar *utf8_expanded_path, gboolean select)
 	GtkTreeIter found_iter;
 	GtkTreePath *tree_path;
 
-	if (!find_iter(utf8_expanded_path, &found_iter))
+	if (!find_iter(utf8_expanded_path, &found_iter, FALSE, NULL))
 		return;
 
 	tree_path = gtk_tree_model_get_path (model, &found_iter);
@@ -1754,7 +1835,8 @@ void prjorg_sidebar_init(void)
 
 	s_file_view = gtk_tree_view_new();
 
-	s_file_store = gtk_tree_store_new(FILEVIEW_N_COLUMNS, G_TYPE_ICON, G_TYPE_STRING, GDK_TYPE_COLOR);
+	s_file_store = gtk_tree_store_new(FILEVIEW_N_COLUMNS, G_TYPE_ICON, G_TYPE_STRING, GDK_TYPE_COLOR,
+		G_TYPE_BOOLEAN);
 	gtk_tree_view_set_model(GTK_TREE_VIEW(s_file_view), GTK_TREE_MODEL(s_file_store));
 
 	renderer = gtk_cell_renderer_pixbuf_new();
